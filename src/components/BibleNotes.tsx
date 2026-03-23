@@ -389,25 +389,21 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
             ))}
           </select>
 
-          {/* AI buttons */}
-          <div style={{ display: "flex", gap: 4, marginLeft: "auto" }}>
-            {[
-              { action: "summarize" as const, label: "📋" },
-              { action: "questions" as const, label: "❓" },
-              { action: "organize" as const, label: "🗂️" },
-            ].map(ai => (
-              <button
-                key={ai.action}
-                onClick={() => callAI(ai.action)}
-                disabled={!!aiLoading}
-                className="notes-ai-btn"
-                title={ai.action === "summarize" ? "Resumir" : ai.action === "questions" ? "Perguntas" : "Organizar"}
-                style={{ opacity: aiLoading && aiLoading !== ai.action ? 0.4 : 1 }}
-              >
-                {aiLoading === ai.action ? "⏳" : ai.label}
-              </button>
-            ))}
-          </div>
+          {/* AI organize button */}
+          <button
+            onClick={() => callAI("organize")}
+            disabled={!!aiLoading}
+            className="notes-ai-btn"
+            title="Organizar com IA"
+            style={{
+              marginLeft: "auto",
+              display: "flex", alignItems: "center", gap: 5,
+              padding: "5px 12px", borderRadius: 8,
+              fontSize: 12,
+            }}
+          >
+            {aiLoading ? "⏳ Organizando..." : "✨ Organizar"}
+          </button>
         </div>
 
         {/* Delete button */}
