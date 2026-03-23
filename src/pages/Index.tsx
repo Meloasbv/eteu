@@ -119,7 +119,7 @@ function getTodayReading(checked: Record<string, boolean>) {
 // ── COMPONENT ─────────────────────────────────────────────────────────────────
 
 export default function BiblePlan() {
-  const [tab, setTab] = useState<"leitura" | "devocional" | "agenda" | "anotacoes">("leitura");
+  const [tab, setTab] = useState<"home" | "leitura" | "devocional" | "agenda" | "anotacoes">("home");
   const [activeWeek, setActiveWeek] = useState(0);
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [saved, setSaved] = useState(false);
