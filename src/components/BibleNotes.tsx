@@ -888,6 +888,7 @@ const notesCSS = `
   transition: background .15s, color .15s;
 }
 .notes-bb-btn:active { background: var(--notes-accent-faint); color: var(--notes-accent); }
+.notes-bb-btn.recording { animation: notesPulse 1s infinite; }
 .notes-bb-sep {
   width: 1px; height: 18px; background: var(--notes-border);
   margin: 0 2px; transition: background .3s;
