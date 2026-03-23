@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
-type Section = "proclamadores" | "aulas";
+type Section = "proclamadores" | "aulas" | "pensamentos";
 
 type Note = {
   id: number;
@@ -26,6 +26,7 @@ const WEEKS_LIST = [
 const SECTIONS: { key: Section; label: string; icon: string }[] = [
   { key: "proclamadores", label: "Track Proclamadores", icon: "📢" },
   { key: "aulas", label: "Aulas", icon: "📚" },
+  { key: "pensamentos", label: "Pensamentos", icon: "💭" },
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -107,6 +108,10 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
   // AI
   const [aiLoading, setAiLoading] = useState<string | null>(null);
   const [aiResult, setAiResult] = useState<{ title: string; content: string } | null>(null);
+
+  // Audio recording
+  const [isRecording, setIsRecording] = useState(false);
+  const recognitionRef = useRef<any>(null);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -286,6 +291,65 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
     setAiLoading(null);
   }, [editingNote, showToast]);
 
+  // ── Audio transcription ─────────────────────────────────────────────────────
+  const toggleRecording = useCallback(() => {
+    if (isRecording) {
+      recognitionRef.current?.stop();
+      setIsRecording(false);
+      return;
+    }
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      showToast("Navegador não suporta gravação");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = "pt-BR";
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognitionRef.current = recognition;
+
+    let finalTranscript = "";
+
+    recognition.onresult = (event: any) => {
+      let interim = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalTranscript += transcript + " ";
+          // Insert final transcript into note
+          if (editingNote) {
+            const ta = textareaRef.current;
+            const pos = ta ? ta.selectionStart : editingNote.texto.length;
+            const text = editingNote.texto;
+            const newText = text.substring(0, pos) + transcript + " " + text.substring(pos);
+            handleTextChange(newText);
+          }
+        }
+      }
+    };
+
+    recognition.onerror = (event: any) => {
+      console.error("Speech recognition error:", event.error);
+      setIsRecording(false);
+      if (event.error === "not-allowed") {
+        showToast("Permissão de microfone negada");
+      } else {
+        showToast("Erro na gravação");
+      }
+    };
+
+    recognition.onend = () => {
+      setIsRecording(false);
+    };
+
+    recognition.start();
+    setIsRecording(true);
+    showToast("🎙️ Gravando...");
+  }, [isRecording, editingNote, handleTextChange, showToast]);
+
   // ── RENDER ──────────────────────────────────────────────────────────────────
 
   // TELA 1 — Category list
@@ -458,6 +522,15 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
 
         {/* Bottom bar */}
         <div className="notes-bottom-bar">
+          <button
+            className={`notes-bb-btn ${isRecording ? "recording" : ""}`}
+            onClick={toggleRecording}
+            title={isRecording ? "Parar gravação" : "Gravar áudio"}
+            style={isRecording ? { color: "#c26b5a", background: "rgba(194,107,90,.15)" } : {}}
+          >
+            {isRecording ? "⏹" : "🎙️"}
+          </button>
+          <div className="notes-bb-sep" />
           <button className="notes-bb-btn" onClick={() => wrapSelection("**", "**")} title="Negrito" disabled={previewMode}>
             <strong>N</strong>
           </button>
@@ -600,6 +673,10 @@ const notesCSS = `
 @keyframes notesSlideIn {
   from { opacity: 0; transform: translateX(16px); }
   to { opacity: 1; transform: translateX(0); }
+}
+@keyframes notesPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .4; }
 }
 
 /* ── List head ── */
@@ -811,6 +888,7 @@ const notesCSS = `
   transition: background .15s, color .15s;
 }
 .notes-bb-btn:active { background: var(--notes-accent-faint); color: var(--notes-accent); }
+.notes-bb-btn.recording { animation: notesPulse 1s infinite; }
 .notes-bb-sep {
   width: 1px; height: 18px; background: var(--notes-border);
   margin: 0 2px; transition: background .3s;
