@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type Section = "proclamadores" | "aulas";
@@ -79,6 +80,8 @@ export default function BibleNotes() {
   const [verseLoading, setVerseLoading] = useState(false);
   const [verseError, setVerseError] = useState(false);
   const [toast, setToast] = useState("");
+  const [aiLoading, setAiLoading] = useState<string | null>(null);
+  const [aiResult, setAiResult] = useState<{ title: string; content: string } | null>(null);
   const editorRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLInputElement>(null);
 
@@ -223,7 +226,51 @@ export default function BibleNotes() {
     }
   }, [currentNote, updateNote]);
 
-  // ── Section selector (no section active) ──────────────────────────────────
+  // ── AI actions ─────────────────────────────────────────────────────────────
+  const callAI = useCallback(async (action: "summarize" | "questions" | "organize") => {
+    setAiLoading(action);
+    setAiResult(null);
+    try {
+      const body: Record<string, any> = { action };
+      if (action === "organize") {
+        body.allNotes = notes.map(n => ({ title: n.title, body: n.body, week: n.week, section: n.section }));
+      } else if (currentNote) {
+        body.noteTitle = currentNote.title || "Sem título";
+        body.noteBody = currentNote.body;
+      } else {
+        showToast("Selecione uma nota primeiro");
+        setAiLoading(null);
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke("notes-ai", { body });
+
+      if (error) {
+        showToast("Erro ao chamar IA");
+        setAiLoading(null);
+        return;
+      }
+
+      if (data?.error) {
+        showToast(data.error);
+        setAiLoading(null);
+        return;
+      }
+
+      const titles: Record<string, string> = {
+        summarize: "📋 Resumo da Nota",
+        questions: "❓ Perguntas de Estudo",
+        organize: "🗂️ Organização Sugerida",
+      };
+
+      setAiResult({ title: titles[action], content: data.result });
+    } catch (e) {
+      showToast("Erro de conexão com a IA");
+    }
+    setAiLoading(null);
+  }, [notes, currentNote, showToast]);
+
+
   if (!activeSection) {
     return (
       <div style={{ padding: "24px 16px 40px" }}>
@@ -635,6 +682,42 @@ export default function BibleNotes() {
                 >🗑️</button>
               </div>
 
+              {/* ── AI ACTIONS BAR ── */}
+              <div style={{
+                display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap",
+                padding: "8px 10px",
+                background: "rgba(26,22,13,.6)",
+                borderLeft: "1px solid rgba(200,180,140,.15)",
+                borderRight: "1px solid rgba(200,180,140,.15)",
+              }}>
+                <span style={{ fontSize: 10, letterSpacing: 2, color: "#7a6230", textTransform: "uppercase", fontWeight: 600, marginRight: 4 }}>
+                  🤖 IA
+                </span>
+                {[
+                  { action: "summarize" as const, label: "📋 Resumir", tip: "Gera um resumo da nota" },
+                  { action: "questions" as const, label: "❓ Perguntas", tip: "Gera perguntas de estudo" },
+                  { action: "organize" as const, label: "🗂️ Organizar", tip: "Sugere organização de todas as notas" },
+                ].map(ai => (
+                  <button
+                    key={ai.action}
+                    onClick={() => callAI(ai.action)}
+                    disabled={!!aiLoading}
+                    title={ai.tip}
+                    style={{
+                      padding: "5px 12px", borderRadius: 6,
+                      border: "1px solid rgba(200,170,100,.25)",
+                      background: aiLoading === ai.action ? "rgba(200,170,100,.2)" : "rgba(200,170,100,.06)",
+                      color: aiLoading === ai.action ? "#e8c97a" : "#c9a84c",
+                      fontSize: 12, fontWeight: 600, cursor: aiLoading ? "wait" : "pointer",
+                      fontFamily: "inherit", opacity: aiLoading && aiLoading !== ai.action ? 0.5 : 1,
+                      transition: "all .2s",
+                    }}
+                  >
+                    {aiLoading === ai.action ? "⏳ Processando..." : ai.label}
+                  </button>
+                ))}
+              </div>
+
               {/* ── EDITOR (contentEditable) ── */}
               <div
                 ref={editorRef}
@@ -793,6 +876,69 @@ export default function BibleNotes() {
           )}
         </div>
       </div>
+
+      {/* ── AI RESULT MODAL ── */}
+      {aiResult && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 50,
+          background: "rgba(0,0,0,.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16,
+        }}
+          onClick={e => { if (e.target === e.currentTarget) setAiResult(null); }}
+        >
+          <div style={{
+            background: "linear-gradient(160deg,#232018,#1e1a14)",
+            border: "1px solid rgba(200,170,100,.25)",
+            borderRadius: 16, padding: "24px 20px", maxWidth: 520, width: "100%",
+            maxHeight: "80vh", overflowY: "auto",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+              <div style={{ fontSize: 18, fontWeight: 600, color: "#e8c97a" }}>{aiResult.title}</div>
+              <button onClick={() => setAiResult(null)} style={{
+                width: 32, height: 32, borderRadius: "50%", border: "1px solid rgba(200,180,140,.15)",
+                background: "rgba(200,180,140,.06)", color: "#a09078", cursor: "pointer", fontSize: 18,
+              }}>×</button>
+            </div>
+            <div style={{
+              fontSize: 15, lineHeight: 1.8, color: "#e8dfc4",
+              whiteSpace: "pre-wrap", fontFamily: "inherit",
+            }}>
+              {aiResult.content}
+            </div>
+            <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
+              <button onClick={() => {
+                navigator.clipboard.writeText(aiResult.content);
+                showToast("Copiado!");
+              }} style={{
+                padding: "8px 18px", borderRadius: 8,
+                border: "1px solid rgba(200,180,140,.2)",
+                background: "rgba(200,180,140,.06)", color: "#c9a84c",
+                fontSize: 13, cursor: "pointer", fontFamily: "inherit",
+              }}>
+                📋 Copiar texto
+              </button>
+              {currentNote && aiResult.title.includes("Resumo") && (
+                <button onClick={() => {
+                  if (editorRef.current) {
+                    const html = `<div style="background:rgba(200,170,100,.08);border:1px solid rgba(200,170,100,.2);border-left:3px solid #c9a84c;border-radius:8px;padding:14px 18px;margin:10px 0"><span style="font-size:11px;letter-spacing:2px;color:#c9a84c;text-transform:uppercase;display:block;margin-bottom:6px">📋 Resumo gerado por IA</span><span style="color:#e8dfc4;line-height:1.7;white-space:pre-wrap">${aiResult.content.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</span></div><p><br></p>`;
+                    editorRef.current.focus();
+                    document.execCommand("insertHTML", false, html);
+                    handleEditorBlur();
+                    showToast("Resumo inserido na nota");
+                  }
+                  setAiResult(null);
+                }} style={{
+                  padding: "8px 18px", borderRadius: 8,
+                  border: "1px solid rgba(200,170,100,.3)",
+                  background: "rgba(200,170,100,.12)", color: "#e8c97a",
+                  fontSize: 13, cursor: "pointer", fontFamily: "inherit", fontWeight: 600,
+                }}>
+                  ✏️ Inserir na nota
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── DELETE CONFIRM ── */}
       {deleteId && (
