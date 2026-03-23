@@ -27,6 +27,7 @@ const SECTIONS: { key: Section; label: string; icon: string }[] = [
   { key: "proclamadores", label: "Track Proclamadores", icon: "📢" },
   { key: "aulas", label: "Aulas", icon: "📚" },
   { key: "pensamentos", label: "Pensamentos", icon: "💭" },
+  { key: "devocionais", label: "Devocionais", icon: "🔥" },
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
