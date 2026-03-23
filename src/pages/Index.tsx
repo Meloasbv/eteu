@@ -183,6 +183,7 @@ export default function BiblePlan() {
   const [saved, setSaved] = useState(false);
   const [expandedDev, setExpandedDev] = useState<string | null>(null);
   const [musicPlaying, setMusicPlaying] = useState(false);
+  const [notesTitle, setNotesTitle] = useState("📝 Anotações");
   const playerRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {

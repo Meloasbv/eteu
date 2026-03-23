@@ -116,6 +116,19 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
 
   const currentNote = useMemo(() => notes.find(n => n.id === selectedNote) ?? null, [notes, selectedNote]);
 
+  // Report dynamic title to parent
+  useEffect(() => {
+    if (!onTitleChange) return;
+    if (selectedNote && currentNote) {
+      onTitleChange(currentNote.title || "Nova anotação");
+    } else if (activeSection) {
+      const sec = SECTIONS.find(s => s.key === activeSection);
+      onTitleChange(`${sec?.icon ?? "📝"} ${sec?.label ?? "Anotações"}`);
+    } else {
+      onTitleChange("📝 Anotações");
+    }
+  }, [activeSection, selectedNote, currentNote, onTitleChange]);
+
   // Filter notes for sidebar
   const sidebarNotes = useMemo(() => {
     if (!activeSection) return notes;
