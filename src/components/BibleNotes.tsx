@@ -661,15 +661,19 @@ export default function BibleNotes() {
                               {preview(note.body)}
                             </span>
                           </div>
-                          {note.reference && (
-                            <span style={{
-                              display: "inline-block", marginTop: 4,
-                              fontSize: 11, fontWeight: 600, color: accent,
-                              background: accent + "15", padding: "1px 8px", borderRadius: 5,
-                              border: `1px solid ${accent}25`,
-                            }}>
-                              📖 {note.reference}
-                            </span>
+                          {(note.references?.length > 0 || note.reference) && (
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 4 }}>
+                              {(note.references?.length > 0 ? note.references : [note.reference]).map((ref, ri) => (
+                                <span key={ri} style={{
+                                  display: "inline-block",
+                                  fontSize: 11, fontWeight: 600, color: accent,
+                                  background: accent + "15", padding: "1px 8px", borderRadius: 5,
+                                  border: `1px solid ${accent}25`,
+                                }}>
+                                  📖 {ref}
+                                </span>
+                              ))}
+                            </div>
                           )}
                         </div>
                         <span style={{ fontSize: 14, color: "#4a4038", flexShrink: 0 }}>›</span>
