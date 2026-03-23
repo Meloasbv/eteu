@@ -183,6 +183,7 @@ export default function BiblePlan() {
   const [saved, setSaved] = useState(false);
   const [expandedDev, setExpandedDev] = useState<string | null>(null);
   const [musicPlaying, setMusicPlaying] = useState(false);
+  const [notesTitle, setNotesTitle] = useState("📝 Anotações");
   const playerRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
@@ -267,7 +268,7 @@ export default function BiblePlan() {
           Fascinação • 2026A
         </p>
         <h1 style={{ fontSize: "clamp(24px,5vw,36px)", fontWeight: 300, color: "#e8d8b8", letterSpacing: 1, marginBottom: 20 }}>
-          {tab === "home" ? "Leitura Bíblica Cronológica" : tab === "leitura" ? "📖 Plano de Leitura" : tab === "devocional" ? "🔥 Devocional" : tab === "agenda" ? "📅 Agenda da Semana" : "📝 Anotações"}
+          {tab === "home" ? "Leitura Bíblica Cronológica" : tab === "leitura" ? "📖 Plano de Leitura" : tab === "devocional" ? "🔥 Devocional" : tab === "agenda" ? "📅 Agenda da Semana" : notesTitle}
         </h1>
         {/* Overall progress */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 16, marginBottom: 24 }}>
@@ -610,7 +611,7 @@ export default function BiblePlan() {
       {tab === "agenda" && <WeekSchedule />}
 
       {/* ── ANOTAÇÕES TAB ── */}
-      {tab === "anotacoes" && <BibleNotes />}
+      {tab === "anotacoes" && <BibleNotes onTitleChange={setNotesTitle} />}
 
       {/* Footer */}
       <div style={{ textAlign: "center", padding: "8px 24px 28px", fontSize: 11, color: "#5a4a38", letterSpacing: 2, textTransform: "uppercase" }}>

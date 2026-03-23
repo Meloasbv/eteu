@@ -68,7 +68,7 @@ async function fetchVerse(ref: string, version = "arc"): Promise<{ text: string;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
-export default function BibleNotes() {
+export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: string) => void }) {
   const [notes, setNotes] = useState<Note[]>([]);
   const [activeSection, setActiveSection] = useState<Section | null>(null);
   const [selectedNote, setSelectedNote] = useState<string | null>(null);
@@ -115,6 +115,19 @@ export default function BibleNotes() {
   }, []);
 
   const currentNote = useMemo(() => notes.find(n => n.id === selectedNote) ?? null, [notes, selectedNote]);
+
+  // Report dynamic title to parent
+  useEffect(() => {
+    if (!onTitleChange) return;
+    if (selectedNote && currentNote) {
+      onTitleChange(currentNote.title || "Nova anotação");
+    } else if (activeSection) {
+      const sec = SECTIONS.find(s => s.key === activeSection);
+      onTitleChange(`${sec?.icon ?? "📝"} ${sec?.label ?? "Anotações"}`);
+    } else {
+      onTitleChange("📝 Anotações");
+    }
+  }, [activeSection, selectedNote, currentNote, onTitleChange]);
 
   // Filter notes for sidebar
   const sidebarNotes = useMemo(() => {
