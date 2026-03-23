@@ -706,6 +706,36 @@ export default function BiblePlan() {
                 }}>
                   {todayDev.summary}
                 </div>
+                {todayDev.exegese && (
+                  <div style={{
+                    background: tc ? "rgba(139,111,78,.04)" : "rgba(200,170,100,.06)",
+                    border: `1px solid ${tc ? "rgba(139,111,78,.1)" : "rgba(200,170,100,.12)"}`,
+                    borderLeft: `3px solid ${tc ? "#8b6f4e" : "#C8A55C"}`,
+                    borderRadius: "0 10px 10px 0",
+                    padding: "14px 16px", marginTop: 14,
+                  }}>
+                    <div style={{
+                      fontSize: 9, letterSpacing: 3, textTransform: "uppercase",
+                      color: tc ? "#8b6f4e" : "#C8A55C",
+                      fontWeight: 700, fontFamily: "'Cinzel', serif", marginBottom: 10,
+                    }}>
+                      📜 Exegese — Palavra por Palavra
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 13, lineHeight: 1.85,
+                        color: tc ? "#4a4540" : "#c4b498",
+                      }}
+                      dangerouslySetInnerHTML={{
+                        __html: todayDev.exegese
+                          .replace(/\*\*\"(.+?)\"\*\*/g, '<strong style="color:' + (tc ? "#1a1714" : "#e8d8b8") + ';">"$1"</strong>')
+                          .replace(/\*\*(.+?)\*\*/g, '<strong style="color:' + (tc ? "#1a1714" : "#e8d8b8") + ';">$1</strong>')
+                          .replace(/\*(.+?)\*/g, '<em style="color:' + (tc ? "#8b6f4e" : "#C8A55C") + ';">$1</em>')
+                          .replace(/\. /g, '.<br/>')
+                      }}
+                    />
+                  </div>
+                )}
                 <div style={{
                   fontSize: 11, color: tc ? "#aba59e" : "#6a5a48",
                   marginTop: 10, transition: "color .3s",
