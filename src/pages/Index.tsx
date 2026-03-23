@@ -265,6 +265,47 @@ export default function BiblePlan() {
     setMusicPlaying(!musicPlaying);
   }, [musicPlaying]);
 
+  // ── Exegesis AI call ──────────────────────────────────────────────────────
+  const handleExegese = useCallback(async () => {
+    if (!exegeseVerse.trim()) return;
+    setExegeseLoading(true);
+    setExegeseError("");
+    setExegeseResult(null);
+
+    // First fetch the verse text
+    try {
+      const verseRes = await fetch(`https://bible-api.com/${encodeURIComponent(exegeseVerse.trim())}?translation=almeida`);
+      if (!verseRes.ok) {
+        setExegeseError("Versículo não encontrado. Verifique a referência.");
+        setExegeseLoading(false);
+        return;
+      }
+      const verseData = await verseRes.json();
+      const verseText = verseData.text?.trim();
+      if (!verseText) {
+        setExegeseError("Texto do versículo não encontrado.");
+        setExegeseLoading(false);
+        return;
+      }
+
+      // Call AI exegesis
+      const { data, error } = await supabase.functions.invoke("verse-exegesis", {
+        body: { verse: verseData.reference || exegeseVerse, verseText },
+      });
+
+      if (error || data?.error) {
+        setExegeseError(data?.error || "Erro ao gerar exegese.");
+        setExegeseLoading(false);
+        return;
+      }
+
+      setExegeseResult({ verse: verseData.reference || exegeseVerse, content: data.result });
+    } catch {
+      setExegeseError("Erro de conexão.");
+    }
+    setExegeseLoading(false);
+  }, [exegeseVerse]);
+
   // CSS variables for notes theming
   const themeVars = theme === "light" ? {
     "--notes-bg": "#faf9f7",
