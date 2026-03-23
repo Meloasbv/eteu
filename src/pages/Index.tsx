@@ -79,11 +79,7 @@ const DEVOTIONALS = [
   },
 ];
 
-const GUIDE_QUESTIONS = [
-  { n: "1", q: "O que o texto diz?", detail: "Sobre o que ele fala? Qual o assunto central? Quais os assuntos secundários?" },
-  { n: "2", q: "O que essa passagem quer dizer/contar pra mim?", detail: "O que ela significa? O que ela diz sobre Deus? E o que ela diz sobre o homem?" },
-  { n: "3", q: "Como isso se aplica à minha vida?", detail: "Há algum mandamento a ser obedecido? Alguma promessa? Algum pecado a confessar? Alguma atitude a mudar?" },
-];
+// Guide questions removed — replaced by exegesis study field
 
 const COLORS = ["#C8553D","#E88D67","#D4A574","#B8860B","#6B8E6B","#4A7C8C","#6B5B8A"];
 const ABBREVS = ["Sáb","Dom","Seg","Ter","Qua","Qui","Sex"];
