@@ -181,7 +181,7 @@ export default function BiblePlan() {
               fontWeight: tab === t ? 600 : 400, letterSpacing: 0.5,
               textTransform: "capitalize",
             }}>
-              {t === "leitura" ? "📖 Leitura" : t === "devocional" ? "🙏 Devocional" : "📅 Agenda"}
+              {t === "leitura" ? "📖 Leitura" : t === "devocional" ? "🙏 Devocional" : t === "agenda" ? "📅 Agenda" : "✍️ Anotações"}
             </button>
           ))}
         </div>
