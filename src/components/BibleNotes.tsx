@@ -56,6 +56,7 @@ export default function BibleNotes() {
   const [editing, setEditing] = useState<Note | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [collapsedWeeks, setCollapsedWeeks] = useState<Record<number, boolean>>({});
+  const [refInput, setRefInput] = useState("");
   const bodyRef = useRef<HTMLTextAreaElement>(null);
 
   // Load
