@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import WeekSchedule from "@/components/WeekSchedule";
 import BibleNotes from "@/components/BibleNotes";
 
@@ -124,6 +124,8 @@ export default function BiblePlan() {
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [saved, setSaved] = useState(false);
   const [expandedDev, setExpandedDev] = useState<string | null>(null);
+  const [musicPlaying, setMusicPlaying] = useState(false);
+  const playerRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
     try { const d = localStorage.getItem(STORAGE_KEY); if (d) setChecked(JSON.parse(d)); } catch {}
@@ -163,8 +165,44 @@ export default function BiblePlan() {
     color: "#e8dcc8",
   };
 
+  const toggleMusic = useCallback(() => {
+    const iframe = playerRef.current;
+    if (!iframe) return;
+    if (musicPlaying) {
+      iframe.contentWindow?.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*');
+    } else {
+      iframe.contentWindow?.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
+    }
+    setMusicPlaying(!musicPlaying);
+  }, [musicPlaying]);
+
   return (
     <div style={baseStyle}>
+      {/* Hidden YouTube player */}
+      <iframe
+        ref={playerRef}
+        src="https://www.youtube.com/embed/juWsw7-IuaE?enablejsapi=1&autoplay=0&loop=1&playlist=juWsw7-IuaE"
+        allow="autoplay"
+        style={{ position: "absolute", width: 0, height: 0, border: "none", opacity: 0, pointerEvents: "none" }}
+        title="Background music"
+      />
+
+      {/* Floating music button */}
+      <button onClick={toggleMusic} style={{
+        position: "fixed", bottom: 20, left: 20, zIndex: 100,
+        width: 48, height: 48, borderRadius: "50%",
+        border: `1px solid ${musicPlaying ? "rgba(107,142,107,.5)" : "rgba(200,180,140,.3)"}`,
+        background: musicPlaying
+          ? "linear-gradient(135deg,rgba(107,142,107,.2),rgba(90,122,90,.1))"
+          : "linear-gradient(135deg,rgba(200,170,100,.15),rgba(180,140,80,.06))",
+        color: musicPlaying ? "#6B8E6B" : "#C8A55C",
+        cursor: "pointer", fontSize: 20,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        boxShadow: "0 4px 16px rgba(0,0,0,.4)",
+        transition: "all .3s ease",
+      }}>
+        {musicPlaying ? "⏸" : "🎵"}
+      </button>
       {/* ── HEADER ── */}
       <div style={{ padding: "32px 24px 20px", textAlign: "center", borderBottom: "1px solid rgba(200,180,140,.08)" }}>
         <p style={{ fontSize: 11, letterSpacing: 4, textTransform: "uppercase", color: "#8a7a60", marginBottom: 8, fontWeight: 600 }}>
