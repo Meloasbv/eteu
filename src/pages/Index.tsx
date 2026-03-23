@@ -267,7 +267,7 @@ export default function BiblePlan() {
           Fascinação • 2026A
         </p>
         <h1 style={{ fontSize: "clamp(24px,5vw,36px)", fontWeight: 300, color: "#e8d8b8", letterSpacing: 1, marginBottom: 20 }}>
-          Leitura Bíblica Cronológica
+          {tab === "home" ? "Leitura Bíblica Cronológica" : tab === "leitura" ? "📖 Plano de Leitura" : tab === "devocional" ? "🔥 Devocional" : tab === "agenda" ? "📅 Agenda da Semana" : "📝 Anotações"}
         </h1>
         {/* Overall progress */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 16, marginBottom: 24 }}>
