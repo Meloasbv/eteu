@@ -113,6 +113,7 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
   // Audio recording
   const [isRecording, setIsRecording] = useState(false);
   const recognitionRef = useRef<any>(null);
+  const editingNoteRef = useRef<Note | null>(null);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
