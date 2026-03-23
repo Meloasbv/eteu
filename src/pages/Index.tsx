@@ -124,6 +124,8 @@ export default function BiblePlan() {
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [saved, setSaved] = useState(false);
   const [expandedDev, setExpandedDev] = useState<string | null>(null);
+  const [musicPlaying, setMusicPlaying] = useState(false);
+  const playerRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
     try { const d = localStorage.getItem(STORAGE_KEY); if (d) setChecked(JSON.parse(d)); } catch {}
