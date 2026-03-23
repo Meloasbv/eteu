@@ -48,21 +48,21 @@ const DEVOTIONALS = [
   {
     period: "16/03 a 20/03",
     days: [
-      { day: "Segunda", ref: "Cantares 2:16", summary: "\"O meu amado é meu e eu sou dele.\" A entrega mútua e o pertencimento no amor de Deus." },
-      { day: "Terça",   ref: "Cantares 4:7",  summary: "\"Toda bela és, amada minha, e nenhum defeito há em ti.\" O olhar de Deus sobre sua amada — puro e sem condenação." },
-      { day: "Quarta",  ref: "Cantares 4:9",  summary: "\"Roubaste o meu coração.\" A intimidade com Deus como um amor que nos transforma profundamente." },
-      { day: "Quinta",  ref: "Cantares 8:6",  summary: "\"Forte como a morte é o amor.\" O amor de Deus é intenso, ardente e inabalável." },
-      { day: "Sexta",   ref: "Cantares 8:7",  summary: "\"Nem muitas águas podem apagar o amor.\" Nada tem poder para separar-nos do amor de Deus." },
-    ],
-  },
-  {
-    period: "23/03 a 27/03",
-    days: [
       { day: "Segunda", ref: "Mateus 5:3",  summary: "\"Bem-aventurados os pobres de espírito.\" O Reino começa com o reconhecimento da nossa necessidade de Deus." },
       { day: "Terça",   ref: "Mateus 5:14", summary: "\"Vós sois a luz do mundo.\" Somos chamados a iluminar o ambiente ao nosso redor com a vida de Cristo." },
       { day: "Quarta",  ref: "Mateus 6:6",  summary: "Orar em segredo, no quarto fechado, para o Pai que vê o que está escondido — intimidade genuína." },
       { day: "Quinta",  ref: "Mateus 6:33", summary: "\"Buscai primeiro o Reino de Deus.\" Quando priorizamos a Deus, tudo mais se ordena." },
       { day: "Sexta",   ref: "Mateus 7:24", summary: "O sábio constrói sobre a rocha — ouvir e praticar a Palavra nos dá fundamento inabalável." },
+    ],
+  },
+  {
+    period: "23/03 a 27/03",
+    days: [
+      { day: "Segunda", ref: "Cantares 2:16", summary: "\"O meu amado é meu e eu sou dele.\" A entrega mútua e o pertencimento no amor de Deus." },
+      { day: "Terça",   ref: "Cantares 4:7",  summary: "\"Toda bela és, amada minha, e nenhum defeito há em ti.\" O olhar de Deus sobre sua amada — puro e sem condenação." },
+      { day: "Quarta",  ref: "Cantares 4:9",  summary: "\"Roubaste o meu coração.\" A intimidade com Deus como um amor que nos transforma profundamente." },
+      { day: "Quinta",  ref: "Cantares 8:6",  summary: "\"Forte como a morte é o amor.\" O amor de Deus é intenso, ardente e inabalável." },
+      { day: "Sexta",   ref: "Cantares 8:7",  summary: "\"Nem muitas águas podem apagar o amor.\" Nada tem poder para separar-nos do amor de Deus." },
     ],
   },
   {
