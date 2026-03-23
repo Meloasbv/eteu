@@ -522,6 +522,15 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
 
         {/* Bottom bar */}
         <div className="notes-bottom-bar">
+          <button
+            className={`notes-bb-btn ${isRecording ? "recording" : ""}`}
+            onClick={toggleRecording}
+            title={isRecording ? "Parar gravação" : "Gravar áudio"}
+            style={isRecording ? { color: "#c26b5a", background: "rgba(194,107,90,.15)" } : {}}
+          >
+            {isRecording ? "⏹" : "🎙️"}
+          </button>
+          <div className="notes-bb-sep" />
           <button className="notes-bb-btn" onClick={() => wrapSelection("**", "**")} title="Negrito" disabled={previewMode}>
             <strong>N</strong>
           </button>
