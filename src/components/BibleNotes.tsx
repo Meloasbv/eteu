@@ -145,7 +145,7 @@ export default function BibleNotes() {
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
     return sectionNotes
-      .filter(n => !q || n.title.toLowerCase().includes(q) || n.body.toLowerCase().includes(q) || n.reference.toLowerCase().includes(q))
+      .filter(n => !q || n.title.toLowerCase().includes(q) || n.body.toLowerCase().includes(q) || n.reference.toLowerCase().includes(q) || n.references?.some(r => r.toLowerCase().includes(q)))
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
   }, [sectionNotes, search]);
 
