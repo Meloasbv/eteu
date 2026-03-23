@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import WeekSchedule from "@/components/WeekSchedule";
+import BibleNotes from "@/components/BibleNotes";
 
 // ── DATA ──────────────────────────────────────────────────────────────────────
 
@@ -97,7 +98,7 @@ const DEV_DAY_COLORS: Record<string, string> = {
 // ── COMPONENT ─────────────────────────────────────────────────────────────────
 
 export default function BiblePlan() {
-  const [tab, setTab] = useState<"leitura" | "devocional" | "agenda">("leitura");
+  const [tab, setTab] = useState<"leitura" | "devocional" | "agenda" | "anotacoes">("leitura");
   const [activeWeek, setActiveWeek] = useState(0);
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [saved, setSaved] = useState(false);
@@ -170,7 +171,7 @@ export default function BiblePlan() {
         </div>
         {/* Tabs */}
         <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
-          {(["leitura", "devocional", "agenda"] as const).map(t => (
+          {(["leitura", "devocional", "agenda", "anotacoes"] as const).map(t => (
             <button key={t} onClick={() => setTab(t)} style={{
               padding: "9px 24px", borderRadius: 24,
               border: `1px solid ${tab === t ? "rgba(200,170,100,.5)" : "rgba(200,180,140,.15)"}`,
@@ -180,7 +181,7 @@ export default function BiblePlan() {
               fontWeight: tab === t ? 600 : 400, letterSpacing: 0.5,
               textTransform: "capitalize",
             }}>
-              {t === "leitura" ? "📖 Leitura" : t === "devocional" ? "🙏 Devocional" : "📅 Agenda"}
+              {t === "leitura" ? "📖 Leitura" : t === "devocional" ? "🙏 Devocional" : t === "agenda" ? "📅 Agenda" : "✍️ Anotações"}
             </button>
           ))}
         </div>
@@ -379,6 +380,9 @@ export default function BiblePlan() {
 
       {/* ── AGENDA TAB ── */}
       {tab === "agenda" && <WeekSchedule />}
+
+      {/* ── ANOTAÇÕES TAB ── */}
+      {tab === "anotacoes" && <BibleNotes />}
 
       {/* Footer */}
       <div style={{ textAlign: "center", padding: "8px 24px 28px", fontSize: 11, color: "#5a4a38", letterSpacing: 2, textTransform: "uppercase" }}>
