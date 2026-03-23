@@ -89,6 +89,7 @@ export default function BibleNotes() {
       id: `n-${Date.now()}`,
       title: "",
       reference: "",
+      references: [],
       body: "",
       week: week ?? selectedWeek ?? 1,
       section: activeSection ?? "aulas",
