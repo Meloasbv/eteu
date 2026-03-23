@@ -682,6 +682,42 @@ export default function BibleNotes() {
                 >🗑️</button>
               </div>
 
+              {/* ── AI ACTIONS BAR ── */}
+              <div style={{
+                display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap",
+                padding: "8px 10px",
+                background: "rgba(26,22,13,.6)",
+                borderLeft: "1px solid rgba(200,180,140,.15)",
+                borderRight: "1px solid rgba(200,180,140,.15)",
+              }}>
+                <span style={{ fontSize: 10, letterSpacing: 2, color: "#7a6230", textTransform: "uppercase", fontWeight: 600, marginRight: 4 }}>
+                  🤖 IA
+                </span>
+                {[
+                  { action: "summarize" as const, label: "📋 Resumir", tip: "Gera um resumo da nota" },
+                  { action: "questions" as const, label: "❓ Perguntas", tip: "Gera perguntas de estudo" },
+                  { action: "organize" as const, label: "🗂️ Organizar", tip: "Sugere organização de todas as notas" },
+                ].map(ai => (
+                  <button
+                    key={ai.action}
+                    onClick={() => callAI(ai.action)}
+                    disabled={!!aiLoading}
+                    title={ai.tip}
+                    style={{
+                      padding: "5px 12px", borderRadius: 6,
+                      border: "1px solid rgba(200,170,100,.25)",
+                      background: aiLoading === ai.action ? "rgba(200,170,100,.2)" : "rgba(200,170,100,.06)",
+                      color: aiLoading === ai.action ? "#e8c97a" : "#c9a84c",
+                      fontSize: 12, fontWeight: 600, cursor: aiLoading ? "wait" : "pointer",
+                      fontFamily: "inherit", opacity: aiLoading && aiLoading !== ai.action ? 0.5 : 1,
+                      transition: "all .2s",
+                    }}
+                  >
+                    {aiLoading === ai.action ? "⏳ Processando..." : ai.label}
+                  </button>
+                ))}
+              </div>
+
               {/* ── EDITOR (contentEditable) ── */}
               <div
                 ref={editorRef}
