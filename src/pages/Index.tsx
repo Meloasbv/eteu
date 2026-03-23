@@ -86,6 +86,7 @@ const GUIDE_QUESTIONS = [
 
 const COLORS = ["#C8553D","#E88D67","#D4A574","#B8860B","#6B8E6B","#4A7C8C","#6B5B8A"];
 const ABBREVS = ["Sáb","Dom","Seg","Ter","Qua","Qui","Sex"];
+const DAY_NAMES = ["Sábado","Domingo","Segunda","Terça","Quarta","Quinta","Sexta"];
 const STORAGE_KEY = "bible-plan-2026";
 const DEV_DAY_COLORS: Record<string, string> = {
   "Segunda": "#4A7C8C",
@@ -94,6 +95,26 @@ const DEV_DAY_COLORS: Record<string, string> = {
   "Quinta":  "#B8860B",
   "Sexta":   "#6B8E6B",
 };
+
+// Map JS getDay() (0=Sun) to our day index (0=Sat)
+const JS_DAY_TO_INDEX: Record<number, number> = { 6: 0, 0: 1, 1: 2, 2: 3, 3: 4, 4: 5, 5: 6 };
+
+function getTodayReading(checked: Record<string, boolean>) {
+  const now = new Date();
+  // Plan start: Saturday Jan 24, 2026
+  const planStart = new Date(2026, 0, 24); // month is 0-indexed
+  const diffMs = now.getTime() - planStart.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  if (diffDays < 0 || diffDays >= 18 * 7) return null;
+  const weekIdx = Math.floor(diffDays / 7);
+  const dayIdx = diffDays % 7;
+  const week = WEEKS[weekIdx];
+  if (!week) return null;
+  const day = week.days[dayIdx];
+  if (!day || !day.r.length) return null;
+  const isDone = !!checked[`${weekIdx}-${dayIdx}`];
+  return { weekIdx, dayIdx, week, day, isDone };
+}
 
 // ── COMPONENT ─────────────────────────────────────────────────────────────────
 
@@ -133,6 +154,7 @@ export default function BiblePlan() {
   const wp = weekProg(activeWeek);
   const cw = WEEKS[activeWeek];
   const circ = 2 * Math.PI * 22;
+  const todayReading = getTodayReading(checked);
 
   const baseStyle: React.CSSProperties = {
     minHeight: "100vh",
@@ -190,7 +212,79 @@ export default function BiblePlan() {
       {/* ── LEITURA TAB ── */}
       {tab === "leitura" && (
         <>
-          {/* Week pills */}
+          {/* Today's reading card */}
+          {todayReading && (
+            <div style={{ padding: "20px 16px 8px" }}>
+              <div
+                onClick={() => {
+                  setActiveWeek(todayReading.weekIdx);
+                  if (!todayReading.isDone) toggle(todayReading.weekIdx, todayReading.dayIdx);
+                }}
+                style={{
+                  background: todayReading.isDone
+                    ? "linear-gradient(135deg,rgba(107,142,107,.12),rgba(90,122,90,.06))"
+                    : "linear-gradient(135deg,rgba(200,170,100,.1),rgba(180,140,80,.04))",
+                  border: `1px solid ${todayReading.isDone ? "rgba(107,142,107,.3)" : "rgba(200,170,100,.3)"}`,
+                  borderRadius: 16, padding: "18px 20px", cursor: "pointer",
+                  position: "relative", overflow: "hidden",
+                }}>
+                <div style={{
+                  position: "absolute", top: 0, left: 0, right: 0, height: 3,
+                  background: todayReading.isDone
+                    ? "linear-gradient(90deg,#6B8E6B,transparent)"
+                    : "linear-gradient(90deg,#C8A55C,transparent)",
+                  opacity: 0.7, borderRadius: "16px 16px 0 0",
+                }} />
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ fontSize: 22 }}>{todayReading.isDone ? "✅" : "📖"}</span>
+                    <div>
+                      <div style={{
+                        fontSize: 11, letterSpacing: 2, textTransform: "uppercase",
+                        color: todayReading.isDone ? "#6B8E6B" : "#C8A55C",
+                        fontWeight: 700,
+                      }}>
+                        Leitura de Hoje
+                      </div>
+                      <div style={{ fontSize: 15, fontWeight: 600, color: "#e8d8b8", marginTop: 2 }}>
+                        {todayReading.day.day} — Semana {todayReading.week.week}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{
+                    width: 28, height: 28, borderRadius: "50%",
+                    border: todayReading.isDone ? "none" : "2px solid rgba(200,170,100,.35)",
+                    background: todayReading.isDone ? "linear-gradient(135deg,#6B8E6B,#5a7a5a)" : "transparent",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}>
+                    {todayReading.isDone && (
+                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                        <path d="M3 7l3 3 5-6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
+                  </div>
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {todayReading.day.r.map((r, ri) => (
+                    <span key={ri} style={{
+                      display: "inline-block", padding: "5px 12px", borderRadius: 8,
+                      fontSize: 13, fontWeight: 500,
+                      background: todayReading.isDone ? "rgba(107,142,107,.12)" : "rgba(200,170,100,.1)",
+                      color: todayReading.isDone ? "#8aaa8a" : "#d4c4a8",
+                      border: `1px solid ${todayReading.isDone ? "rgba(107,142,107,.2)" : "rgba(200,170,100,.2)"}`,
+                      textDecoration: todayReading.isDone ? "line-through" : "none",
+                      opacity: todayReading.isDone ? 0.7 : 1,
+                    }}>{r}</span>
+                  ))}
+                </div>
+                {!todayReading.isDone && (
+                  <div style={{ fontSize: 11, color: "#8a7a60", marginTop: 10, textAlign: "right" }}>
+                    Toque para marcar como lida
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
           <div style={{ padding: "16px 16px 12px", overflowX: "auto", display: "flex", gap: 8, borderBottom: "1px solid rgba(200,180,140,.06)" }}>
             {WEEKS.map((w, i) => (
               <button key={i} onClick={() => setActiveWeek(i)} style={{
