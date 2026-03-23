@@ -1,12 +1,15 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
+type Section = "proclamadores" | "aulas";
+
 type Note = {
   id: string;
   title: string;
   reference: string;
   body: string;
   week: number; // 1–18
+  section: Section;
   createdAt: string;
   updatedAt: string;
 };
@@ -23,6 +26,11 @@ const WEEK_LABELS: Record<number, string> = {
 };
 
 const ACCENT = ["#C8A55C","#6B8E6B","#4A7C8C","#a855f7","#C8553D","#6B5B8A","#E88D67","#c8b820"];
+
+const SECTIONS: { key: Section; label: string; icon: string; description: string; color: string }[] = [
+  { key: "proclamadores", label: "Track Proclamadores", icon: "📢", description: "Anotações do track de proclamadores", color: "#C8A55C" },
+  { key: "aulas", label: "Aulas", icon: "📚", description: "Anotações das aulas semanais", color: "#4A7C8C" },
+];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function fmtDate(iso: string) {
@@ -41,6 +49,7 @@ function preview(text: string, len = 60) {
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function BibleNotes() {
   const [notes, setNotes] = useState<Note[]>([]);
+  const [activeSection, setActiveSection] = useState<Section | null>(null);
   const [search, setSearch] = useState("");
   const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
   const [editing, setEditing] = useState<Note | null>(null);
@@ -54,11 +63,11 @@ export default function BibleNotes() {
       const d = localStorage.getItem(STORAGE_KEY);
       if (d) {
         const parsed = JSON.parse(d);
-        // migrate old format (summary → body, add week)
         const migrated = (Array.isArray(parsed) ? parsed : []).map((n: any) => ({
           ...n,
           body: n.body ?? n.summary ?? "",
           week: n.week ?? 1,
+          section: n.section ?? "aulas",
           updatedAt: n.updatedAt ?? n.createdAt,
         }));
         setNotes(migrated);
@@ -80,6 +89,7 @@ export default function BibleNotes() {
       reference: "",
       body: "",
       week: week ?? selectedWeek ?? 1,
+      section: activeSection ?? "aulas",
       createdAt: now,
       updatedAt: now,
     });
@@ -90,12 +100,10 @@ export default function BibleNotes() {
     if (!editing) return;
     const now = new Date().toISOString();
     const note = { ...editing, updatedAt: now };
-    // If title empty, derive from first line of body
     if (!note.title.trim() && note.body.trim()) {
       note.title = note.body.split("\n")[0].slice(0, 50);
     }
     if (!note.title.trim() && !note.body.trim()) {
-      // discard empty note
       setEditing(null);
       return;
     }
@@ -114,12 +122,16 @@ export default function BibleNotes() {
   };
 
   // ── Filtered & grouped ─────────────────────────────────────────────────────
+  const sectionNotes = useMemo(() =>
+    activeSection ? notes.filter(n => n.section === activeSection) : notes
+  , [notes, activeSection]);
+
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
-    return notes
+    return sectionNotes
       .filter(n => !q || n.title.toLowerCase().includes(q) || n.body.toLowerCase().includes(q) || n.reference.toLowerCase().includes(q))
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-  }, [notes, search]);
+  }, [sectionNotes, search]);
 
   const grouped = useMemo(() => {
     const map: Record<number, Note[]> = {};
@@ -144,7 +156,9 @@ export default function BibleNotes() {
     fontSize: 14, fontFamily: "inherit", outline: "none",
   };
 
-  // ── Full-screen editor (iPhone-style) ─────────────────────────────────────
+  const currentSectionMeta = SECTIONS.find(s => s.key === activeSection);
+
+  // ── Full-screen editor ─────────────────────────────────────────────────────
   if (editing) {
     return (
       <div style={{ padding: "0 0 40px", minHeight: "70vh" }}>
@@ -183,6 +197,24 @@ export default function BibleNotes() {
 
         {/* Meta row */}
         <div style={{ padding: "16px 20px 0", display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+          {/* Section selector */}
+          <select
+            value={editing.section}
+            onChange={e => setEditing({ ...editing, section: e.target.value as Section })}
+            style={{
+              padding: "6px 10px", borderRadius: 8,
+              border: "1px solid rgba(200,180,140,.2)",
+              background: "rgba(200,180,140,.06)", color: "#C8A55C",
+              fontSize: 12, fontFamily: "inherit", outline: "none",
+              cursor: "pointer",
+            }}>
+            {SECTIONS.map(s => (
+              <option key={s.key} value={s.key} style={{ background: "#1e1a14", color: "#e8d8b8" }}>
+                {s.icon} {s.label}
+              </option>
+            ))}
+          </select>
+
           {/* Week selector */}
           <select
             value={editing.week}
@@ -213,7 +245,7 @@ export default function BibleNotes() {
           />
         </div>
 
-        {/* Title — large like iPhone Notes */}
+        {/* Title */}
         <div style={{ padding: "16px 20px 0" }}>
           <input
             value={editing.title}
@@ -233,7 +265,7 @@ export default function BibleNotes() {
           {fmtDate(editing.updatedAt)} às {fmtTime(editing.updatedAt)}
         </div>
 
-        {/* Body — free-form textarea */}
+        {/* Body */}
         <div style={{ padding: "12px 20px 0" }}>
           <textarea
             ref={bodyRef}
@@ -252,23 +284,113 @@ export default function BibleNotes() {
     );
   }
 
-  // ── List view ─────────────────────────────────────────────────────────────
-  return (
-    <div style={{ padding: "24px 16px 40px" }}>
-      {/* Header */}
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
-        <div>
+  // ── Folders view (no section selected) ────────────────────────────────────
+  if (!activeSection) {
+    return (
+      <div style={{ padding: "24px 16px 40px" }}>
+        {/* Header */}
+        <div style={{ marginBottom: 28 }}>
           <div style={{ fontSize: 11, letterSpacing: 3, textTransform: "uppercase", color: "#8a7a60", fontWeight: 600, marginBottom: 4 }}>
             Caderno de Estudo
           </div>
           <div style={{ fontSize: 22, fontWeight: 600, color: "#e8d8b8" }}>
             Anotações
           </div>
-          {totalCount > 0 && (
+          {notes.length > 0 && (
             <div style={{ fontSize: 12, color: "#6a5a48", marginTop: 3 }}>
-              {totalCount} {totalCount === 1 ? "nota" : "notas"}
+              {notes.length} {notes.length === 1 ? "nota" : "notas"} no total
             </div>
           )}
+        </div>
+
+        {/* Section folders */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {SECTIONS.map(s => {
+            const count = notes.filter(n => n.section === s.key).length;
+            return (
+              <div
+                key={s.key}
+                onClick={() => { setActiveSection(s.key); setSearch(""); setSelectedWeek(null); }}
+                style={{
+                  display: "flex", alignItems: "center", gap: 16,
+                  padding: "20px 18px", borderRadius: 16, cursor: "pointer",
+                  background: "rgba(255,255,255,.025)",
+                  border: `1px solid ${s.color}25`,
+                  transition: "all .2s ease",
+                  position: "relative", overflow: "hidden",
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,.05)")}
+                onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,.025)")}
+              >
+                {/* Accent top line */}
+                <div style={{
+                  position: "absolute", top: 0, left: 0, right: 0, height: 3,
+                  background: `linear-gradient(90deg,${s.color},transparent)`, opacity: 0.5,
+                  borderRadius: "16px 16px 0 0",
+                }} />
+
+                {/* Icon */}
+                <div style={{
+                  width: 52, height: 52, borderRadius: 14, flexShrink: 0,
+                  background: s.color + "18",
+                  border: `1px solid ${s.color}30`,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 26,
+                }}>
+                  {s.icon}
+                </div>
+
+                {/* Text */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 17, fontWeight: 600, color: "#e8d8b8" }}>
+                    {s.label}
+                  </div>
+                  <div style={{ fontSize: 12, color: "#7a6a58", marginTop: 3 }}>
+                    {s.description}
+                  </div>
+                  <div style={{ fontSize: 12, color: s.color, marginTop: 4, fontWeight: 600 }}>
+                    {count} {count === 1 ? "nota" : "notas"}
+                  </div>
+                </div>
+
+                {/* Chevron */}
+                <span style={{ fontSize: 20, color: "#5a4a38", flexShrink: 0 }}>›</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Notes list view (inside a section) ────────────────────────────────────
+  return (
+    <div style={{ padding: "24px 16px 40px" }}>
+      {/* Header with back */}
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
+        <div>
+          <button onClick={() => { setActiveSection(null); setSearch(""); setSelectedWeek(null); }} style={{
+            padding: "5px 12px", borderRadius: 8, marginBottom: 10,
+            border: "1px solid rgba(200,170,100,.3)",
+            background: "rgba(200,170,100,.06)", color: "#C8A55C",
+            fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
+            display: "flex", alignItems: "center", gap: 4,
+          }}>
+            ‹ Seções
+          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 24 }}>{currentSectionMeta?.icon}</span>
+            <div>
+              <div style={{ fontSize: 20, fontWeight: 600, color: "#e8d8b8" }}>
+                {currentSectionMeta?.label}
+              </div>
+              {totalCount > 0 && (
+                <div style={{ fontSize: 12, color: "#6a5a48", marginTop: 2 }}>
+                  {totalCount} {totalCount === 1 ? "nota" : "notas"}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
         <button onClick={() => openNew()} style={{
           padding: "10px 18px", borderRadius: 12,
@@ -309,7 +431,7 @@ export default function BibleNotes() {
           Todas
         </button>
         {WEEKS.map(w => {
-          const count = notes.filter(n => n.week === w).length;
+          const count = sectionNotes.filter(n => n.week === w).length;
           const isActive = selectedWeek === w;
           return (
             <button key={w} onClick={() => setSelectedWeek(isActive ? null : w)} style={{
@@ -339,7 +461,7 @@ export default function BibleNotes() {
           <div style={{ fontSize: 13, color: "#5a4a38", marginBottom: 18, lineHeight: 1.5 }}>
             {search
               ? "Tente buscar com outros termos."
-              : "Crie sua primeira nota para registrar aprendizados e reflexões das aulas."}
+              : "Crie sua primeira nota nesta seção."}
           </div>
           {!search && (
             <button onClick={() => openNew()} style={{
@@ -353,7 +475,6 @@ export default function BibleNotes() {
           )}
         </div>
       ) : (
-        /* Week groups */
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           {weekKeys.map(w => {
             const weekNotes = grouped[w];
@@ -361,7 +482,6 @@ export default function BibleNotes() {
             const accent = ACCENT[(w - 1) % ACCENT.length];
             return (
               <div key={w}>
-                {/* Week header — folder style */}
                 <div
                   onClick={() => toggleCollapse(w)}
                   style={{
@@ -392,7 +512,7 @@ export default function BibleNotes() {
 
                 {!collapsed && (
                   <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                    {weekNotes.map((note, ni) => (
+                    {weekNotes.map(note => (
                       <div key={note.id}
                         onClick={() => setEditing(note)}
                         style={{
@@ -440,7 +560,6 @@ export default function BibleNotes() {
                       </div>
                     ))}
 
-                    {/* Add note to this week */}
                     <button onClick={() => openNew(w)} style={{
                       display: "flex", alignItems: "center", gap: 8,
                       padding: "10px 14px", cursor: "pointer",
@@ -458,7 +577,7 @@ export default function BibleNotes() {
         </div>
       )}
 
-      {/* ── DELETE CONFIRM ── */}
+      {/* DELETE CONFIRM */}
       {deleteId && (
         <div style={{
           position: "fixed", inset: 0, zIndex: 50,
