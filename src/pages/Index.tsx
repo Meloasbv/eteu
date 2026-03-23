@@ -182,6 +182,12 @@ export default function BiblePlan() {
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [saved, setSaved] = useState(false);
   const [expandedDev, setExpandedDev] = useState<string | null>(null);
+  // Exegesis study
+  const [exegeseVerse, setExegeseVerse] = useState("");
+  const [exegeseLoading, setExegeseLoading] = useState(false);
+  const [exegeseResult, setExegeseResult] = useState<{ verse: string; content: string } | null>(null);
+  const [exegeseError, setExegeseError] = useState("");
+
   const [musicPlaying, setMusicPlaying] = useState(false);
   const [notesTitle, setNotesTitle] = useState("📝 Anotações");
   const [theme, setTheme] = useState<"light" | "dark">(() => {
