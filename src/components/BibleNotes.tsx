@@ -69,6 +69,7 @@ export default function BibleNotes() {
           body: n.body ?? n.summary ?? "",
           week: n.week ?? 1,
           section: n.section ?? "aulas",
+          references: n.references ?? (n.reference ? [n.reference] : []),
           updatedAt: n.updatedAt ?? n.createdAt,
         }));
         setNotes(migrated);
