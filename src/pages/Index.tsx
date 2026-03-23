@@ -883,6 +883,20 @@ export default function BiblePlan() {
                         </div>
                         {isOpen && (
                           <div style={{ paddingTop: 8, borderTop: `1px solid ${c}20` }}>
+                            {d.verseText && (
+                              <div style={{
+                                fontSize: 15, lineHeight: 1.8,
+                                color: tc ? "#1a1714" : "#e8d8b8",
+                                fontStyle: "italic", fontFamily: "'Cormorant Garamond', serif",
+                                padding: "10px 14px", marginBottom: 10,
+                                background: tc ? "rgba(139,111,78,.04)" : "rgba(200,170,100,.06)",
+                                borderLeft: `3px solid ${c}`,
+                                borderRadius: "0 8px 8px 0",
+                                transition: "color .3s",
+                              }}>
+                                "{d.verseText}"
+                              </div>
+                            )}
                             <div style={{
                               fontSize: 13.5, color: tc ? "#6b6560" : "#b0a090", lineHeight: 1.65,
                               marginBottom: 12, transition: "color .3s",
