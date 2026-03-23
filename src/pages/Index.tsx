@@ -97,7 +97,7 @@ const DEV_DAY_COLORS: Record<string, string> = {
 // ── COMPONENT ─────────────────────────────────────────────────────────────────
 
 export default function BiblePlan() {
-  const [tab, setTab] = useState<"leitura" | "devocional">("leitura");
+  const [tab, setTab] = useState<"leitura" | "devocional" | "agenda">("leitura");
   const [activeWeek, setActiveWeek] = useState(0);
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [saved, setSaved] = useState(false);
