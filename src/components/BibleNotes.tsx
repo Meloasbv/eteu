@@ -113,6 +113,7 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
   // Audio recording
   const [isRecording, setIsRecording] = useState(false);
   const recognitionRef = useRef<any>(null);
+  const editingNoteRef = useRef<Note | null>(null);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -292,40 +293,40 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
     setAiLoading(null);
   }, [editingNote, showToast]);
 
+  // Keep ref in sync with editingNote
+  useEffect(() => {
+    editingNoteRef.current = editingNote;
+  }, [editingNote]);
+
   // ── Audio transcription ─────────────────────────────────────────────────────
   const toggleRecording = useCallback(() => {
     if (isRecording) {
-      recognitionRef.current?.stop();
+      try { recognitionRef.current?.stop(); } catch {}
+      recognitionRef.current = null;
       setIsRecording(false);
+      showToast("Gravação parada");
       return;
     }
 
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      showToast("Navegador não suporta gravação");
+      showToast("Navegador não suporta gravação de voz");
       return;
     }
 
     const recognition = new SpeechRecognition();
     recognition.lang = "pt-BR";
     recognition.continuous = true;
-    recognition.interimResults = true;
+    recognition.interimResults = false; // only final results to avoid duplicates
     recognitionRef.current = recognition;
 
-    let finalTranscript = "";
-
     recognition.onresult = (event: any) => {
-      let interim = "";
       for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript;
         if (event.results[i].isFinal) {
-          finalTranscript += transcript + " ";
-          // Insert final transcript into note
-          if (editingNote) {
-            const ta = textareaRef.current;
-            const pos = ta ? ta.selectionStart : editingNote.texto.length;
-            const text = editingNote.texto;
-            const newText = text.substring(0, pos) + transcript + " " + text.substring(pos);
+          const transcript = event.results[i][0].transcript;
+          const current = editingNoteRef.current;
+          if (current) {
+            const newText = current.texto + (current.texto ? " " : "") + transcript;
             handleTextChange(newText);
           }
         }
@@ -334,22 +335,47 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
 
     recognition.onerror = (event: any) => {
       console.error("Speech recognition error:", event.error);
+      recognitionRef.current = null;
       setIsRecording(false);
       if (event.error === "not-allowed") {
         showToast("Permissão de microfone negada");
+      } else if (event.error === "no-speech") {
+        showToast("Nenhuma fala detectada");
       } else {
-        showToast("Erro na gravação");
+        showToast("Erro na gravação: " + event.error);
       }
     };
 
     recognition.onend = () => {
-      setIsRecording(false);
+      // If still marked as recording, restart (browser may stop after silence)
+      if (recognitionRef.current) {
+        try { recognitionRef.current.start(); } catch {
+          setIsRecording(false);
+          recognitionRef.current = null;
+        }
+      }
     };
 
-    recognition.start();
-    setIsRecording(true);
-    showToast("🎙️ Gravando...");
-  }, [isRecording, editingNote, handleTextChange, showToast]);
+    try {
+      recognition.start();
+      setIsRecording(true);
+      showToast("🎙️ Gravando... fale agora");
+    } catch (e) {
+      showToast("Não foi possível iniciar gravação");
+      setIsRecording(false);
+    }
+  }, [isRecording, handleTextChange, showToast]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        try { recognitionRef.current.stop(); } catch {}
+        recognitionRef.current = null;
+      }
+    };
+  }, []);
+  
 
   // ── RENDER ──────────────────────────────────────────────────────────────────
 

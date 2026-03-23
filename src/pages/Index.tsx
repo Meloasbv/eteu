@@ -189,6 +189,11 @@ export default function BiblePlan() {
   const [exegeseError, setExegeseError] = useState("");
 
   const [musicPlaying, setMusicPlaying] = useState(false);
+  // Devocional audio recording
+  const [devRecording, setDevRecording] = useState(false);
+  const [devTranscript, setDevTranscript] = useState("");
+  const devRecognitionRef = useRef<any>(null);
+  const devTranscriptRef = useRef("");
   const [notesTitle, setNotesTitle] = useState("📝 Anotações");
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     try { return (localStorage.getItem(THEME_KEY) as "light" | "dark") || "dark"; } catch { return "dark"; }
@@ -305,6 +310,63 @@ export default function BiblePlan() {
     }
     setExegeseLoading(false);
   }, [exegeseVerse]);
+
+  // ── Devocional audio recording ──────────────────────────────────────────────
+  const toggleDevRecording = useCallback(() => {
+    if (devRecording) {
+      try { devRecognitionRef.current?.stop(); } catch {}
+      devRecognitionRef.current = null;
+      setDevRecording(false);
+      return;
+    }
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) { setSaved(true); setTimeout(() => setSaved(false), 2000); return; }
+    const rec = new SR();
+    rec.lang = "pt-BR";
+    rec.continuous = true;
+    rec.interimResults = false;
+    devRecognitionRef.current = rec;
+
+    rec.onresult = (event: any) => {
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) {
+          const t = event.results[i][0].transcript;
+          devTranscriptRef.current += (devTranscriptRef.current ? " " : "") + t;
+          setDevTranscript(devTranscriptRef.current);
+        }
+      }
+    };
+    rec.onerror = () => { setDevRecording(false); devRecognitionRef.current = null; };
+    rec.onend = () => {
+      if (devRecognitionRef.current) {
+        try { devRecognitionRef.current.start(); } catch { setDevRecording(false); devRecognitionRef.current = null; }
+      }
+    };
+    try {
+      devTranscriptRef.current = devTranscript; // keep existing text
+      rec.start();
+      setDevRecording(true);
+    } catch { setDevRecording(false); }
+  }, [devRecording, devTranscript]);
+
+  const saveDevTranscript = useCallback(() => {
+    if (!devTranscript.trim()) return;
+    const notes = JSON.parse(localStorage.getItem("bible-notes-2026") || "[]");
+    const now = new Date().toISOString();
+    notes.unshift({
+      id: Date.now(),
+      categoria: "devocionais",
+      semana: "",
+      texto: `# Devocional gravado\n\n${devTranscript}`,
+      criadoEm: now,
+      atualizadoEm: now,
+    });
+    localStorage.setItem("bible-notes-2026", JSON.stringify(notes));
+    setDevTranscript("");
+    devTranscriptRef.current = "";
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  }, [devTranscript]);
 
   // CSS variables for notes theming
   const themeVars = theme === "light" ? {
@@ -967,6 +1029,91 @@ export default function BiblePlan() {
                       }}
                     >
                       Copiar
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ── Gravar Devocional ── */}
+            <div style={{
+              background: tc ? "rgba(139,111,78,.04)" : "rgba(200,170,100,.06)",
+              border: `1px solid ${tc ? "rgba(139,111,78,.12)" : "rgba(200,170,100,.18)"}`,
+              borderRadius: 16, padding: "20px 20px", marginBottom: 28,
+            }}>
+              <div style={{
+                fontSize: 11, letterSpacing: 3, textTransform: "uppercase",
+                color: tc ? "#8b6f4e" : "#C8A55C",
+                marginBottom: 14, fontWeight: 600, fontFamily: "'Cinzel', serif",
+              }}>
+                🎙️ Gravar Devocional
+              </div>
+              <p style={{
+                fontSize: 13, color: tc ? "#6b6560" : "#a09078",
+                marginBottom: 14, lineHeight: 1.6,
+              }}>
+                Grave sua reflexão em áudio e ela será transcrita automaticamente. Depois salve nas suas anotações.
+              </p>
+
+              <button
+                onClick={toggleDevRecording}
+                style={{
+                  width: "100%", padding: "14px", borderRadius: 12,
+                  background: devRecording
+                    ? "rgba(194,107,90,.12)"
+                    : (tc ? "rgba(139,111,78,.08)" : "rgba(200,170,100,.1)"),
+                  border: `1px solid ${devRecording ? "#c26b5a" : (tc ? "#8b6f4e" : "#C8A55C")}`,
+                  color: devRecording ? "#c26b5a" : (tc ? "#8b6f4e" : "#C8A55C"),
+                  fontFamily: "'Cinzel', serif", fontSize: 11, letterSpacing: 2,
+                  textTransform: "uppercase", cursor: "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                  transition: "all .2s",
+                  animation: devRecording ? "pulse 1.5s infinite" : "none",
+                }}
+              >
+                {devRecording ? "⏹ Parar Gravação" : "🎙️ Iniciar Gravação"}
+              </button>
+
+              {devTranscript && (
+                <div style={{ marginTop: 14 }}>
+                  <div style={{
+                    background: tc ? "rgba(139,111,78,.03)" : "rgba(200,170,100,.04)",
+                    border: `1px solid ${tc ? "rgba(139,111,78,.1)" : "rgba(200,170,100,.1)"}`,
+                    borderLeft: `3px solid ${tc ? "#8b6f4e" : "#C8A55C"}`,
+                    borderRadius: "0 10px 10px 0",
+                    padding: "14px 16px",
+                    fontSize: 15, lineHeight: 1.8,
+                    color: tc ? "#4a4540" : "#c4b498",
+                    fontStyle: "italic",
+                  }}>
+                    {devTranscript}
+                  </div>
+                  <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                    <button
+                      onClick={saveDevTranscript}
+                      style={{
+                        flex: 1, padding: "11px", borderRadius: 10,
+                        background: tc ? "rgba(139,111,78,.1)" : "rgba(200,170,100,.12)",
+                        border: `1px solid ${tc ? "#8b6f4e" : "#C8A55C"}`,
+                        color: tc ? "#8b6f4e" : "#C8A55C",
+                        fontFamily: "'Cinzel', serif", fontSize: 9, letterSpacing: 1,
+                        textTransform: "uppercase", cursor: "pointer",
+                      }}
+                    >
+                      🔥 Salvar em Devocionais
+                    </button>
+                    <button
+                      onClick={() => { setDevTranscript(""); devTranscriptRef.current = ""; }}
+                      style={{
+                        padding: "11px 16px", borderRadius: 10,
+                        border: `1px solid ${tc ? "rgba(0,0,0,.08)" : "rgba(200,170,100,.1)"}`,
+                        background: "transparent",
+                        color: tc ? "#6b6560" : "#8a7d65",
+                        fontFamily: "'Cinzel', serif", fontSize: 9, letterSpacing: 1,
+                        textTransform: "uppercase", cursor: "pointer",
+                      }}
+                    >
+                      Limpar
                     </button>
                   </div>
                 </div>
