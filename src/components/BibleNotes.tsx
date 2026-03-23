@@ -228,43 +228,31 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
   }, [verseResult, showToast]);
 
   // ── AI actions ─────────────────────────────────────────────────────────────
-  const callAI = useCallback(async (action: "summarize" | "questions" | "organize") => {
+  const callAI = useCallback(async (action: "organize") => {
+    if (!editingNote || !editingNote.texto.trim()) {
+      showToast("Escreva algo antes de organizar");
+      return;
+    }
     setAiLoading(action);
     setAiResult(null);
     try {
-      const body: Record<string, any> = { action };
-      if (action === "organize") {
-        body.allNotes = notes.map(n => ({
-          title: noteTitle(n.texto),
-          body: n.texto,
-          week: n.semana,
-          section: n.categoria,
-        }));
-      } else if (editingNote) {
-        body.noteTitle = noteTitle(editingNote.texto);
-        body.noteBody = editingNote.texto;
-      } else {
-        showToast("Selecione uma nota primeiro");
-        setAiLoading(null);
-        return;
-      }
+      const body = {
+        action: "organize",
+        noteTitle: noteTitle(editingNote.texto),
+        noteBody: editingNote.texto,
+      };
       const { data, error } = await supabase.functions.invoke("notes-ai", { body });
       if (error || data?.error) {
         showToast(data?.error || "Erro ao chamar IA");
         setAiLoading(null);
         return;
       }
-      const titles: Record<string, string> = {
-        summarize: "📋 Resumo",
-        questions: "❓ Perguntas de Estudo",
-        organize: "🗂️ Organização",
-      };
-      setAiResult({ title: titles[action], content: data.result });
+      setAiResult({ title: "✨ Nota Organizada", content: data.result });
     } catch {
       showToast("Erro de conexão");
     }
     setAiLoading(null);
-  }, [notes, editingNote, showToast]);
+  }, [editingNote, showToast]);
 
   // ── RENDER ──────────────────────────────────────────────────────────────────
 
