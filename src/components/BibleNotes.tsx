@@ -84,7 +84,6 @@ export default function BibleNotes() {
   const [aiResult, setAiResult] = useState<{ title: string; content: string } | null>(null);
   const editorRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLInputElement>(null);
-  const titleRef = useRef<HTMLInputElement>(null);
 
   // Load
   useEffect(() => {
