@@ -116,10 +116,68 @@ function getTodayReading(checked: Record<string, boolean>) {
   return { weekIdx, dayIdx, week, day, isDone };
 }
 
+// ── Dashboard helper components ───────────────────────────────────────────────
+
+function DashSection({ title, subtitle, description, children }: {
+  title: string; subtitle: string; description: string; children: React.ReactNode;
+}) {
+  return (
+    <div style={{ marginBottom: 32 }}>
+      <div style={{
+        fontSize: 10, letterSpacing: 3, textTransform: "uppercase",
+        color: "#7a6230", fontWeight: 600, marginBottom: 4,
+      }}>
+        {title}
+      </div>
+      <div style={{ fontSize: 18, fontWeight: 600, color: "#e8d8b8", marginBottom: 2 }}>{subtitle}</div>
+      {description && (
+        <div style={{ fontSize: 12, color: "#6a5a48", marginBottom: 14, lineHeight: 1.5 }}>{description}</div>
+      )}
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function DashCard({ icon, title, subtitle, onClick, accent }: {
+  icon: string; title: string; subtitle: string; onClick: () => void; accent: string;
+}) {
+  return (
+    <div onClick={onClick} style={{
+      display: "flex", alignItems: "center", gap: 14,
+      padding: "16px 16px", borderRadius: 14, cursor: "pointer",
+      background: "rgba(255,255,255,.025)",
+      border: "1px solid rgba(200,180,140,.08)",
+      transition: "all .2s", position: "relative", overflow: "hidden",
+    }}
+      onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,.05)"; e.currentTarget.style.borderColor = accent + "40"; }}
+      onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,.025)"; e.currentTarget.style.borderColor = "rgba(200,180,140,.08)"; }}
+    >
+      <div style={{
+        position: "absolute", top: 0, left: 0, right: 0, height: 2,
+        background: `linear-gradient(90deg,${accent},transparent)`, opacity: 0.4,
+      }} />
+      <div style={{
+        width: 44, height: 44, borderRadius: 12, flexShrink: 0,
+        background: accent + "15", border: `1px solid ${accent}30`,
+        display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22,
+      }}>
+        {icon}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 15, fontWeight: 600, color: "#e8d8b8" }}>{title}</div>
+        {subtitle && <div style={{ fontSize: 12, color: "#7a6a58", marginTop: 2 }}>{subtitle}</div>}
+      </div>
+      <span style={{ fontSize: 18, color: "#5a4a38", flexShrink: 0 }}>›</span>
+    </div>
+  );
+}
+
 // ── COMPONENT ─────────────────────────────────────────────────────────────────
 
 export default function BiblePlan() {
-  const [tab, setTab] = useState<"leitura" | "devocional" | "agenda" | "anotacoes">("leitura");
+  const [tab, setTab] = useState<"home" | "leitura" | "devocional" | "agenda" | "anotacoes">("home");
   const [activeWeek, setActiveWeek] = useState(0);
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [saved, setSaved] = useState(false);
@@ -230,22 +288,60 @@ export default function BiblePlan() {
           </div>
         </div>
         {/* Tabs */}
-        <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
-          {(["leitura", "devocional", "agenda", "anotacoes"] as const).map(t => (
-            <button key={t} onClick={() => setTab(t)} style={{
-              padding: "9px 24px", borderRadius: 24,
-              border: `1px solid ${tab === t ? "rgba(200,170,100,.5)" : "rgba(200,180,140,.15)"}`,
-              background: tab === t ? "linear-gradient(135deg,rgba(200,170,100,.18),rgba(180,140,80,.08))" : "rgba(200,180,140,.04)",
-              color: tab === t ? "#e8d8b8" : "#a09078",
-              fontSize: 14, cursor: "pointer", fontFamily: "inherit",
-              fontWeight: tab === t ? 600 : 400, letterSpacing: 0.5,
-              textTransform: "capitalize",
+        <div style={{ display: "flex", gap: 6, justifyContent: "center", flexWrap: "wrap" }}>
+          {([
+            { key: "home" as const, label: "🏠 Início" },
+            { key: "leitura" as const, label: "📖 Leitura" },
+            { key: "devocional" as const, label: "🔥 Devocional" },
+            { key: "agenda" as const, label: "📅 Agenda" },
+            { key: "anotacoes" as const, label: "📝 Anotações" },
+          ]).map(t => (
+            <button key={t.key} onClick={() => setTab(t.key)} style={{
+              padding: "9px 20px", borderRadius: 24,
+              border: `1px solid ${tab === t.key ? "rgba(200,170,100,.5)" : "rgba(200,180,140,.15)"}`,
+              background: tab === t.key ? "linear-gradient(135deg,rgba(200,170,100,.18),rgba(180,140,80,.08))" : "rgba(200,180,140,.04)",
+              color: tab === t.key ? "#e8d8b8" : "#a09078",
+              fontSize: 13, cursor: "pointer", fontFamily: "inherit",
+              fontWeight: tab === t.key ? 600 : 400, letterSpacing: 0.5,
             }}>
-              {t === "leitura" ? "📖 Leitura" : t === "devocional" ? "🙏 Devocional" : t === "agenda" ? "📅 Agenda" : "✍️ Anotações"}
+              {t.label}
             </button>
           ))}
         </div>
       </div>
+
+      {/* ── HOME DASHBOARD ── */}
+      {tab === "home" && (
+        <div style={{ padding: "24px 16px 40px", maxWidth: 700, margin: "0 auto" }}>
+
+          {/* ── Plano de Leitura ── */}
+          <DashSection title="Plano de leitura" subtitle="Cronologia Bíblica" description="Leia a Bíblia na ordem em que os eventos aconteceram ao longo da história">
+            <DashCard icon="📖" title="Leitura Cronológica" subtitle={`${Math.round(prog * 100)}% concluído · Semana ${activeWeek + 1}`} onClick={() => setTab("leitura")} accent="#C8A55C" />
+          </DashSection>
+
+          {/* ── Vida Espiritual ── */}
+          <DashSection title="Vida espiritual" subtitle="Devocionais da Semana" description="Reflexões diárias para aprofundar sua caminhada com Deus">
+            {DEVOTIONALS.slice(0, 2).map((dv, i) => (
+              <DashCard key={i} icon="🕯️" title={`Semana ${i + 1}`} subtitle={dv.period} onClick={() => setTab("devocional")} accent="#6B5B8A" />
+            ))}
+          </DashSection>
+
+          {/* ── Organização ── */}
+          <DashSection title="Organização" subtitle="Agenda de Leituras" description="Calendário das 18 semanas com os textos programados para cada dia">
+            <DashCard icon="📅" title="Semana atual" subtitle={`Sem. ${activeWeek + 1} · ${WEEKS[activeWeek].dates}`} onClick={() => setTab("agenda")} accent="#4A7C8C" />
+            {activeWeek + 1 < WEEKS.length && (
+              <DashCard icon="⏳" title="Próxima semana" subtitle={`Sem. ${activeWeek + 2} · ${WEEKS[activeWeek + 1].dates}`} onClick={() => { setActiveWeek(activeWeek + 1); setTab("leitura"); }} accent="#8a7a60" />
+            )}
+          </DashSection>
+
+          {/* ── Caderno de Estudo ── */}
+          <DashSection title="Caderno de estudo" subtitle="Anotações" description="">
+            <DashCard icon="📢" title="Track Proclamadores" subtitle="" onClick={() => setTab("anotacoes")} accent="#C8A55C" />
+            <DashCard icon="📚" title="Aulas" subtitle="" onClick={() => setTab("anotacoes")} accent="#4A7C8C" />
+          </DashSection>
+
+        </div>
+      )}
 
       {/* ── LEITURA TAB ── */}
       {tab === "leitura" && (
