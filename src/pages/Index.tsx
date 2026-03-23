@@ -189,6 +189,11 @@ export default function BiblePlan() {
   const [exegeseError, setExegeseError] = useState("");
 
   const [musicPlaying, setMusicPlaying] = useState(false);
+  // Devocional audio recording
+  const [devRecording, setDevRecording] = useState(false);
+  const [devTranscript, setDevTranscript] = useState("");
+  const devRecognitionRef = useRef<any>(null);
+  const devTranscriptRef = useRef("");
   const [notesTitle, setNotesTitle] = useState("📝 Anotações");
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     try { return (localStorage.getItem(THEME_KEY) as "light" | "dark") || "dark"; } catch { return "dark"; }
