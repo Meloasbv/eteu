@@ -115,7 +115,9 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
   useEffect(() => {
     if (!onTitleChange) return;
     if (editingNote) {
-      onTitleChange(noteTitle(editingNote.texto) || "Nova anotação");
+      const title = noteTitle(editingNote.texto);
+      const shortTitle = title.length > 25 ? title.slice(0, 25) + "…" : title;
+      onTitleChange(shortTitle || "Nova anotação");
     } else if (activeSection) {
       const sec = SECTIONS.find(s => s.key === activeSection);
       onTitleChange(`${sec?.icon ?? "📝"} ${sec?.label ?? "Anotações"}`);
