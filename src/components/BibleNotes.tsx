@@ -30,14 +30,45 @@ const SECTIONS: { key: Section; label: string; icon: string }[] = [
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function noteTitle(texto: string) {
-  const first = texto.split("\n")[0]?.trim();
+  const first = texto.split("\n")[0]?.trim().replace(/^#{1,3}\s*/, "");
   return first || "Sem título";
 }
 function notePreview(texto: string, len = 60) {
   const lines = texto.split("\n").filter(l => l.trim());
-  const second = lines[1]?.trim() || "";
+  const second = lines[1]?.trim().replace(/^#{1,3}\s*/, "") || "";
   if (!second) return "Sem conteúdo";
   return second.length > len ? second.slice(0, len) + "…" : second;
+}
+
+// Simple markdown to HTML
+function renderMarkdown(text: string): string {
+  return text
+    .split("\n")
+    .map(line => {
+      // Headings
+      if (line.startsWith("### ")) return `<h4 style="font-family:'Cinzel',serif;font-size:14px;color:var(--notes-accent);margin:14px 0 4px;font-weight:500;">${line.slice(4)}</h4>`;
+      if (line.startsWith("## ")) return `<h3 style="font-family:'Cinzel',serif;font-size:16px;color:var(--notes-accent);margin:18px 0 6px;font-weight:500;">${line.slice(3)}</h3>`;
+      if (line.startsWith("# ")) return `<h2 style="font-family:'Cinzel',serif;font-size:18px;color:var(--notes-accent);margin:20px 0 8px;font-weight:500;">${line.slice(2)}</h2>`;
+      // Horizontal rule
+      if (/^-{3,}$/.test(line.trim())) return `<hr style="border:none;border-top:1px solid var(--notes-border);margin:12px 0;" />`;
+      // Bullet points
+      if (line.startsWith("- ")) {
+        const content = applyInline(line.slice(2));
+        return `<div style="display:flex;gap:8px;margin:3px 0;"><span style="color:var(--notes-accent);flex-shrink:0;">•</span><span>${content}</span></div>`;
+      }
+      // Empty line
+      if (!line.trim()) return `<br/>`;
+      // Normal paragraph
+      return `<p style="margin:2px 0;">${applyInline(line)}</p>`;
+    })
+    .join("");
+}
+
+function applyInline(text: string): string {
+  return text
+    .replace(/\*\*(.+?)\*\*/g, '<strong style="color:var(--notes-text);font-weight:700;">$1</strong>')
+    .replace(/_(.+?)_/g, '<em style="font-style:italic;">$1</em>')
+    .replace(/\[([^\]]+)\]/g, '<span style="color:var(--notes-accent);font-style:italic;">[$1]</span>');
 }
 
 // ── Bible API fetch ──────────────────────────────────────────────────────────
