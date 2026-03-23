@@ -109,6 +109,10 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
   const [aiLoading, setAiLoading] = useState<string | null>(null);
   const [aiResult, setAiResult] = useState<{ title: string; content: string } | null>(null);
 
+  // Audio recording
+  const [isRecording, setIsRecording] = useState(false);
+  const recognitionRef = useRef<any>(null);
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
