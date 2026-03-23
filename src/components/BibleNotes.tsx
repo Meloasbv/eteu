@@ -249,7 +249,7 @@ export default function BibleNotes() {
             ))}
           </select>
 
-          {/* Reference */}
+          {/* Reference (legacy single) */}
           <input
             value={editing.reference}
             onChange={e => setEditing({ ...editing, reference: e.target.value })}
@@ -260,6 +260,106 @@ export default function BibleNotes() {
             }}
           />
         </div>
+
+        {/* ── References section (Aulas only) ── */}
+        {editing.section === "aulas" && (
+          <div style={{ padding: "14px 20px 0" }}>
+            <div style={{
+              background: "rgba(74,124,140,.06)", border: "1px solid rgba(74,124,140,.15)",
+              borderRadius: 14, padding: "14px 16px",
+            }}>
+              <div style={{
+                fontSize: 11, letterSpacing: 2, textTransform: "uppercase",
+                color: "#4A7C8C", fontWeight: 700, marginBottom: 10,
+                display: "flex", alignItems: "center", gap: 6,
+              }}>
+                📖 Versículos de Referência
+              </div>
+
+              {/* Existing references as tags */}
+              {editing.references.length > 0 && (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
+                  {editing.references.map((ref, i) => (
+                    <span key={i} style={{
+                      display: "inline-flex", alignItems: "center", gap: 6,
+                      padding: "5px 10px", borderRadius: 8,
+                      background: "rgba(74,124,140,.12)", border: "1px solid rgba(74,124,140,.25)",
+                      color: "#b8d4dc", fontSize: 12, fontWeight: 600,
+                    }}>
+                      {ref}
+                      <button onClick={() => {
+                        setEditing({ ...editing, references: editing.references.filter((_, idx) => idx !== i) });
+                      }} style={{
+                        background: "none", border: "none", color: "#7a9aa8",
+                        cursor: "pointer", fontSize: 14, padding: 0, lineHeight: 1,
+                      }}>×</button>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Search input with suggestions */}
+              <div style={{ position: "relative" }}>
+                <input
+                  value={refInput}
+                  onChange={e => setRefInput(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === "Enter" && refInput.trim()) {
+                      e.preventDefault();
+                      if (!editing.references.includes(refInput.trim())) {
+                        setEditing({ ...editing, references: [...editing.references, refInput.trim()] });
+                      }
+                      setRefInput("");
+                    }
+                  }}
+                  placeholder="Buscar livro ou digitar referência (ex: Gênesis 1:1)"
+                  style={{
+                    ...inputStyle,
+                    paddingLeft: 32, fontSize: 13,
+                    background: "rgba(255,255,255,.03)",
+                    border: "1px solid rgba(74,124,140,.2)",
+                  }}
+                />
+                <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", fontSize: 13, color: "#5a7a88" }}>🔍</span>
+              </div>
+
+              {/* Suggestions dropdown */}
+              {refInput.trim().length >= 2 && (() => {
+                const q = refInput.toLowerCase();
+                const matches = BIBLE_BOOKS.filter(b => b.toLowerCase().includes(q)).slice(0, 6);
+                if (matches.length === 0) return null;
+                return (
+                  <div style={{
+                    marginTop: 6, borderRadius: 10,
+                    background: "rgba(30,26,20,.95)", border: "1px solid rgba(74,124,140,.2)",
+                    overflow: "hidden",
+                  }}>
+                    {matches.map(book => (
+                      <button key={book} onClick={() => {
+                        setRefInput(book + " ");
+                      }} style={{
+                        display: "block", width: "100%", textAlign: "left",
+                        padding: "9px 14px", background: "transparent",
+                        border: "none", borderBottom: "1px solid rgba(200,180,140,.05)",
+                        color: "#d4c4a8", fontSize: 13, cursor: "pointer",
+                        fontFamily: "inherit",
+                      }}
+                        onMouseEnter={e => (e.currentTarget.style.background = "rgba(74,124,140,.1)")}
+                        onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                      >
+                        📖 {book}
+                      </button>
+                    ))}
+                  </div>
+                );
+              })()}
+
+              <div style={{ fontSize: 11, color: "#5a7a88", marginTop: 8 }}>
+                Digite e pressione Enter para adicionar. Ex: "Gênesis 1:1-3", "Salmos 23"
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Title */}
         <div style={{ padding: "16px 20px 0" }}>
