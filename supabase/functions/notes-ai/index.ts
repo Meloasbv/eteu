@@ -12,58 +12,43 @@ serve(async (req) => {
   }
 
   try {
-    const { action, noteTitle, noteBody, allNotes } = await req.json();
+    const { noteTitle, noteBody } = await req.json();
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    // Strip HTML tags for cleaner AI input
     const plainBody = (noteBody || "")
       .replace(/<[^>]*>/g, " ")
       .replace(/&nbsp;/g, " ")
       .replace(/\s+/g, " ")
       .trim();
 
-    let systemPrompt = "";
-    let userPrompt = "";
-
-    switch (action) {
-      case "summarize":
-        systemPrompt =
-          "Você é um assistente de estudo bíblico. Resuma a anotação de forma clara e concisa em português brasileiro. Use bullet points quando útil. Mantenha o foco nos pontos espirituais e teológicos principais.";
-        userPrompt = `Título: ${noteTitle}\n\nConteúdo:\n${plainBody}`;
-        break;
-
-      case "questions":
-        systemPrompt =
-          "Você é um professor de estudo bíblico. Gere 5 perguntas reflexivas e profundas para estudo pessoal a partir da anotação fornecida. As perguntas devem estimular reflexão espiritual, aplicação prática e aprofundamento teológico. Responda em português brasileiro.";
-        userPrompt = `Título: ${noteTitle}\n\nConteúdo:\n${plainBody}`;
-        break;
-
-      case "organize":
-        systemPrompt =
-          "Você é um assistente de organização de estudos bíblicos. Analise as notas fornecidas e sugira uma organização por temas/tópicos. Agrupe as notas por assuntos em comum, sugira conexões entre elas e recomende uma ordem de estudo. Responda em português brasileiro de forma clara e estruturada.";
-        const notesSummary = (allNotes || [])
-          .map(
-            (n: any, i: number) =>
-              `${i + 1}. "${n.title || "Sem título"}" (Sem. ${n.week}, ${n.section}) — ${(n.body || "")
-                .replace(/<[^>]*>/g, " ")
-                .replace(/\s+/g, " ")
-                .trim()
-                .slice(0, 200)}`
-          )
-          .join("\n");
-        userPrompt = `Aqui estão minhas ${(allNotes || []).length} anotações de estudo bíblico:\n\n${notesSummary}`;
-        break;
-
-      default:
-        return new Response(JSON.stringify({ error: "Ação inválida" }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+    if (!plainBody) {
+      return new Response(
+        JSON.stringify({ error: "Nota vazia. Escreva algo antes de organizar." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
+
+    const systemPrompt = `Você é um assistente de estudo bíblico especializado em organizar anotações.
+
+Sua tarefa é receber uma anotação bruta (notas de aula, rascunhos, pensamentos soltos) e reorganizá-la de forma clara e estruturada.
+
+Regras:
+- Identifique os tópicos principais e separe em seções com títulos claros usando ## para títulos
+- Use bullet points (- ) para listar pontos importantes
+- Use **negrito** para termos-chave e conceitos importantes
+- Use _itálico_ para referências bíblicas
+- Mantenha TODO o conteúdo original — não remova informações, apenas reorganize
+- Adicione separadores (---) entre seções quando fizer sentido
+- Se houver versículos citados, destaque-os em blocos com [Referência]
+- Escreva em português brasileiro
+- NÃO adicione conteúdo novo — apenas reorganize o que já existe
+- Comece direto com o conteúdo organizado, sem introduções como "Aqui está..."`;
+
+    const userPrompt = `Organize esta anotação de estudo bíblico:\n\nTítulo original: ${noteTitle}\n\nConteúdo:\n${plainBody}`;
 
     const response = await fetch(
       "https://ai.gateway.lovable.dev/v1/chat/completions",
@@ -92,7 +77,7 @@ serve(async (req) => {
       }
       if (response.status === 402) {
         return new Response(
-          JSON.stringify({ error: "Créditos de IA esgotados. Adicione créditos na sua conta Lovable." }),
+          JSON.stringify({ error: "Créditos de IA esgotados. Adicione créditos na sua conta." }),
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }

@@ -228,43 +228,31 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
   }, [verseResult, showToast]);
 
   // ── AI actions ─────────────────────────────────────────────────────────────
-  const callAI = useCallback(async (action: "summarize" | "questions" | "organize") => {
+  const callAI = useCallback(async (action: "organize") => {
+    if (!editingNote || !editingNote.texto.trim()) {
+      showToast("Escreva algo antes de organizar");
+      return;
+    }
     setAiLoading(action);
     setAiResult(null);
     try {
-      const body: Record<string, any> = { action };
-      if (action === "organize") {
-        body.allNotes = notes.map(n => ({
-          title: noteTitle(n.texto),
-          body: n.texto,
-          week: n.semana,
-          section: n.categoria,
-        }));
-      } else if (editingNote) {
-        body.noteTitle = noteTitle(editingNote.texto);
-        body.noteBody = editingNote.texto;
-      } else {
-        showToast("Selecione uma nota primeiro");
-        setAiLoading(null);
-        return;
-      }
+      const body = {
+        action: "organize",
+        noteTitle: noteTitle(editingNote.texto),
+        noteBody: editingNote.texto,
+      };
       const { data, error } = await supabase.functions.invoke("notes-ai", { body });
       if (error || data?.error) {
         showToast(data?.error || "Erro ao chamar IA");
         setAiLoading(null);
         return;
       }
-      const titles: Record<string, string> = {
-        summarize: "📋 Resumo",
-        questions: "❓ Perguntas de Estudo",
-        organize: "🗂️ Organização",
-      };
-      setAiResult({ title: titles[action], content: data.result });
+      setAiResult({ title: "✨ Nota Organizada", content: data.result });
     } catch {
       showToast("Erro de conexão");
     }
     setAiLoading(null);
-  }, [notes, editingNote, showToast]);
+  }, [editingNote, showToast]);
 
   // ── RENDER ──────────────────────────────────────────────────────────────────
 
@@ -389,25 +377,21 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
             ))}
           </select>
 
-          {/* AI buttons */}
-          <div style={{ display: "flex", gap: 4, marginLeft: "auto" }}>
-            {[
-              { action: "summarize" as const, label: "📋" },
-              { action: "questions" as const, label: "❓" },
-              { action: "organize" as const, label: "🗂️" },
-            ].map(ai => (
-              <button
-                key={ai.action}
-                onClick={() => callAI(ai.action)}
-                disabled={!!aiLoading}
-                className="notes-ai-btn"
-                title={ai.action === "summarize" ? "Resumir" : ai.action === "questions" ? "Perguntas" : "Organizar"}
-                style={{ opacity: aiLoading && aiLoading !== ai.action ? 0.4 : 1 }}
-              >
-                {aiLoading === ai.action ? "⏳" : ai.label}
-              </button>
-            ))}
-          </div>
+          {/* AI organize button */}
+          <button
+            onClick={() => callAI("organize")}
+            disabled={!!aiLoading}
+            className="notes-ai-btn"
+            title="Organizar com IA"
+            style={{
+              marginLeft: "auto",
+              display: "flex", alignItems: "center", gap: 5,
+              padding: "5px 12px", borderRadius: 8,
+              fontSize: 12,
+            }}
+          >
+            {aiLoading ? "⏳ Organizando..." : "✨ Organizar"}
+          </button>
         </div>
 
         {/* Delete button */}
@@ -529,19 +513,21 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
                 }}>
                   {aiResult.content}
                 </div>
-                <div className="notes-vr-actions">
+                <div className="notes-vr-actions" style={{ flexDirection: "column", gap: 8 }}>
                   <button className="notes-vr-btn primary" onClick={() => {
-                    navigator.clipboard.writeText(aiResult.content);
-                    showToast("Copiado!");
-                  }}>Copiar</button>
-                  <button className="notes-vr-btn" onClick={() => {
                     if (editingNote) {
-                      const insert = `\n\n--- ${aiResult.title} ---\n${aiResult.content}\n`;
-                      handleTextChange(editingNote.texto + insert);
+                      handleTextChange(aiResult.content);
                     }
                     setAiResult(null);
-                    showToast("Inserido na nota");
-                  }}>Inserir na nota</button>
+                    showToast("Nota reorganizada!");
+                  }}>✨ Substituir nota</button>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button className="notes-vr-btn" onClick={() => {
+                      navigator.clipboard.writeText(aiResult.content);
+                      showToast("Copiado!");
+                    }}>Copiar</button>
+                    <button className="notes-vr-btn" onClick={() => setAiResult(null)}>Fechar</button>
+                  </div>
                 </div>
               </div>
             </div>
