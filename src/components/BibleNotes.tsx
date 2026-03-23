@@ -375,7 +375,7 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
       }
     };
   }, []);
-  }, [isRecording, editingNote, handleTextChange, showToast]);
+  
 
   // ── RENDER ──────────────────────────────────────────────────────────────────
 
