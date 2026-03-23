@@ -641,7 +641,7 @@ export default function BiblePlan() {
         const dayNames = ["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"];
         const todayName = dayNames[now.getDay()];
         // Find matching devotional for today
-        let todayDev: { ref: string; summary: string; day: string; period: string } | null = null;
+        let todayDev: { ref: string; summary: string; day: string; period: string; exegese?: string } | null = null;
         // Try to match by checking which period covers today (March 2026)
         const monthDay = now.getDate();
         const month = now.getMonth(); // 2 = March
