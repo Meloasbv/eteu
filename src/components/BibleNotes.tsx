@@ -7,6 +7,7 @@ type Note = {
   id: string;
   title: string;
   reference: string;
+  references: string[]; // multiple verse references
   body: string;
   week: number; // 1–18
   section: Section;
@@ -32,6 +33,18 @@ const SECTIONS: { key: Section; label: string; icon: string; description: string
   { key: "aulas", label: "Aulas", icon: "📚", description: "Anotações das aulas semanais", color: "#4A7C8C" },
 ];
 
+const BIBLE_BOOKS = [
+  "Gênesis","Êxodo","Levítico","Números","Deuteronômio","Josué","Juízes","Rute",
+  "1 Samuel","2 Samuel","1 Reis","2 Reis","1 Crônicas","2 Crônicas","Esdras","Neemias",
+  "Ester","Jó","Salmos","Provérbios","Eclesiastes","Cantares","Isaías","Jeremias",
+  "Lamentações","Ezequiel","Daniel","Oséias","Joel","Amós","Obadias","Jonas",
+  "Miquéias","Naum","Habacuque","Sofonias","Ageu","Zacarias","Malaquias",
+  "Mateus","Marcos","Lucas","João","Atos","Romanos","1 Coríntios","2 Coríntios",
+  "Gálatas","Efésios","Filipenses","Colossenses","1 Tessalonicenses","2 Tessalonicenses",
+  "1 Timóteo","2 Timóteo","Tito","Filemom","Hebreus","Tiago","1 Pedro","2 Pedro",
+  "1 João","2 João","3 João","Judas","Apocalipse",
+];
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function fmtDate(iso: string) {
   const d = new Date(iso);
@@ -55,6 +68,7 @@ export default function BibleNotes() {
   const [editing, setEditing] = useState<Note | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [collapsedWeeks, setCollapsedWeeks] = useState<Record<number, boolean>>({});
+  const [refInput, setRefInput] = useState("");
   const bodyRef = useRef<HTMLTextAreaElement>(null);
 
   // Load
@@ -68,6 +82,7 @@ export default function BibleNotes() {
           body: n.body ?? n.summary ?? "",
           week: n.week ?? 1,
           section: n.section ?? "aulas",
+          references: n.references ?? (n.reference ? [n.reference] : []),
           updatedAt: n.updatedAt ?? n.createdAt,
         }));
         setNotes(migrated);
@@ -87,6 +102,7 @@ export default function BibleNotes() {
       id: `n-${Date.now()}`,
       title: "",
       reference: "",
+      references: [],
       body: "",
       week: week ?? selectedWeek ?? 1,
       section: activeSection ?? "aulas",
@@ -129,7 +145,7 @@ export default function BibleNotes() {
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
     return sectionNotes
-      .filter(n => !q || n.title.toLowerCase().includes(q) || n.body.toLowerCase().includes(q) || n.reference.toLowerCase().includes(q))
+      .filter(n => !q || n.title.toLowerCase().includes(q) || n.body.toLowerCase().includes(q) || n.reference.toLowerCase().includes(q) || n.references?.some(r => r.toLowerCase().includes(q)))
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
   }, [sectionNotes, search]);
 
@@ -233,7 +249,7 @@ export default function BibleNotes() {
             ))}
           </select>
 
-          {/* Reference */}
+          {/* Reference (legacy single) */}
           <input
             value={editing.reference}
             onChange={e => setEditing({ ...editing, reference: e.target.value })}
@@ -244,6 +260,106 @@ export default function BibleNotes() {
             }}
           />
         </div>
+
+        {/* ── References section (Aulas only) ── */}
+        {editing.section === "aulas" && (
+          <div style={{ padding: "14px 20px 0" }}>
+            <div style={{
+              background: "rgba(74,124,140,.06)", border: "1px solid rgba(74,124,140,.15)",
+              borderRadius: 14, padding: "14px 16px",
+            }}>
+              <div style={{
+                fontSize: 11, letterSpacing: 2, textTransform: "uppercase",
+                color: "#4A7C8C", fontWeight: 700, marginBottom: 10,
+                display: "flex", alignItems: "center", gap: 6,
+              }}>
+                📖 Versículos de Referência
+              </div>
+
+              {/* Existing references as tags */}
+              {editing.references.length > 0 && (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
+                  {editing.references.map((ref, i) => (
+                    <span key={i} style={{
+                      display: "inline-flex", alignItems: "center", gap: 6,
+                      padding: "5px 10px", borderRadius: 8,
+                      background: "rgba(74,124,140,.12)", border: "1px solid rgba(74,124,140,.25)",
+                      color: "#b8d4dc", fontSize: 12, fontWeight: 600,
+                    }}>
+                      {ref}
+                      <button onClick={() => {
+                        setEditing({ ...editing, references: editing.references.filter((_, idx) => idx !== i) });
+                      }} style={{
+                        background: "none", border: "none", color: "#7a9aa8",
+                        cursor: "pointer", fontSize: 14, padding: 0, lineHeight: 1,
+                      }}>×</button>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Search input with suggestions */}
+              <div style={{ position: "relative" }}>
+                <input
+                  value={refInput}
+                  onChange={e => setRefInput(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === "Enter" && refInput.trim()) {
+                      e.preventDefault();
+                      if (!editing.references.includes(refInput.trim())) {
+                        setEditing({ ...editing, references: [...editing.references, refInput.trim()] });
+                      }
+                      setRefInput("");
+                    }
+                  }}
+                  placeholder="Buscar livro ou digitar referência (ex: Gênesis 1:1)"
+                  style={{
+                    ...inputStyle,
+                    paddingLeft: 32, fontSize: 13,
+                    background: "rgba(255,255,255,.03)",
+                    border: "1px solid rgba(74,124,140,.2)",
+                  }}
+                />
+                <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", fontSize: 13, color: "#5a7a88" }}>🔍</span>
+              </div>
+
+              {/* Suggestions dropdown */}
+              {refInput.trim().length >= 2 && (() => {
+                const q = refInput.toLowerCase();
+                const matches = BIBLE_BOOKS.filter(b => b.toLowerCase().includes(q)).slice(0, 6);
+                if (matches.length === 0) return null;
+                return (
+                  <div style={{
+                    marginTop: 6, borderRadius: 10,
+                    background: "rgba(30,26,20,.95)", border: "1px solid rgba(74,124,140,.2)",
+                    overflow: "hidden",
+                  }}>
+                    {matches.map(book => (
+                      <button key={book} onClick={() => {
+                        setRefInput(book + " ");
+                      }} style={{
+                        display: "block", width: "100%", textAlign: "left",
+                        padding: "9px 14px", background: "transparent",
+                        border: "none", borderBottom: "1px solid rgba(200,180,140,.05)",
+                        color: "#d4c4a8", fontSize: 13, cursor: "pointer",
+                        fontFamily: "inherit",
+                      }}
+                        onMouseEnter={e => (e.currentTarget.style.background = "rgba(74,124,140,.1)")}
+                        onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                      >
+                        📖 {book}
+                      </button>
+                    ))}
+                  </div>
+                );
+              })()}
+
+              <div style={{ fontSize: 11, color: "#5a7a88", marginTop: 8 }}>
+                Digite e pressione Enter para adicionar. Ex: "Gênesis 1:1-3", "Salmos 23"
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Title */}
         <div style={{ padding: "16px 20px 0" }}>
@@ -545,15 +661,19 @@ export default function BibleNotes() {
                               {preview(note.body)}
                             </span>
                           </div>
-                          {note.reference && (
-                            <span style={{
-                              display: "inline-block", marginTop: 4,
-                              fontSize: 11, fontWeight: 600, color: accent,
-                              background: accent + "15", padding: "1px 8px", borderRadius: 5,
-                              border: `1px solid ${accent}25`,
-                            }}>
-                              📖 {note.reference}
-                            </span>
+                          {(note.references?.length > 0 || note.reference) && (
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 4 }}>
+                              {(note.references?.length > 0 ? note.references : [note.reference]).map((ref, ri) => (
+                                <span key={ri} style={{
+                                  display: "inline-block",
+                                  fontSize: 11, fontWeight: 600, color: accent,
+                                  background: accent + "15", padding: "1px 8px", borderRadius: 5,
+                                  border: `1px solid ${accent}25`,
+                                }}>
+                                  📖 {ref}
+                                </span>
+                              ))}
+                            </div>
                           )}
                         </div>
                         <span style={{ fontSize: 14, color: "#4a4038", flexShrink: 0 }}>›</span>
