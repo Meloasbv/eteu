@@ -513,19 +513,21 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
                 }}>
                   {aiResult.content}
                 </div>
-                <div className="notes-vr-actions">
+                <div className="notes-vr-actions" style={{ flexDirection: "column", gap: 8 }}>
                   <button className="notes-vr-btn primary" onClick={() => {
-                    navigator.clipboard.writeText(aiResult.content);
-                    showToast("Copiado!");
-                  }}>Copiar</button>
-                  <button className="notes-vr-btn" onClick={() => {
                     if (editingNote) {
-                      const insert = `\n\n--- ${aiResult.title} ---\n${aiResult.content}\n`;
-                      handleTextChange(editingNote.texto + insert);
+                      handleTextChange(aiResult.content);
                     }
                     setAiResult(null);
-                    showToast("Inserido na nota");
-                  }}>Inserir na nota</button>
+                    showToast("Nota reorganizada!");
+                  }}>✨ Substituir nota</button>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button className="notes-vr-btn" onClick={() => {
+                      navigator.clipboard.writeText(aiResult.content);
+                      showToast("Copiado!");
+                    }}>Copiar</button>
+                    <button className="notes-vr-btn" onClick={() => setAiResult(null)}>Fechar</button>
+                  </div>
                 </div>
               </div>
             </div>
