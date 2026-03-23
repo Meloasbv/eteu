@@ -698,6 +698,20 @@ export default function BiblePlan() {
                 }}>
                   {todayDev.ref}
                 </div>
+                {todayDev.verseText && (
+                  <div style={{
+                    fontSize: 17, lineHeight: 1.8,
+                    color: tc ? "#1a1714" : "#e8d8b8",
+                    fontStyle: "italic", fontFamily: "'Cormorant Garamond', serif",
+                    padding: "12px 16px", marginBottom: 12,
+                    background: tc ? "rgba(139,111,78,.04)" : "rgba(200,170,100,.06)",
+                    borderLeft: `3px solid ${tc ? "#8b6f4e" : "#C8A55C"}`,
+                    borderRadius: "0 8px 8px 0",
+                    transition: "color .3s, background .3s",
+                  }}>
+                    "{todayDev.verseText}"
+                  </div>
+                )}
                 <div style={{
                   fontSize: 15, lineHeight: 1.7,
                   color: tc ? "#6b6560" : "#b0a090",
