@@ -154,6 +154,7 @@ export default function BiblePlan() {
   const wp = weekProg(activeWeek);
   const cw = WEEKS[activeWeek];
   const circ = 2 * Math.PI * 22;
+  const todayReading = getTodayReading(checked);
 
   const baseStyle: React.CSSProperties = {
     minHeight: "100vh",
