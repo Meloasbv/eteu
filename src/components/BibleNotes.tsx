@@ -68,7 +68,7 @@ async function fetchVerse(ref: string, version = "arc"): Promise<{ text: string;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
-export default function BibleNotes() {
+export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: string) => void }) {
   const [notes, setNotes] = useState<Note[]>([]);
   const [activeSection, setActiveSection] = useState<Section | null>(null);
   const [selectedNote, setSelectedNote] = useState<string | null>(null);
