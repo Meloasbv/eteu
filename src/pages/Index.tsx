@@ -174,6 +174,9 @@ function DashCard({ icon, title, subtitle, onClick, accent }: {
   );
 }
 
+// ── Theme ─────────────────────────────────────────────────────────────────────
+const THEME_KEY = "theme_preference";
+
 // ── COMPONENT ─────────────────────────────────────────────────────────────────
 
 export default function BiblePlan() {
@@ -184,7 +187,38 @@ export default function BiblePlan() {
   const [expandedDev, setExpandedDev] = useState<string | null>(null);
   const [musicPlaying, setMusicPlaying] = useState(false);
   const [notesTitle, setNotesTitle] = useState("📝 Anotações");
+  const [theme, setTheme] = useState<"light" | "dark">(() => {
+    try { return (localStorage.getItem(THEME_KEY) as "light" | "dark") || "dark"; } catch { return "dark"; }
+  });
+  const [titleFading, setTitleFading] = useState(false);
+  const [displayTitle, setDisplayTitle] = useState("Leitura Bíblica Cronológica");
   const playerRef = useRef<HTMLIFrameElement>(null);
+
+  // Apply theme to html element
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    try { localStorage.setItem(THEME_KEY, theme); } catch {}
+  }, [theme]);
+
+  // Animate title changes
+  const prevTab = useRef(tab);
+  const prevNotesTitle = useRef(notesTitle);
+  useEffect(() => {
+    const newTitle = tab === "home" ? "Leitura Bíblica Cronológica"
+      : tab === "leitura" ? "📖 Plano de Leitura"
+      : tab === "devocional" ? "🔥 Devocionais"
+      : tab === "agenda" ? "📅 Agenda"
+      : notesTitle;
+    if (newTitle !== displayTitle) {
+      setTitleFading(true);
+      setTimeout(() => {
+        setDisplayTitle(newTitle);
+        setTitleFading(false);
+      }, 280);
+    }
+    prevTab.current = tab;
+    prevNotesTitle.current = notesTitle;
+  }, [tab, notesTitle]);
 
   useEffect(() => {
     try { const d = localStorage.getItem(STORAGE_KEY); if (d) setChecked(JSON.parse(d)); } catch {}
@@ -217,13 +251,6 @@ export default function BiblePlan() {
   const circ = 2 * Math.PI * 22;
   const todayReading = getTodayReading(checked);
 
-  const baseStyle: React.CSSProperties = {
-    minHeight: "100vh",
-    background: "linear-gradient(160deg,#1a1510 0%,#2a2218 40%,#1e1a14 100%)",
-    fontFamily: "'Georgia', serif",
-    color: "#e8dcc8",
-  };
-
   const toggleMusic = useCallback(() => {
     const iframe = playerRef.current;
     if (!iframe) return;
@@ -235,8 +262,46 @@ export default function BiblePlan() {
     setMusicPlaying(!musicPlaying);
   }, [musicPlaying]);
 
+  // CSS variables for notes theming
+  const themeVars = theme === "light" ? {
+    "--notes-bg": "#faf9f7",
+    "--notes-card": "#ffffff",
+    "--notes-hover": "#f0ede8",
+    "--notes-text": "#1a1714",
+    "--notes-text2": "#6b6560",
+    "--notes-text3": "#aba59e",
+    "--notes-accent": "#8b6f4e",
+    "--notes-accent-faint": "rgba(139,111,78,.07)",
+    "--notes-border": "rgba(0,0,0,.08)",
+    "--notes-border2": "rgba(0,0,0,.05)",
+    "--notes-placeholder": "#c0b9b0",
+    "--notes-shadow": "0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04)",
+  } : {
+    "--notes-bg": "#110e08",
+    "--notes-card": "#1d1810",
+    "--notes-hover": "#261f13",
+    "--notes-text": "#e6dcc8",
+    "--notes-text2": "#8a7d65",
+    "--notes-text3": "#4e4535",
+    "--notes-accent": "#c9a052",
+    "--notes-accent-faint": "rgba(201,160,82,.08)",
+    "--notes-border": "rgba(201,160,82,.1)",
+    "--notes-border2": "rgba(201,160,82,.06)",
+    "--notes-placeholder": "#3a3225",
+    "--notes-shadow": "0 1px 4px rgba(0,0,0,.3)",
+  };
+
   return (
-    <div style={baseStyle}>
+    <div style={{
+      minHeight: "100vh",
+      background: theme === "light"
+        ? "linear-gradient(160deg,#faf9f7 0%,#f5f3ef 40%,#faf9f7 100%)"
+        : "linear-gradient(160deg,#1a1510 0%,#2a2218 40%,#1e1a14 100%)",
+      fontFamily: "'Cormorant Garamond', 'Georgia', serif",
+      color: theme === "light" ? "#1a1714" : "#e8dcc8",
+      transition: "background .3s cubic-bezier(.4,0,.2,1), color .3s cubic-bezier(.4,0,.2,1)",
+      ...themeVars as any,
+    }}>
       {/* Hidden YouTube player */}
       <iframe
         ref={playerRef}
