@@ -7,6 +7,7 @@ type Note = {
   id: string;
   title: string;
   reference: string;
+  references: string[]; // multiple verse references
   body: string;
   week: number; // 1–18
   section: Section;
