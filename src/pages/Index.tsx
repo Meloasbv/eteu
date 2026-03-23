@@ -311,6 +311,63 @@ export default function BiblePlan() {
     setExegeseLoading(false);
   }, [exegeseVerse]);
 
+  // ── Devocional audio recording ──────────────────────────────────────────────
+  const toggleDevRecording = useCallback(() => {
+    if (devRecording) {
+      try { devRecognitionRef.current?.stop(); } catch {}
+      devRecognitionRef.current = null;
+      setDevRecording(false);
+      return;
+    }
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) { setSaved(true); setTimeout(() => setSaved(false), 2000); return; }
+    const rec = new SR();
+    rec.lang = "pt-BR";
+    rec.continuous = true;
+    rec.interimResults = false;
+    devRecognitionRef.current = rec;
+
+    rec.onresult = (event: any) => {
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) {
+          const t = event.results[i][0].transcript;
+          devTranscriptRef.current += (devTranscriptRef.current ? " " : "") + t;
+          setDevTranscript(devTranscriptRef.current);
+        }
+      }
+    };
+    rec.onerror = () => { setDevRecording(false); devRecognitionRef.current = null; };
+    rec.onend = () => {
+      if (devRecognitionRef.current) {
+        try { devRecognitionRef.current.start(); } catch { setDevRecording(false); devRecognitionRef.current = null; }
+      }
+    };
+    try {
+      devTranscriptRef.current = devTranscript; // keep existing text
+      rec.start();
+      setDevRecording(true);
+    } catch { setDevRecording(false); }
+  }, [devRecording, devTranscript]);
+
+  const saveDevTranscript = useCallback(() => {
+    if (!devTranscript.trim()) return;
+    const notes = JSON.parse(localStorage.getItem("bible-notes-2026") || "[]");
+    const now = new Date().toISOString();
+    notes.unshift({
+      id: Date.now(),
+      categoria: "devocionais",
+      semana: "",
+      texto: `# Devocional gravado\n\n${devTranscript}`,
+      criadoEm: now,
+      atualizadoEm: now,
+    });
+    localStorage.setItem("bible-notes-2026", JSON.stringify(notes));
+    setDevTranscript("");
+    devTranscriptRef.current = "";
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  }, [devTranscript]);
+
   // CSS variables for notes theming
   const themeVars = theme === "light" ? {
     "--notes-bg": "#faf9f7",
