@@ -174,6 +174,9 @@ function DashCard({ icon, title, subtitle, onClick, accent }: {
   );
 }
 
+// ── Theme ─────────────────────────────────────────────────────────────────────
+const THEME_KEY = "theme_preference";
+
 // ── COMPONENT ─────────────────────────────────────────────────────────────────
 
 export default function BiblePlan() {
@@ -184,7 +187,38 @@ export default function BiblePlan() {
   const [expandedDev, setExpandedDev] = useState<string | null>(null);
   const [musicPlaying, setMusicPlaying] = useState(false);
   const [notesTitle, setNotesTitle] = useState("📝 Anotações");
+  const [theme, setTheme] = useState<"light" | "dark">(() => {
+    try { return (localStorage.getItem(THEME_KEY) as "light" | "dark") || "dark"; } catch { return "dark"; }
+  });
+  const [titleFading, setTitleFading] = useState(false);
+  const [displayTitle, setDisplayTitle] = useState("Leitura Bíblica Cronológica");
   const playerRef = useRef<HTMLIFrameElement>(null);
+
+  // Apply theme to html element
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    try { localStorage.setItem(THEME_KEY, theme); } catch {}
+  }, [theme]);
+
+  // Animate title changes
+  const prevTab = useRef(tab);
+  const prevNotesTitle = useRef(notesTitle);
+  useEffect(() => {
+    const newTitle = tab === "home" ? "Leitura Bíblica Cronológica"
+      : tab === "leitura" ? "📖 Plano de Leitura"
+      : tab === "devocional" ? "🔥 Devocionais"
+      : tab === "agenda" ? "📅 Agenda"
+      : notesTitle;
+    if (newTitle !== displayTitle) {
+      setTitleFading(true);
+      setTimeout(() => {
+        setDisplayTitle(newTitle);
+        setTitleFading(false);
+      }, 280);
+    }
+    prevTab.current = tab;
+    prevNotesTitle.current = notesTitle;
+  }, [tab, notesTitle]);
 
   useEffect(() => {
     try { const d = localStorage.getItem(STORAGE_KEY); if (d) setChecked(JSON.parse(d)); } catch {}
@@ -217,13 +251,6 @@ export default function BiblePlan() {
   const circ = 2 * Math.PI * 22;
   const todayReading = getTodayReading(checked);
 
-  const baseStyle: React.CSSProperties = {
-    minHeight: "100vh",
-    background: "linear-gradient(160deg,#1a1510 0%,#2a2218 40%,#1e1a14 100%)",
-    fontFamily: "'Georgia', serif",
-    color: "#e8dcc8",
-  };
-
   const toggleMusic = useCallback(() => {
     const iframe = playerRef.current;
     if (!iframe) return;
@@ -235,8 +262,46 @@ export default function BiblePlan() {
     setMusicPlaying(!musicPlaying);
   }, [musicPlaying]);
 
+  // CSS variables for notes theming
+  const themeVars = theme === "light" ? {
+    "--notes-bg": "#faf9f7",
+    "--notes-card": "#ffffff",
+    "--notes-hover": "#f0ede8",
+    "--notes-text": "#1a1714",
+    "--notes-text2": "#6b6560",
+    "--notes-text3": "#aba59e",
+    "--notes-accent": "#8b6f4e",
+    "--notes-accent-faint": "rgba(139,111,78,.07)",
+    "--notes-border": "rgba(0,0,0,.08)",
+    "--notes-border2": "rgba(0,0,0,.05)",
+    "--notes-placeholder": "#c0b9b0",
+    "--notes-shadow": "0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04)",
+  } : {
+    "--notes-bg": "#110e08",
+    "--notes-card": "#1d1810",
+    "--notes-hover": "#261f13",
+    "--notes-text": "#e6dcc8",
+    "--notes-text2": "#8a7d65",
+    "--notes-text3": "#4e4535",
+    "--notes-accent": "#c9a052",
+    "--notes-accent-faint": "rgba(201,160,82,.08)",
+    "--notes-border": "rgba(201,160,82,.1)",
+    "--notes-border2": "rgba(201,160,82,.06)",
+    "--notes-placeholder": "#3a3225",
+    "--notes-shadow": "0 1px 4px rgba(0,0,0,.3)",
+  };
+
   return (
-    <div style={baseStyle}>
+    <div style={{
+      minHeight: "100vh",
+      background: theme === "light"
+        ? "linear-gradient(160deg,#faf9f7 0%,#f5f3ef 40%,#faf9f7 100%)"
+        : "linear-gradient(160deg,#1a1510 0%,#2a2218 40%,#1e1a14 100%)",
+      fontFamily: "'Cormorant Garamond', 'Georgia', serif",
+      color: theme === "light" ? "#1a1714" : "#e8dcc8",
+      transition: "background .3s cubic-bezier(.4,0,.2,1), color .3s cubic-bezier(.4,0,.2,1)",
+      ...themeVars as any,
+    }}>
       {/* Hidden YouTube player */}
       <iframe
         ref={playerRef}
@@ -262,48 +327,113 @@ export default function BiblePlan() {
       }}>
         {musicPlaying ? "⏸" : "🎵"}
       </button>
-      {/* ── HEADER ── */}
-      <div style={{ padding: "32px 24px 20px", textAlign: "center", borderBottom: "1px solid rgba(200,180,140,.08)" }}>
-        <p style={{ fontSize: 11, letterSpacing: 4, textTransform: "uppercase", color: "#8a7a60", marginBottom: 8, fontWeight: 600 }}>
-          Fascinação • 2026A
-        </p>
-        <h1 style={{ fontSize: "clamp(24px,5vw,36px)", fontWeight: 300, color: "#e8d8b8", letterSpacing: 1, marginBottom: 20 }}>
-          {tab === "home" ? "Leitura Bíblica Cronológica" : tab === "leitura" ? "📖 Plano de Leitura" : tab === "devocional" ? "🔥 Devocional" : tab === "agenda" ? "📅 Agenda da Semana" : notesTitle}
-        </h1>
-        {/* Overall progress */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 16, marginBottom: 24 }}>
-          <svg width="52" height="52" viewBox="0 0 52 52" style={{ transform: "rotate(-90deg)" }}>
-            <defs>
-              <linearGradient id="pg" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#C8A55C"/><stop offset="100%" stopColor="#6B8E6B"/>
-              </linearGradient>
-            </defs>
-            <circle cx="26" cy="26" r="22" fill="none" stroke="rgba(200,180,140,0.1)" strokeWidth="3"/>
-            <circle cx="26" cy="26" r="22" fill="none" stroke="url(#pg)" strokeWidth="3"
-              strokeDasharray={`${prog * circ} ${circ}`} strokeLinecap="round"
-              style={{ transition: "stroke-dasharray .6s ease" }}/>
-          </svg>
-          <div>
-            <div style={{ fontSize: 22, fontWeight: 600, color: "#e8d8b8" }}>{Math.round(prog * 100)}%</div>
-            <div style={{ fontSize: 12, color: "#8a7a60", letterSpacing: 1, textTransform: "uppercase" }}>Progresso total</div>
+      {/* ── THEME TOGGLE ── */}
+      <label style={{
+        position: "fixed", top: 16, right: 16, width: 38, height: 22, zIndex: 100,
+        display: "block", cursor: "pointer",
+      }}>
+        <input
+          type="checkbox"
+          checked={theme === "dark"}
+          onChange={() => setTheme(t => t === "light" ? "dark" : "light")}
+          style={{ display: "none" }}
+        />
+        <div style={{
+          width: 38, height: 22, borderRadius: 99,
+          background: theme === "light" ? "#f0ede8" : "#261f13",
+          border: `1px solid ${theme === "light" ? "rgba(0,0,0,.08)" : "rgba(201,160,82,.1)"}`,
+          position: "relative", transition: "background .3s, border-color .3s",
+        }}>
+          <div style={{
+            position: "absolute", top: 2, left: theme === "dark" ? 18 : 2,
+            width: 16, height: 16, borderRadius: "50%",
+            background: theme === "light" ? "#8b6f4e" : "#c9a052",
+            transition: "left .25s cubic-bezier(.34,1.56,.64,1), background .3s",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 9,
+          }}>
+            {theme === "light" ? "☀" : "☾"}
           </div>
         </div>
+      </label>
+
+      {/* ── HEADER ── */}
+      <div style={{
+        padding: "52px 24px 20px", textAlign: "center",
+        borderBottom: `1px solid ${theme === "light" ? "rgba(0,0,0,.06)" : "rgba(200,180,140,.08)"}`,
+        transition: "border-color .3s",
+      }}>
+        <p style={{
+          fontFamily: "'Cinzel', serif",
+          fontSize: 9, letterSpacing: 5, textTransform: "uppercase",
+          color: theme === "light" ? "#aba59e" : "#8a7a60",
+          marginBottom: 8, fontWeight: 400,
+          transition: "color .3s",
+        }}>
+          Fascinação · 2026A
+        </p>
+        <h1 style={{
+          fontFamily: "'Cinzel', serif",
+          fontSize: 20, fontWeight: 400,
+          color: theme === "light" ? "#8b6f4e" : "#e8c97a",
+          letterSpacing: 0.5, lineHeight: 1.25, marginBottom: 14,
+          transition: "color .3s, opacity .28s, transform .28s",
+          opacity: titleFading ? 0 : 1,
+          transform: titleFading ? "translateY(-6px)" : "translateY(0)",
+        }}>
+          {displayTitle}
+        </h1>
+        {/* Overall progress */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 18 }}>
+          <div style={{ width: 32, height: 32, position: "relative", flexShrink: 0 }}>
+            <svg width="32" height="32" viewBox="0 0 32 32" style={{ transform: "rotate(-90deg)" }}>
+              <circle cx="16" cy="16" r="12" fill="none"
+                stroke={theme === "light" ? "rgba(0,0,0,.06)" : "rgba(200,180,140,0.1)"}
+                strokeWidth="3" style={{ transition: "stroke .3s" }} />
+              <circle cx="16" cy="16" r="12" fill="none"
+                stroke={theme === "light" ? "#8b6f4e" : "#c9a052"}
+                strokeWidth="3" strokeLinecap="round"
+                strokeDasharray={`${prog * 75.4} 75.4`}
+                style={{ transition: "stroke-dasharray .6s ease, stroke .3s" }} />
+            </svg>
+          </div>
+          <span style={{
+            fontFamily: "'Cinzel', serif",
+            fontSize: 11, letterSpacing: 1,
+            color: theme === "light" ? "#6b6560" : "#8a7a60",
+            transition: "color .3s",
+          }}>
+            {Math.round(prog * 100)}% · Progresso total
+          </span>
+        </div>
         {/* Tabs */}
-        <div style={{ display: "flex", gap: 6, justifyContent: "center", flexWrap: "wrap" }}>
+        <div style={{
+          display: "flex", gap: 6, justifyContent: "center", flexWrap: "nowrap",
+          overflowX: "auto", scrollbarWidth: "none", WebkitOverflowScrolling: "touch",
+          padding: "0 4px",
+        }}>
           {([
-            { key: "home" as const, label: "🏠 Início" },
             { key: "leitura" as const, label: "📖 Leitura" },
             { key: "devocional" as const, label: "🔥 Devocional" },
             { key: "agenda" as const, label: "📅 Agenda" },
             { key: "anotacoes" as const, label: "📝 Anotações" },
           ]).map(t => (
             <button key={t.key} onClick={() => setTab(t.key)} style={{
-              padding: "9px 20px", borderRadius: 24,
-              border: `1px solid ${tab === t.key ? "rgba(200,170,100,.5)" : "rgba(200,180,140,.15)"}`,
-              background: tab === t.key ? "linear-gradient(135deg,rgba(200,170,100,.18),rgba(180,140,80,.08))" : "rgba(200,180,140,.04)",
-              color: tab === t.key ? "#e8d8b8" : "#a09078",
-              fontSize: 13, cursor: "pointer", fontFamily: "inherit",
-              fontWeight: tab === t.key ? 600 : 400, letterSpacing: 0.5,
+              padding: "7px 16px", borderRadius: 99, flexShrink: 0,
+              border: `1px solid ${tab === t.key
+                ? (theme === "light" ? "#8b6f4e" : "rgba(200,170,100,.5)")
+                : "transparent"}`,
+              background: tab === t.key
+                ? (theme === "light" ? "rgba(139,111,78,.07)" : "linear-gradient(135deg,rgba(200,170,100,.18),rgba(180,140,80,.08))")
+                : "transparent",
+              color: tab === t.key
+                ? (theme === "light" ? "#8b6f4e" : "#e8d8b8")
+                : (theme === "light" ? "#6b6560" : "#a09078"),
+              fontFamily: "'Cormorant Garamond', serif",
+              fontSize: 15, cursor: "pointer",
+              fontWeight: tab === t.key ? 600 : 400,
+              lineHeight: 1, whiteSpace: "nowrap",
+              transition: "all .2s",
             }}>
               {t.label}
             </button>
