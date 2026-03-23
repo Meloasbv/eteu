@@ -652,94 +652,226 @@ export default function BiblePlan() {
       )}
 
       {/* ── DEVOCIONAL TAB ── */}
-      {tab === "devocional" && (
-        <div style={{ padding: "24px 16px 40px" }}>
-          {/* Guide questions card */}
-          <div style={{
-            background: "rgba(200,170,100,.06)", border: "1px solid rgba(200,170,100,.18)",
-            borderRadius: 16, padding: "20px 20px", marginBottom: 28,
-          }}>
-            <div style={{ fontSize: 11, letterSpacing: 3, textTransform: "uppercase", color: "#C8A55C", marginBottom: 12, fontWeight: 600 }}>
-              Perguntas — Guia
-            </div>
-            <p style={{ fontSize: 13, color: "#a09078", marginBottom: 16, lineHeight: 1.6 }}>
-              Escreva as respostas em um caderno para meditar e orar profundamente a partir do que extraiu das escrituras.
-            </p>
-            {GUIDE_QUESTIONS.map(gq => (
-              <div key={gq.n} style={{ display: "flex", gap: 14, marginBottom: 14 }}>
+      {tab === "devocional" && (() => {
+        // Find today's devotional
+        const now = new Date();
+        const dayNames = ["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"];
+        const todayName = dayNames[now.getDay()];
+        // Find matching devotional for today
+        let todayDev: { ref: string; summary: string; day: string; period: string } | null = null;
+        // Try to match by checking which period covers today (March 2026)
+        const monthDay = now.getDate();
+        const month = now.getMonth(); // 2 = March
+        const year = now.getFullYear();
+        
+        // Parse period dates to find the right week
+        for (const week of DEVOTIONALS) {
+          const [startStr, endStr] = week.period.split(" a ");
+          const [sd, sm] = startStr.split("/").map(Number);
+          const [ed, em] = endStr.split("/").map(Number);
+          const start = new Date(year, sm - 1, sd);
+          const end = new Date(year, em - 1, ed, 23, 59, 59);
+          if (now >= start && now <= end) {
+            const match = week.days.find(d => d.day === todayName);
+            if (match) {
+              todayDev = { ...match, period: week.period };
+            }
+            break;
+          }
+        }
+
+        const tc = theme === "light";
+
+        return (
+          <div style={{ padding: "20px 16px 40px" }}>
+            {/* ── TODAY'S DEVOTIONAL ── */}
+            {todayDev ? (
+              <div style={{
+                background: tc
+                  ? "linear-gradient(135deg,rgba(139,111,78,.08),rgba(139,111,78,.03))"
+                  : "linear-gradient(135deg,rgba(200,170,100,.1),rgba(180,140,80,.04))",
+                border: `1px solid ${tc ? "rgba(139,111,78,.18)" : "rgba(200,170,100,.3)"}`,
+                borderRadius: 16, padding: "22px 20px", marginBottom: 24,
+                position: "relative", overflow: "hidden",
+              }}>
                 <div style={{
-                  width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
-                  background: "linear-gradient(135deg,rgba(200,170,100,.3),rgba(180,140,80,.15))",
-                  border: "1px solid rgba(200,170,100,.3)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 13, fontWeight: 700, color: "#C8A55C",
-                }}>{gq.n}</div>
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: "#d4c4a8", marginBottom: 3 }}>{gq.q}</div>
-                  <div style={{ fontSize: 12.5, color: "#8a7a60", lineHeight: 1.5 }}>{gq.detail}</div>
+                  position: "absolute", top: 0, left: 0, right: 0, height: 3,
+                  background: tc
+                    ? "linear-gradient(90deg,#8b6f4e,transparent)"
+                    : "linear-gradient(90deg,#C8A55C,transparent)",
+                  opacity: 0.7,
+                }} />
+                <div style={{
+                  fontSize: 10, letterSpacing: 3, textTransform: "uppercase",
+                  color: tc ? "#8b6f4e" : "#C8A55C",
+                  fontWeight: 700, fontFamily: "'Cinzel', serif", marginBottom: 10,
+                }}>
+                  🔥 Devocional de Hoje — {todayDev.day}
+                </div>
+                <div style={{
+                  fontSize: 20, fontWeight: 600, color: tc ? "#1a1714" : "#e8d8b8",
+                  marginBottom: 8, fontFamily: "'Cinzel', serif",
+                  transition: "color .3s",
+                }}>
+                  {todayDev.ref}
+                </div>
+                <div style={{
+                  fontSize: 15, lineHeight: 1.7,
+                  color: tc ? "#6b6560" : "#b0a090",
+                  fontStyle: "italic",
+                  transition: "color .3s",
+                }}>
+                  {todayDev.summary}
+                </div>
+                <div style={{
+                  fontSize: 11, color: tc ? "#aba59e" : "#6a5a48",
+                  marginTop: 10, transition: "color .3s",
+                }}>
+                  Período: {todayDev.period}
+                </div>
+              </div>
+            ) : (
+              <div style={{
+                background: tc ? "rgba(139,111,78,.05)" : "rgba(200,170,100,.06)",
+                border: `1px solid ${tc ? "rgba(139,111,78,.1)" : "rgba(200,170,100,.18)"}`,
+                borderRadius: 16, padding: "22px 20px", marginBottom: 24,
+                textAlign: "center",
+              }}>
+                <div style={{
+                  fontSize: 10, letterSpacing: 3, textTransform: "uppercase",
+                  color: tc ? "#8b6f4e" : "#C8A55C",
+                  fontWeight: 700, fontFamily: "'Cinzel', serif", marginBottom: 8,
+                }}>
+                  Devocional de Hoje
+                </div>
+                <div style={{
+                  fontSize: 14, color: tc ? "#aba59e" : "#7a6a58",
+                  fontStyle: "italic",
+                }}>
+                  Sem devocional programado para hoje
+                </div>
+              </div>
+            )}
+
+            {/* Guide questions card */}
+            <div style={{
+              background: tc ? "rgba(139,111,78,.04)" : "rgba(200,170,100,.06)",
+              border: `1px solid ${tc ? "rgba(139,111,78,.12)" : "rgba(200,170,100,.18)"}`,
+              borderRadius: 16, padding: "20px 20px", marginBottom: 28,
+              transition: "background .3s, border-color .3s",
+            }}>
+              <div style={{
+                fontSize: 11, letterSpacing: 3, textTransform: "uppercase",
+                color: tc ? "#8b6f4e" : "#C8A55C",
+                marginBottom: 12, fontWeight: 600, fontFamily: "'Cinzel', serif",
+                transition: "color .3s",
+              }}>
+                Perguntas — Guia
+              </div>
+              <p style={{
+                fontSize: 13, color: tc ? "#6b6560" : "#a09078",
+                marginBottom: 16, lineHeight: 1.6, transition: "color .3s",
+              }}>
+                Escreva as respostas em um caderno para meditar e orar profundamente a partir do que extraiu das escrituras.
+              </p>
+              {GUIDE_QUESTIONS.map(gq => (
+                <div key={gq.n} style={{ display: "flex", gap: 14, marginBottom: 14 }}>
+                  <div style={{
+                    width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
+                    background: tc
+                      ? "linear-gradient(135deg,rgba(139,111,78,.2),rgba(139,111,78,.1))"
+                      : "linear-gradient(135deg,rgba(200,170,100,.3),rgba(180,140,80,.15))",
+                    border: `1px solid ${tc ? "rgba(139,111,78,.25)" : "rgba(200,170,100,.3)"}`,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 13, fontWeight: 700, color: tc ? "#8b6f4e" : "#C8A55C",
+                    transition: "all .3s",
+                  }}>{gq.n}</div>
+                  <div>
+                    <div style={{
+                      fontSize: 14, fontWeight: 600,
+                      color: tc ? "#1a1714" : "#d4c4a8",
+                      marginBottom: 3, transition: "color .3s",
+                    }}>{gq.q}</div>
+                    <div style={{
+                      fontSize: 12.5, color: tc ? "#6b6560" : "#8a7a60",
+                      lineHeight: 1.5, transition: "color .3s",
+                    }}>{gq.detail}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Devotional weeks */}
+            <div style={{
+              fontSize: 11, letterSpacing: 3, textTransform: "uppercase",
+              color: tc ? "#aba59e" : "#8a7a60",
+              marginBottom: 16, fontWeight: 600, fontFamily: "'Cinzel', serif",
+              transition: "color .3s",
+            }}>
+              Todos os Devocionais
+            </div>
+            {DEVOTIONALS.map((week, wi) => (
+              <div key={wi} style={{ marginBottom: 24 }}>
+                <div style={{
+                  display: "inline-flex", alignItems: "center", padding: "5px 14px",
+                  borderRadius: 20, border: `1px solid ${tc ? "rgba(0,0,0,.08)" : "rgba(200,180,140,.2)"}`,
+                  background: tc ? "rgba(0,0,0,.03)" : "rgba(200,180,140,.06)", marginBottom: 12,
+                  fontSize: 13, color: tc ? "#6b6560" : "#c4b498",
+                  fontWeight: 600, letterSpacing: 0.5,
+                  transition: "all .3s",
+                }}>
+                  {week.period}
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(260px,1fr))", gap: 10 }}>
+                  {week.days.map((d, di) => {
+                    const key = `dev-${wi}-${di}`;
+                    const isOpen = expandedDev === key;
+                    const c = DEV_DAY_COLORS[d.day] ?? "#C8A55C";
+                    return (
+                      <div key={di} onClick={() => setExpandedDev(isOpen ? null : key)} style={{
+                        background: tc ? "rgba(0,0,0,.02)" : "rgba(255,255,255,.025)",
+                        border: `1px solid ${isOpen ? c + "40" : (tc ? "rgba(0,0,0,.06)" : "rgba(200,180,140,.08)")}`,
+                        borderRadius: 12, padding: "16px", cursor: "pointer",
+                        transition: "all .3s ease", position: "relative", overflow: "hidden",
+                      }}>
+                        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2,
+                          background: `linear-gradient(90deg,${c},transparent)`, opacity: 0.5 }}/>
+                        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+                          <div>
+                            <div style={{ fontSize: 11, color: c, fontWeight: 600, letterSpacing: 1, textTransform: "uppercase", marginBottom: 4 }}>
+                              {d.day}
+                            </div>
+                            <div style={{
+                              fontSize: 15, fontWeight: 600,
+                              color: tc ? "#1a1714" : "#e8d8b8",
+                              marginBottom: isOpen ? 10 : 0,
+                              transition: "color .3s",
+                            }}>
+                              {d.ref}
+                            </div>
+                          </div>
+                          <span style={{ fontSize: 18, color: tc ? "#aba59e" : "#6a5a48", flexShrink: 0, marginTop: 2 }}>
+                            {isOpen ? "−" : "+"}
+                          </span>
+                        </div>
+                        {isOpen && (
+                          <div style={{
+                            fontSize: 13.5, color: tc ? "#6b6560" : "#b0a090", lineHeight: 1.65,
+                            paddingTop: 4, borderTop: `1px solid ${c}20`,
+                            transition: "color .3s",
+                          }}>
+                            {d.summary}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             ))}
           </div>
-
-          {/* Devotional weeks */}
-          <div style={{ fontSize: 11, letterSpacing: 3, textTransform: "uppercase", color: "#8a7a60", marginBottom: 16, fontWeight: 600 }}>
-            Mês Março
-          </div>
-          {DEVOTIONALS.map((week, wi) => (
-            <div key={wi} style={{ marginBottom: 24 }}>
-              {/* Period badge */}
-              <div style={{
-                display: "inline-flex", alignItems: "center", padding: "5px 14px",
-                borderRadius: 20, border: "1px solid rgba(200,180,140,.2)",
-                background: "rgba(200,180,140,.06)", marginBottom: 12,
-                fontSize: 13, color: "#c4b498", fontWeight: 600, letterSpacing: 0.5,
-              }}>
-                {week.period}
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(260px,1fr))", gap: 10 }}>
-                {week.days.map((d, di) => {
-                  const key = `dev-${wi}-${di}`;
-                  const isOpen = expandedDev === key;
-                  const c = DEV_DAY_COLORS[d.day] ?? "#C8A55C";
-                  return (
-                    <div key={di} onClick={() => setExpandedDev(isOpen ? null : key)} style={{
-                      background: "rgba(255,255,255,.025)",
-                      border: `1px solid ${isOpen ? c + "40" : "rgba(200,180,140,.08)"}`,
-                      borderRadius: 12, padding: "16px", cursor: "pointer",
-                      transition: "all .3s ease", position: "relative", overflow: "hidden",
-                    }}>
-                      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2,
-                        background: `linear-gradient(90deg,${c},transparent)`, opacity: 0.5 }}/>
-                      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
-                        <div>
-                          <div style={{ fontSize: 11, color: c, fontWeight: 600, letterSpacing: 1, textTransform: "uppercase", marginBottom: 4 }}>
-                            {d.day}
-                          </div>
-                          <div style={{ fontSize: 15, fontWeight: 600, color: "#e8d8b8", marginBottom: isOpen ? 10 : 0 }}>
-                            {d.ref}
-                          </div>
-                        </div>
-                        <span style={{ fontSize: 18, color: "#6a5a48", flexShrink: 0, marginTop: 2 }}>
-                          {isOpen ? "−" : "+"}
-                        </span>
-                      </div>
-                      {isOpen && (
-                        <div style={{
-                          fontSize: 13.5, color: "#b0a090", lineHeight: 1.65,
-                          paddingTop: 4, borderTop: `1px solid ${c}20`,
-                        }}>
-                          {d.summary}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+        );
+      })()}
 
       {/* ── AGENDA TAB ── */}
       {tab === "agenda" && <WeekSchedule />}
