@@ -674,6 +674,10 @@ const notesCSS = `
   from { opacity: 0; transform: translateX(16px); }
   to { opacity: 1; transform: translateX(0); }
 }
+@keyframes notesPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .4; }
+}
 
 /* ── List head ── */
 .notes-list-head { padding: 2px 8px 0; }
