@@ -170,7 +170,7 @@ export default function BiblePlan() {
         </div>
         {/* Tabs */}
         <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
-          {(["leitura", "devocional"] as const).map(t => (
+          {(["leitura", "devocional", "agenda"] as const).map(t => (
             <button key={t} onClick={() => setTab(t)} style={{
               padding: "9px 24px", borderRadius: 24,
               border: `1px solid ${tab === t ? "rgba(200,170,100,.5)" : "rgba(200,180,140,.15)"}`,
@@ -180,7 +180,7 @@ export default function BiblePlan() {
               fontWeight: tab === t ? 600 : 400, letterSpacing: 0.5,
               textTransform: "capitalize",
             }}>
-              {t === "leitura" ? "📖 Leitura" : "🙏 Devocional"}
+              {t === "leitura" ? "📖 Leitura" : t === "devocional" ? "🙏 Devocional" : "📅 Agenda"}
             </button>
           ))}
         </div>
