@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import WeekSchedule from "@/components/WeekSchedule";
+import BibleNotes from "@/components/BibleNotes";
 
 // ── DATA ──────────────────────────────────────────────────────────────────────
 
