@@ -86,6 +86,7 @@ const GUIDE_QUESTIONS = [
 
 const COLORS = ["#C8553D","#E88D67","#D4A574","#B8860B","#6B8E6B","#4A7C8C","#6B5B8A"];
 const ABBREVS = ["Sáb","Dom","Seg","Ter","Qua","Qui","Sex"];
+const DAY_NAMES = ["Sábado","Domingo","Segunda","Terça","Quarta","Quinta","Sexta"];
 const STORAGE_KEY = "bible-plan-2026";
 const DEV_DAY_COLORS: Record<string, string> = {
   "Segunda": "#4A7C8C",
@@ -94,6 +95,26 @@ const DEV_DAY_COLORS: Record<string, string> = {
   "Quinta":  "#B8860B",
   "Sexta":   "#6B8E6B",
 };
+
+// Map JS getDay() (0=Sun) to our day index (0=Sat)
+const JS_DAY_TO_INDEX: Record<number, number> = { 6: 0, 0: 1, 1: 2, 2: 3, 3: 4, 4: 5, 5: 6 };
+
+function getTodayReading(checked: Record<string, boolean>) {
+  const now = new Date();
+  // Plan start: Saturday Jan 24, 2026
+  const planStart = new Date(2026, 0, 24); // month is 0-indexed
+  const diffMs = now.getTime() - planStart.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  if (diffDays < 0 || diffDays >= 18 * 7) return null;
+  const weekIdx = Math.floor(diffDays / 7);
+  const dayIdx = diffDays % 7;
+  const week = WEEKS[weekIdx];
+  if (!week) return null;
+  const day = week.days[dayIdx];
+  if (!day || !day.r.length) return null;
+  const isDone = !!checked[`${weekIdx}-${dayIdx}`];
+  return { weekIdx, dayIdx, week, day, isDone };
+}
 
 // ── COMPONENT ─────────────────────────────────────────────────────────────────
 
