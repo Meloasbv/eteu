@@ -310,23 +310,6 @@ export default function BiblePlan() {
         style={{ position: "absolute", width: 0, height: 0, border: "none", opacity: 0, pointerEvents: "none" }}
         title="Background music"
       />
-
-      {/* Floating music button */}
-      <button onClick={toggleMusic} style={{
-        position: "fixed", bottom: 20, left: 20, zIndex: 100,
-        width: 48, height: 48, borderRadius: "50%",
-        border: `1px solid ${musicPlaying ? "rgba(107,142,107,.5)" : "rgba(200,180,140,.3)"}`,
-        background: musicPlaying
-          ? "linear-gradient(135deg,rgba(107,142,107,.2),rgba(90,122,90,.1))"
-          : "linear-gradient(135deg,rgba(200,170,100,.15),rgba(180,140,80,.06))",
-        color: musicPlaying ? "#6B8E6B" : "#C8A55C",
-        cursor: "pointer", fontSize: 20,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        boxShadow: "0 4px 16px rgba(0,0,0,.4)",
-        transition: "all .3s ease",
-      }}>
-        {musicPlaying ? "⏸" : "🎵"}
-      </button>
       {/* ── THEME TOGGLE ── */}
       <label style={{
         position: "fixed", top: 16, right: 16, width: 38, height: 22, zIndex: 100,
