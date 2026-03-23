@@ -80,7 +80,10 @@ export default function BibleNotes() {
   const [verseLoading, setVerseLoading] = useState(false);
   const [verseError, setVerseError] = useState(false);
   const [toast, setToast] = useState("");
+  const [aiLoading, setAiLoading] = useState<string | null>(null);
+  const [aiResult, setAiResult] = useState<{ title: string; content: string } | null>(null);
   const editorRef = useRef<HTMLDivElement>(null);
+  const titleRef = useRef<HTMLInputElement>(null);
   const titleRef = useRef<HTMLInputElement>(null);
 
   // Load
