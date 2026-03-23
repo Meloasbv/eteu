@@ -458,13 +458,21 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
 
         {/* Bottom bar */}
         <div className="notes-bottom-bar">
-          <button className="notes-bb-btn" onClick={() => wrapSelection("**", "**")} title="Negrito">
+          <button className="notes-bb-btn" onClick={() => wrapSelection("**", "**")} title="Negrito" disabled={previewMode}>
             <strong>N</strong>
           </button>
-          <button className="notes-bb-btn" onClick={() => wrapSelection("_", "_")} title="Itálico">
+          <button className="notes-bb-btn" onClick={() => wrapSelection("_", "_")} title="Itálico" disabled={previewMode}>
             <em>I</em>
           </button>
           <div className="notes-bb-sep" />
+          <button
+            className="notes-bb-btn"
+            onClick={() => setPreviewMode(p => !p)}
+            title={previewMode ? "Editar" : "Visualizar"}
+            style={{ fontSize: 13, fontWeight: previewMode ? 700 : 400, color: previewMode ? v("accent") : undefined }}
+          >
+            {previewMode ? "✏️" : "👁"}
+          </button>
           <div style={{ flex: 1 }} />
           <button className="notes-bb-verse-btn" onClick={() => setVerseOpen(true)}>
             🔖 Versículo
