@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import WeekSchedule from "@/components/WeekSchedule";
 import BibleNotes from "@/components/BibleNotes";
 
@@ -78,11 +79,7 @@ const DEVOTIONALS = [
   },
 ];
 
-const GUIDE_QUESTIONS = [
-  { n: "1", q: "O que o texto diz?", detail: "Sobre o que ele fala? Qual o assunto central? Quais os assuntos secundários?" },
-  { n: "2", q: "O que essa passagem quer dizer/contar pra mim?", detail: "O que ela significa? O que ela diz sobre Deus? E o que ela diz sobre o homem?" },
-  { n: "3", q: "Como isso se aplica à minha vida?", detail: "Há algum mandamento a ser obedecido? Alguma promessa? Algum pecado a confessar? Alguma atitude a mudar?" },
-];
+// Guide questions removed — replaced by exegesis study field
 
 const COLORS = ["#C8553D","#E88D67","#D4A574","#B8860B","#6B8E6B","#4A7C8C","#6B5B8A"];
 const ABBREVS = ["Sáb","Dom","Seg","Ter","Qua","Qui","Sex"];
@@ -185,6 +182,12 @@ export default function BiblePlan() {
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [saved, setSaved] = useState(false);
   const [expandedDev, setExpandedDev] = useState<string | null>(null);
+  // Exegesis study
+  const [exegeseVerse, setExegeseVerse] = useState("");
+  const [exegeseLoading, setExegeseLoading] = useState(false);
+  const [exegeseResult, setExegeseResult] = useState<{ verse: string; content: string } | null>(null);
+  const [exegeseError, setExegeseError] = useState("");
+
   const [musicPlaying, setMusicPlaying] = useState(false);
   const [notesTitle, setNotesTitle] = useState("📝 Anotações");
   const [theme, setTheme] = useState<"light" | "dark">(() => {
@@ -261,6 +264,47 @@ export default function BiblePlan() {
     }
     setMusicPlaying(!musicPlaying);
   }, [musicPlaying]);
+
+  // ── Exegesis AI call ──────────────────────────────────────────────────────
+  const handleExegese = useCallback(async () => {
+    if (!exegeseVerse.trim()) return;
+    setExegeseLoading(true);
+    setExegeseError("");
+    setExegeseResult(null);
+
+    // First fetch the verse text
+    try {
+      const verseRes = await fetch(`https://bible-api.com/${encodeURIComponent(exegeseVerse.trim())}?translation=almeida`);
+      if (!verseRes.ok) {
+        setExegeseError("Versículo não encontrado. Verifique a referência.");
+        setExegeseLoading(false);
+        return;
+      }
+      const verseData = await verseRes.json();
+      const verseText = verseData.text?.trim();
+      if (!verseText) {
+        setExegeseError("Texto do versículo não encontrado.");
+        setExegeseLoading(false);
+        return;
+      }
+
+      // Call AI exegesis
+      const { data, error } = await supabase.functions.invoke("verse-exegesis", {
+        body: { verse: verseData.reference || exegeseVerse, verseText },
+      });
+
+      if (error || data?.error) {
+        setExegeseError(data?.error || "Erro ao gerar exegese.");
+        setExegeseLoading(false);
+        return;
+      }
+
+      setExegeseResult({ verse: verseData.reference || exegeseVerse, content: data.result });
+    } catch {
+      setExegeseError("Erro de conexão.");
+    }
+    setExegeseLoading(false);
+  }, [exegeseVerse]);
 
   // CSS variables for notes theming
   const themeVars = theme === "light" ? {
@@ -780,7 +824,7 @@ export default function BiblePlan() {
               </div>
             )}
 
-            {/* Guide questions card */}
+            {/* ── Exegesis Study Field ── */}
             <div style={{
               background: tc ? "rgba(139,111,78,.04)" : "rgba(200,170,100,.06)",
               border: `1px solid ${tc ? "rgba(139,111,78,.12)" : "rgba(200,170,100,.18)"}`,
@@ -790,42 +834,143 @@ export default function BiblePlan() {
               <div style={{
                 fontSize: 11, letterSpacing: 3, textTransform: "uppercase",
                 color: tc ? "#8b6f4e" : "#C8A55C",
-                marginBottom: 12, fontWeight: 600, fontFamily: "'Cinzel', serif",
-                transition: "color .3s",
+                marginBottom: 14, fontWeight: 600, fontFamily: "'Cinzel', serif",
               }}>
-                Perguntas — Guia
+                📜 Estudo Exegético
               </div>
               <p style={{
                 fontSize: 13, color: tc ? "#6b6560" : "#a09078",
-                marginBottom: 16, lineHeight: 1.6, transition: "color .3s",
+                marginBottom: 14, lineHeight: 1.6,
               }}>
-                Escreva as respostas em um caderno para meditar e orar profundamente a partir do que extraiu das escrituras.
+                Envie um versículo e receba uma análise palavra por palavra com o significado original em grego/hebraico.
               </p>
-              {GUIDE_QUESTIONS.map(gq => (
-                <div key={gq.n} style={{ display: "flex", gap: 14, marginBottom: 14 }}>
-                  <div style={{
-                    width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
-                    background: tc
-                      ? "linear-gradient(135deg,rgba(139,111,78,.2),rgba(139,111,78,.1))"
-                      : "linear-gradient(135deg,rgba(200,170,100,.3),rgba(180,140,80,.15))",
-                    border: `1px solid ${tc ? "rgba(139,111,78,.25)" : "rgba(200,170,100,.3)"}`,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: 13, fontWeight: 700, color: tc ? "#8b6f4e" : "#C8A55C",
-                    transition: "all .3s",
-                  }}>{gq.n}</div>
-                  <div>
-                    <div style={{
-                      fontSize: 14, fontWeight: 600,
-                      color: tc ? "#1a1714" : "#d4c4a8",
-                      marginBottom: 3, transition: "color .3s",
-                    }}>{gq.q}</div>
-                    <div style={{
-                      fontSize: 12.5, color: tc ? "#6b6560" : "#8a7a60",
-                      lineHeight: 1.5, transition: "color .3s",
-                    }}>{gq.detail}</div>
+
+              <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                <input
+                  type="text"
+                  value={exegeseVerse}
+                  onChange={e => setExegeseVerse(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter") handleExegese(); }}
+                  placeholder="Ex: João 3:16, Rm 8:28"
+                  style={{
+                    flex: 1, padding: "12px 16px", borderRadius: 10,
+                    border: `1px solid ${tc ? "rgba(0,0,0,.1)" : "rgba(200,170,100,.2)"}`,
+                    background: tc ? "#fff" : "rgba(200,170,100,.06)",
+                    color: tc ? "#1a1714" : "#e8d8b8",
+                    fontFamily: "'Cormorant Garamond', serif",
+                    fontSize: 17, outline: "none",
+                    transition: "border-color .2s, background .3s, color .3s",
+                  }}
+                />
+                <button
+                  onClick={handleExegese}
+                  disabled={!exegeseVerse.trim() || exegeseLoading}
+                  style={{
+                    padding: "12px 20px", borderRadius: 10,
+                    background: tc ? "rgba(139,111,78,.1)" : "rgba(200,170,100,.12)",
+                    border: `1px solid ${tc ? "#8b6f4e" : "#C8A55C"}`,
+                    color: tc ? "#8b6f4e" : "#C8A55C",
+                    fontFamily: "'Cinzel', serif", fontSize: 10, letterSpacing: 1,
+                    cursor: "pointer", flexShrink: 0,
+                    opacity: (!exegeseVerse.trim() || exegeseLoading) ? 0.5 : 1,
+                    transition: "all .2s",
+                  }}
+                >
+                  {exegeseLoading ? "⏳" : "Estudar"}
+                </button>
+              </div>
+
+              {exegeseError && (
+                <p style={{ fontSize: 13, color: "#c26b5a", fontStyle: "italic", marginBottom: 8 }}>
+                  {exegeseError}
+                </p>
+              )}
+
+              {exegeseResult && (
+                <div style={{
+                  background: tc ? "rgba(139,111,78,.03)" : "rgba(200,170,100,.04)",
+                  border: `1px solid ${tc ? "rgba(139,111,78,.1)" : "rgba(200,170,100,.1)"}`,
+                  borderLeft: `3px solid ${tc ? "#8b6f4e" : "#C8A55C"}`,
+                  borderRadius: "0 12px 12px 0",
+                  padding: "18px 18px", marginTop: 8,
+                }}>
+                  <div
+                    style={{
+                      fontSize: 14, lineHeight: 2,
+                      color: tc ? "#4a4540" : "#c4b498",
+                    }}
+                    dangerouslySetInnerHTML={{
+                      __html: exegeseResult.content
+                        .split("\n")
+                        .map(line => {
+                          if (line.startsWith("## ")) return `<h3 style="font-family:'Cinzel',serif;font-size:16px;color:${tc ? "#8b6f4e" : "#C8A55C"};margin:20px 0 8px;font-weight:500;">${line.slice(3)}</h3>`;
+                          if (line.startsWith("- ")) {
+                            const content = line.slice(2)
+                              .replace(/\*\*\"(.+?)\"\*\*/g, `<strong style="color:${tc ? "#1a1714" : "#e8d8b8"};">"$1"</strong>`)
+                              .replace(/\*\*(.+?)\*\*/g, `<strong style="color:${tc ? "#1a1714" : "#e8d8b8"};">$1</strong>`)
+                              .replace(/\*(.+?)\*/g, `<em style="color:${tc ? "#8b6f4e" : "#C8A55C"};">$1</em>`);
+                            return `<div style="display:flex;gap:8px;margin:4px 0;"><span style="color:${tc ? "#8b6f4e" : "#C8A55C"};flex-shrink:0;">•</span><span>${content}</span></div>`;
+                          }
+                          if (!line.trim()) return "<br/>";
+                          const content = line
+                            .replace(/\*\*\"(.+?)\"\*\*/g, `<strong style="color:${tc ? "#1a1714" : "#e8d8b8"};">"$1"</strong>`)
+                            .replace(/\*\*(.+?)\*\*/g, `<strong style="color:${tc ? "#1a1714" : "#e8d8b8"};">$1</strong>`)
+                            .replace(/\*(.+?)\*/g, `<em style="color:${tc ? "#8b6f4e" : "#C8A55C"};">$1</em>`);
+                          return `<p style="margin:3px 0;">${content}</p>`;
+                        })
+                        .join("")
+                    }}
+                  />
+                  {/* Save to notes button */}
+                  <div style={{ marginTop: 16, display: "flex", gap: 8 }}>
+                    <button
+                      onClick={() => {
+                        const noteText = `# Exegese: ${exegeseResult.verse}\n\n${exegeseResult.content}`;
+                        const notes = JSON.parse(localStorage.getItem("bible-notes-2026") || "[]");
+                        const now = new Date().toISOString();
+                        notes.unshift({
+                          id: Date.now(),
+                          categoria: "devocionais",
+                          semana: "",
+                          texto: noteText,
+                          criadoEm: now,
+                          atualizadoEm: now,
+                        });
+                        localStorage.setItem("bible-notes-2026", JSON.stringify(notes));
+                        setSaved(true);
+                        setTimeout(() => setSaved(false), 2000);
+                      }}
+                      style={{
+                        flex: 1, padding: "11px", borderRadius: 10,
+                        background: tc ? "rgba(139,111,78,.1)" : "rgba(200,170,100,.12)",
+                        border: `1px solid ${tc ? "#8b6f4e" : "#C8A55C"}`,
+                        color: tc ? "#8b6f4e" : "#C8A55C",
+                        fontFamily: "'Cinzel', serif", fontSize: 9, letterSpacing: 1,
+                        textTransform: "uppercase", cursor: "pointer",
+                      }}
+                    >
+                      🔥 Salvar em Devocionais
+                    </button>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(exegeseResult.content);
+                        setSaved(true);
+                        setTimeout(() => setSaved(false), 2000);
+                      }}
+                      style={{
+                        padding: "11px 16px", borderRadius: 10,
+                        border: `1px solid ${tc ? "rgba(0,0,0,.08)" : "rgba(200,170,100,.1)"}`,
+                        background: "transparent",
+                        color: tc ? "#6b6560" : "#8a7d65",
+                        fontFamily: "'Cinzel', serif", fontSize: 9, letterSpacing: 1,
+                        textTransform: "uppercase", cursor: "pointer",
+                      }}
+                    >
+                      Copiar
+                    </button>
                   </div>
                 </div>
-              ))}
+              )}
             </div>
 
             {/* Devotional weeks */}
