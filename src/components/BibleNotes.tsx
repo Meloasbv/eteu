@@ -564,6 +564,7 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
                   <button className="notes-vr-btn primary" onClick={() => {
                     if (editingNote) {
                       handleTextChange(aiResult.content);
+                      setPreviewMode(true);
                     }
                     setAiResult(null);
                     showToast("Nota reorganizada!");
