@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type Section = "proclamadores" | "aulas";
@@ -7,9 +7,9 @@ type Note = {
   id: string;
   title: string;
   reference: string;
-  references: string[]; // multiple verse references
+  references: string[];
   body: string;
-  week: number; // 1–18
+  week: number;
   section: Section;
   createdAt: string;
   updatedAt: string;
@@ -26,11 +26,9 @@ const WEEK_LABELS: Record<number, string> = {
   17: "16/05–22/05", 18: "23/05–29/05",
 };
 
-const ACCENT = ["#C8A55C","#6B8E6B","#4A7C8C","#a855f7","#C8553D","#6B5B8A","#E88D67","#c8b820"];
-
-const SECTIONS: { key: Section; label: string; icon: string; description: string; color: string }[] = [
-  { key: "proclamadores", label: "Track Proclamadores", icon: "📢", description: "Anotações do track de proclamadores", color: "#C8A55C" },
-  { key: "aulas", label: "Aulas", icon: "📚", description: "Anotações das aulas semanais", color: "#4A7C8C" },
+const SECTIONS: { key: Section; label: string; icon: string }[] = [
+  { key: "proclamadores", label: "Track Proclamadores", icon: "📢" },
+  { key: "aulas", label: "Aulas", icon: "📚" },
 ];
 
 const BIBLE_BOOKS = [
@@ -47,29 +45,42 @@ const BIBLE_BOOKS = [
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function fmtDate(iso: string) {
-  const d = new Date(iso);
-  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
+  return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
 }
-function fmtTime(iso: string) {
-  const d = new Date(iso);
-  return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+function preview(text: string, len = 50) {
+  const stripped = text.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ");
+  if (!stripped.trim()) return "Sem conteúdo";
+  return stripped.length > len ? stripped.slice(0, len) + "…" : stripped;
 }
-function preview(text: string, len = 60) {
-  if (!text) return "Sem conteúdo";
-  return text.length > len ? text.slice(0, len) + "…" : text;
+
+// ── Bible API fetch ──────────────────────────────────────────────────────────
+async function fetchVerse(ref: string, version = "arc"): Promise<{ text: string; reference: string } | null> {
+  try {
+    // Use bible-api.com which supports pt
+    const url = `https://bible-api.com/${encodeURIComponent(ref)}?translation=${version}`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.text) return { text: data.text.trim(), reference: data.reference || ref };
+  } catch {}
+  return null;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function BibleNotes() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [activeSection, setActiveSection] = useState<Section | null>(null);
-  const [search, setSearch] = useState("");
-  const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
-  const [editing, setEditing] = useState<Note | null>(null);
+  const [selectedNote, setSelectedNote] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [collapsedWeeks, setCollapsedWeeks] = useState<Record<number, boolean>>({});
-  const [refInput, setRefInput] = useState("");
-  const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const [showSidebar, setShowSidebar] = useState(true);
+  const [verseOpen, setVerseOpen] = useState(false);
+  const [verseQuery, setVerseQuery] = useState("");
+  const [verseResult, setVerseResult] = useState<{ text: string; reference: string } | null>(null);
+  const [verseLoading, setVerseLoading] = useState(false);
+  const [verseError, setVerseError] = useState(false);
+  const [toast, setToast] = useState("");
+  const editorRef = useRef<HTMLDivElement>(null);
+  const titleRef = useRef<HTMLInputElement>(null);
 
   // Load
   useEffect(() => {
@@ -90,387 +101,177 @@ export default function BibleNotes() {
     } catch {}
   }, []);
 
-  const persist = (updated: Note[]) => {
+  const persist = useCallback((updated: Note[]) => {
     setNotes(updated);
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(updated)); } catch {}
-  };
+  }, []);
 
-  // ── Editor actions ──────────────────────────────────────────────────────────
-  const openNew = (week?: number) => {
+  const showToast = useCallback((msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(""), 2000);
+  }, []);
+
+  const currentNote = useMemo(() => notes.find(n => n.id === selectedNote) ?? null, [notes, selectedNote]);
+
+  // Filter notes for sidebar
+  const sidebarNotes = useMemo(() => {
+    if (!activeSection) return notes;
+    return notes.filter(n => n.section === activeSection);
+  }, [notes, activeSection]);
+
+  // Group sidebar notes by week
+  const groupedSidebar = useMemo(() => {
+    const map: Record<number, Note[]> = {};
+    sidebarNotes.forEach(n => {
+      if (!map[n.week]) map[n.week] = [];
+      map[n.week].push(n);
+    });
+    // Sort within each week
+    Object.values(map).forEach(arr => arr.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()));
+    return map;
+  }, [sidebarNotes]);
+
+  const weekKeys = Object.keys(groupedSidebar).map(Number).sort((a, b) => a - b);
+
+  // ── Note operations ────────────────────────────────────────────────────────
+  const createNote = useCallback((week?: number) => {
     const now = new Date().toISOString();
-    setEditing({
+    const note: Note = {
       id: `n-${Date.now()}`,
       title: "",
       reference: "",
       references: [],
       body: "",
-      week: week ?? selectedWeek ?? 1,
+      week: week ?? 1,
       section: activeSection ?? "aulas",
       createdAt: now,
       updatedAt: now,
-    });
-    setTimeout(() => bodyRef.current?.focus(), 100);
-  };
-
-  const saveNote = () => {
-    if (!editing) return;
-    const now = new Date().toISOString();
-    const note = { ...editing, updatedAt: now };
-    if (!note.title.trim() && note.body.trim()) {
-      note.title = note.body.split("\n")[0].slice(0, 50);
-    }
-    if (!note.title.trim() && !note.body.trim()) {
-      setEditing(null);
-      return;
-    }
-    const exists = notes.find(n => n.id === note.id);
-    const updated = exists
-      ? notes.map(n => n.id === note.id ? note : n)
-      : [note, ...notes];
+    };
+    const updated = [note, ...notes];
     persist(updated);
-    setEditing(null);
-  };
+    setSelectedNote(note.id);
+    setTimeout(() => titleRef.current?.focus(), 100);
+  }, [notes, activeSection, persist]);
 
-  const removeNote = (id: string) => {
+  const updateNote = useCallback((id: string, changes: Partial<Note>) => {
+    const updated = notes.map(n => n.id === id ? { ...n, ...changes, updatedAt: new Date().toISOString() } : n);
+    persist(updated);
+  }, [notes, persist]);
+
+  const removeNote = useCallback((id: string) => {
     persist(notes.filter(n => n.id !== id));
     setDeleteId(null);
-    if (editing?.id === id) setEditing(null);
-  };
+    if (selectedNote === id) setSelectedNote(null);
+    showToast("Nota removida");
+  }, [notes, selectedNote, persist, showToast]);
 
-  // ── Filtered & grouped ─────────────────────────────────────────────────────
-  const sectionNotes = useMemo(() =>
-    activeSection ? notes.filter(n => n.section === activeSection) : notes
-  , [notes, activeSection]);
+  // ── Editor commands ────────────────────────────────────────────────────────
+  const exec = useCallback((cmd: string, val?: string) => {
+    document.execCommand(cmd, false, val);
+    editorRef.current?.focus();
+  }, []);
 
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase();
-    return sectionNotes
-      .filter(n => !q || n.title.toLowerCase().includes(q) || n.body.toLowerCase().includes(q) || n.reference.toLowerCase().includes(q) || n.references?.some(r => r.toLowerCase().includes(q)))
-      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-  }, [sectionNotes, search]);
+  const setBlock = useCallback((tag: string) => {
+    if (tag === "blockquote") {
+      exec("formatBlock", "blockquote");
+    } else {
+      exec("formatBlock", tag);
+    }
+  }, [exec]);
 
-  const grouped = useMemo(() => {
-    const map: Record<number, Note[]> = {};
-    const list = selectedWeek ? filtered.filter(n => n.week === selectedWeek) : filtered;
-    list.forEach(n => {
-      if (!map[n.week]) map[n.week] = [];
-      map[n.week].push(n);
-    });
-    return map;
-  }, [filtered, selectedWeek]);
+  const setFontSize = useCallback((size: string) => {
+    exec("fontSize", size);
+  }, [exec]);
 
-  const weekKeys = Object.keys(grouped).map(Number).sort((a, b) => a - b);
-  const totalCount = filtered.length;
+  // ── Verse lookup ───────────────────────────────────────────────────────────
+  const doFetchVerse = useCallback(async () => {
+    if (!verseQuery.trim()) return;
+    setVerseLoading(true);
+    setVerseError(false);
+    setVerseResult(null);
+    const result = await fetchVerse(verseQuery.trim());
+    setVerseLoading(false);
+    if (result) {
+      setVerseResult(result);
+    } else {
+      setVerseError(true);
+    }
+  }, [verseQuery]);
 
-  const toggleCollapse = (w: number) =>
-    setCollapsedWeeks(p => ({ ...p, [w]: !p[w] }));
+  const insertVerseInEditor = useCallback(() => {
+    if (!verseResult || !editorRef.current) return;
+    const html = `<div class="verse-card-inline" contenteditable="false" style="background:linear-gradient(135deg,#221c10,#2a2215);border:1px solid #7a6230;border-left:3px solid #c9a84c;border-radius:8px;padding:14px 18px;margin:10px 0"><span style="font-size:11px;letter-spacing:2px;color:#c9a84c;text-transform:uppercase;display:block;margin-bottom:6px">${verseResult.reference}</span><span style="font-style:italic;color:#e8dfc4;line-height:1.7">${verseResult.text}</span></div><p><br></p>`;
+    editorRef.current.focus();
+    exec("insertHTML", html);
+    // Also add to references
+    if (currentNote && !currentNote.references.includes(verseResult.reference)) {
+      updateNote(currentNote.id, { references: [...currentNote.references, verseResult.reference] });
+    }
+    showToast("Versículo inserido");
+  }, [verseResult, exec, currentNote, updateNote, showToast]);
 
-  const inputStyle: React.CSSProperties = {
-    width: "100%", padding: "10px 12px", borderRadius: 10,
-    border: "1px solid rgba(200,180,140,.15)",
-    background: "rgba(255,255,255,.04)", color: "#e8d8b8",
-    fontSize: 14, fontFamily: "inherit", outline: "none",
-  };
+  const copyVerse = useCallback(() => {
+    if (!verseResult) return;
+    navigator.clipboard.writeText(`${verseResult.reference}\n${verseResult.text}`);
+    showToast("Copiado!");
+  }, [verseResult, showToast]);
 
-  const currentSectionMeta = SECTIONS.find(s => s.key === activeSection);
+  // ── Save editor content on blur ────────────────────────────────────────────
+  const handleEditorBlur = useCallback(() => {
+    if (currentNote && editorRef.current) {
+      updateNote(currentNote.id, { body: editorRef.current.innerHTML });
+    }
+  }, [currentNote, updateNote]);
 
-  // ── Full-screen editor ─────────────────────────────────────────────────────
-  if (editing) {
-    return (
-      <div style={{ padding: "0 0 40px", minHeight: "70vh" }}>
-        {/* Top bar */}
-        <div style={{
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "16px 16px 12px",
-          borderBottom: "1px solid rgba(200,180,140,.08)",
-        }}>
-          <button onClick={saveNote} style={{
-            padding: "7px 16px", borderRadius: 10,
-            border: "1px solid rgba(200,170,100,.3)",
-            background: "rgba(200,170,100,.08)", color: "#C8A55C",
-            fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
-          }}>
-            ‹ Voltar
-          </button>
-          <div style={{ display: "flex", gap: 8 }}>
-            {notes.find(n => n.id === editing.id) && (
-              <button onClick={() => setDeleteId(editing.id)} style={{
-                padding: "7px 12px", borderRadius: 10,
-                border: "1px solid rgba(200,80,60,.2)", background: "rgba(200,80,60,.06)",
-                color: "#C8553D", fontSize: 12, cursor: "pointer", fontFamily: "inherit",
-              }}>🗑️</button>
-            )}
-            <button onClick={saveNote} style={{
-              padding: "7px 16px", borderRadius: 10,
-              border: "1px solid rgba(107,142,107,.4)",
-              background: "rgba(107,142,107,.12)", color: "#6B8E6B",
-              fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
-            }}>
-              Salvar ✓
-            </button>
-          </div>
-        </div>
-
-        {/* Meta row */}
-        <div style={{ padding: "16px 20px 0", display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-          {/* Section selector */}
-          <select
-            value={editing.section}
-            onChange={e => setEditing({ ...editing, section: e.target.value as Section })}
-            style={{
-              padding: "6px 10px", borderRadius: 8,
-              border: "1px solid rgba(200,180,140,.2)",
-              background: "rgba(200,180,140,.06)", color: "#C8A55C",
-              fontSize: 12, fontFamily: "inherit", outline: "none",
-              cursor: "pointer",
-            }}>
-            {SECTIONS.map(s => (
-              <option key={s.key} value={s.key} style={{ background: "#1e1a14", color: "#e8d8b8" }}>
-                {s.icon} {s.label}
-              </option>
-            ))}
-          </select>
-
-          {/* Week selector */}
-          <select
-            value={editing.week}
-            onChange={e => setEditing({ ...editing, week: Number(e.target.value) })}
-            style={{
-              padding: "6px 10px", borderRadius: 8,
-              border: "1px solid rgba(200,180,140,.2)",
-              background: "rgba(200,180,140,.06)", color: "#C8A55C",
-              fontSize: 12, fontFamily: "inherit", outline: "none",
-              cursor: "pointer",
-            }}>
-            {WEEKS.map(w => (
-              <option key={w} value={w} style={{ background: "#1e1a14", color: "#e8d8b8" }}>
-                Sem. {w} — {WEEK_LABELS[w]}
-              </option>
-            ))}
-          </select>
-
-          {/* Reference (legacy single) */}
-          <input
-            value={editing.reference}
-            onChange={e => setEditing({ ...editing, reference: e.target.value })}
-            placeholder="📖 Referência (ex: Gn 1–3)"
-            style={{
-              ...inputStyle, width: "auto", flex: 1, minWidth: 140,
-              padding: "6px 10px", fontSize: 12,
-            }}
-          />
-        </div>
-
-        {/* ── References section (Aulas only) ── */}
-        {editing.section === "aulas" && (
-          <div style={{ padding: "14px 20px 0" }}>
-            <div style={{
-              background: "rgba(74,124,140,.06)", border: "1px solid rgba(74,124,140,.15)",
-              borderRadius: 14, padding: "14px 16px",
-            }}>
-              <div style={{
-                fontSize: 11, letterSpacing: 2, textTransform: "uppercase",
-                color: "#4A7C8C", fontWeight: 700, marginBottom: 10,
-                display: "flex", alignItems: "center", gap: 6,
-              }}>
-                📖 Versículos de Referência
-              </div>
-
-              {/* Existing references as tags */}
-              {editing.references.length > 0 && (
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
-                  {editing.references.map((ref, i) => (
-                    <span key={i} style={{
-                      display: "inline-flex", alignItems: "center", gap: 6,
-                      padding: "5px 10px", borderRadius: 8,
-                      background: "rgba(74,124,140,.12)", border: "1px solid rgba(74,124,140,.25)",
-                      color: "#b8d4dc", fontSize: 12, fontWeight: 600,
-                    }}>
-                      {ref}
-                      <button onClick={() => {
-                        setEditing({ ...editing, references: editing.references.filter((_, idx) => idx !== i) });
-                      }} style={{
-                        background: "none", border: "none", color: "#7a9aa8",
-                        cursor: "pointer", fontSize: 14, padding: 0, lineHeight: 1,
-                      }}>×</button>
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              {/* Search input with suggestions */}
-              <div style={{ position: "relative" }}>
-                <input
-                  value={refInput}
-                  onChange={e => setRefInput(e.target.value)}
-                  onKeyDown={e => {
-                    if (e.key === "Enter" && refInput.trim()) {
-                      e.preventDefault();
-                      if (!editing.references.includes(refInput.trim())) {
-                        setEditing({ ...editing, references: [...editing.references, refInput.trim()] });
-                      }
-                      setRefInput("");
-                    }
-                  }}
-                  placeholder="Buscar livro ou digitar referência (ex: Gênesis 1:1)"
-                  style={{
-                    ...inputStyle,
-                    paddingLeft: 32, fontSize: 13,
-                    background: "rgba(255,255,255,.03)",
-                    border: "1px solid rgba(74,124,140,.2)",
-                  }}
-                />
-                <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", fontSize: 13, color: "#5a7a88" }}>🔍</span>
-              </div>
-
-              {/* Suggestions dropdown */}
-              {refInput.trim().length >= 2 && (() => {
-                const q = refInput.toLowerCase();
-                const matches = BIBLE_BOOKS.filter(b => b.toLowerCase().includes(q)).slice(0, 6);
-                if (matches.length === 0) return null;
-                return (
-                  <div style={{
-                    marginTop: 6, borderRadius: 10,
-                    background: "rgba(30,26,20,.95)", border: "1px solid rgba(74,124,140,.2)",
-                    overflow: "hidden",
-                  }}>
-                    {matches.map(book => (
-                      <button key={book} onClick={() => {
-                        setRefInput(book + " ");
-                      }} style={{
-                        display: "block", width: "100%", textAlign: "left",
-                        padding: "9px 14px", background: "transparent",
-                        border: "none", borderBottom: "1px solid rgba(200,180,140,.05)",
-                        color: "#d4c4a8", fontSize: 13, cursor: "pointer",
-                        fontFamily: "inherit",
-                      }}
-                        onMouseEnter={e => (e.currentTarget.style.background = "rgba(74,124,140,.1)")}
-                        onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
-                      >
-                        📖 {book}
-                      </button>
-                    ))}
-                  </div>
-                );
-              })()}
-
-              <div style={{ fontSize: 11, color: "#5a7a88", marginTop: 8 }}>
-                Digite e pressione Enter para adicionar. Ex: "Gênesis 1:1-3", "Salmos 23"
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Title */}
-        <div style={{ padding: "16px 20px 0" }}>
-          <input
-            value={editing.title}
-            onChange={e => setEditing({ ...editing, title: e.target.value })}
-            placeholder="Título da anotação"
-            style={{
-              width: "100%", border: "none", outline: "none",
-              background: "transparent", color: "#e8d8b8",
-              fontSize: 22, fontWeight: 700, fontFamily: "inherit",
-              padding: 0,
-            }}
-          />
-        </div>
-
-        {/* Date info */}
-        <div style={{ padding: "6px 20px 0", fontSize: 11, color: "#5a4a38" }}>
-          {fmtDate(editing.updatedAt)} às {fmtTime(editing.updatedAt)}
-        </div>
-
-        {/* Body */}
-        <div style={{ padding: "12px 20px 0" }}>
-          <textarea
-            ref={bodyRef}
-            value={editing.body}
-            onChange={e => setEditing({ ...editing, body: e.target.value })}
-            placeholder="Comece a escrever suas anotações, reflexões, resumos de aula…"
-            style={{
-              width: "100%", border: "none", outline: "none",
-              background: "transparent", color: "#d4c4a8",
-              fontSize: 15, fontFamily: "inherit", lineHeight: 1.75,
-              resize: "none", minHeight: "40vh", padding: 0,
-            }}
-          />
-        </div>
-      </div>
-    );
-  }
-
-  // ── Folders view (no section selected) ────────────────────────────────────
+  // ── Section selector (no section active) ──────────────────────────────────
   if (!activeSection) {
     return (
       <div style={{ padding: "24px 16px 40px" }}>
-        {/* Header */}
         <div style={{ marginBottom: 28 }}>
           <div style={{ fontSize: 11, letterSpacing: 3, textTransform: "uppercase", color: "#8a7a60", fontWeight: 600, marginBottom: 4 }}>
             Caderno de Estudo
           </div>
-          <div style={{ fontSize: 22, fontWeight: 600, color: "#e8d8b8" }}>
-            Anotações
-          </div>
+          <div style={{ fontSize: 22, fontWeight: 600, color: "#e8d8b8" }}>Anotações</div>
           {notes.length > 0 && (
             <div style={{ fontSize: 12, color: "#6a5a48", marginTop: 3 }}>
               {notes.length} {notes.length === 1 ? "nota" : "notas"} no total
             </div>
           )}
         </div>
-
-        {/* Section folders */}
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {SECTIONS.map(s => {
             const count = notes.filter(n => n.section === s.key).length;
             return (
-              <div
-                key={s.key}
-                onClick={() => { setActiveSection(s.key); setSearch(""); setSelectedWeek(null); }}
+              <div key={s.key}
+                onClick={() => { setActiveSection(s.key); setSelectedNote(null); }}
                 style={{
                   display: "flex", alignItems: "center", gap: 16,
                   padding: "20px 18px", borderRadius: 16, cursor: "pointer",
                   background: "rgba(255,255,255,.025)",
-                  border: `1px solid ${s.color}25`,
-                  transition: "all .2s ease",
-                  position: "relative", overflow: "hidden",
+                  border: "1px solid rgba(200,180,140,.08)",
+                  transition: "all .2s", position: "relative", overflow: "hidden",
                 }}
                 onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,.05)")}
                 onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,.025)")}
               >
-                {/* Accent top line */}
                 <div style={{
                   position: "absolute", top: 0, left: 0, right: 0, height: 3,
-                  background: `linear-gradient(90deg,${s.color},transparent)`, opacity: 0.5,
-                  borderRadius: "16px 16px 0 0",
+                  background: "linear-gradient(90deg,#c9a84c,transparent)", opacity: 0.4,
                 }} />
-
-                {/* Icon */}
                 <div style={{
                   width: 52, height: 52, borderRadius: 14, flexShrink: 0,
-                  background: s.color + "18",
-                  border: `1px solid ${s.color}30`,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 26,
+                  background: "rgba(200,170,100,.1)", border: "1px solid rgba(200,170,100,.2)",
+                  display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26,
                 }}>
                   {s.icon}
                 </div>
-
-                {/* Text */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 17, fontWeight: 600, color: "#e8d8b8" }}>
-                    {s.label}
-                  </div>
-                  <div style={{ fontSize: 12, color: "#7a6a58", marginTop: 3 }}>
-                    {s.description}
-                  </div>
-                  <div style={{ fontSize: 12, color: s.color, marginTop: 4, fontWeight: 600 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 17, fontWeight: 600, color: "#e8d8b8" }}>{s.label}</div>
+                  <div style={{ fontSize: 12, color: "#c9a84c", marginTop: 4, fontWeight: 600 }}>
                     {count} {count === 1 ? "nota" : "notas"}
                   </div>
                 </div>
-
-                {/* Chevron */}
-                <span style={{ fontSize: 20, color: "#5a4a38", flexShrink: 0 }}>›</span>
+                <span style={{ fontSize: 20, color: "#5a4a38" }}>›</span>
               </div>
             );
           })}
@@ -479,242 +280,538 @@ export default function BibleNotes() {
     );
   }
 
-  // ── Notes list view (inside a section) ────────────────────────────────────
+  // ── Main notes UI with sidebar + editor ───────────────────────────────────
+  const sectionMeta = SECTIONS.find(s => s.key === activeSection)!;
+
   return (
-    <div style={{ padding: "24px 16px 40px" }}>
-      {/* Header with back */}
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
-        <div>
-          <button onClick={() => { setActiveSection(null); setSearch(""); setSelectedWeek(null); }} style={{
-            padding: "5px 12px", borderRadius: 8, marginBottom: 10,
-            border: "1px solid rgba(200,170,100,.3)",
-            background: "rgba(200,170,100,.06)", color: "#C8A55C",
-            fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
-            display: "flex", alignItems: "center", gap: 4,
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "70vh" }}>
+      {/* Back + Section tabs */}
+      <div style={{
+        display: "flex", alignItems: "center", gap: 8,
+        padding: "12px 16px",
+        borderBottom: "1px solid rgba(200,180,140,.1)",
+      }}>
+        <button onClick={() => { setActiveSection(null); setSelectedNote(null); }} style={{
+          padding: "6px 12px", borderRadius: 8,
+          border: "1px solid rgba(200,170,100,.3)",
+          background: "rgba(200,170,100,.06)", color: "#c9a84c",
+          fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
+        }}>
+          ‹ Seções
+        </button>
+        <div style={{ display: "flex", gap: 6 }}>
+          {SECTIONS.map(s => (
+            <button key={s.key} onClick={() => { setActiveSection(s.key); setSelectedNote(null); }} style={{
+              padding: "6px 14px", borderRadius: 16,
+              border: `1px solid ${activeSection === s.key ? "rgba(200,170,100,.5)" : "transparent"}`,
+              background: activeSection === s.key ? "rgba(200,170,100,.15)" : "transparent",
+              color: activeSection === s.key ? "#e8c97a" : "#8a7d5e",
+              fontSize: 13, cursor: "pointer", fontFamily: "inherit",
+            }}>
+              {s.icon} {s.label}
+            </button>
+          ))}
+        </div>
+        {/* Mobile sidebar toggle */}
+        <button onClick={() => setShowSidebar(!showSidebar)} style={{
+          marginLeft: "auto", padding: "6px 10px", borderRadius: 8,
+          border: "1px solid rgba(200,180,140,.15)", background: "rgba(200,180,140,.04)",
+          color: "#8a7d5e", fontSize: 14, cursor: "pointer", display: "none",
+        }}
+          className="sidebar-toggle"
+        >
+          ☰
+        </button>
+      </div>
+
+      <div style={{ display: "flex", flex: 1, gap: 0 }}>
+        {/* ── SIDEBAR ── */}
+        {showSidebar && (
+          <div style={{
+            width: 260, flexShrink: 0,
+            borderRight: "1px solid rgba(200,180,140,.12)",
+            padding: "16px 0",
+            display: "flex", flexDirection: "column",
+            overflowY: "auto", maxHeight: "65vh",
           }}>
-            ‹ Seções
-          </button>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 24 }}>{currentSectionMeta?.icon}</span>
-            <div>
-              <div style={{ fontSize: 20, fontWeight: 600, color: "#e8d8b8" }}>
-                {currentSectionMeta?.label}
+            <div style={{
+              padding: "0 16px 12px",
+              fontSize: 10, letterSpacing: 3, color: "#7a6230",
+              textTransform: "uppercase", fontWeight: 600,
+              borderBottom: "1px solid rgba(200,180,140,.1)",
+              marginBottom: 6,
+            }}>
+              Minhas notas
+            </div>
+
+            {/* Notes list by week */}
+            {weekKeys.length === 0 ? (
+              <div style={{ padding: "20px 16px", textAlign: "center", color: "#5a4a38", fontSize: 13 }}>
+                Nenhuma nota ainda
               </div>
-              {totalCount > 0 && (
-                <div style={{ fontSize: 12, color: "#6a5a48", marginTop: 2 }}>
-                  {totalCount} {totalCount === 1 ? "nota" : "notas"}
+            ) : (
+              weekKeys.map(w => (
+                <div key={w}>
+                  <div style={{
+                    padding: "8px 16px 4px", fontSize: 10, letterSpacing: 2,
+                    color: "#7a6230", textTransform: "uppercase", fontWeight: 600,
+                  }}>
+                    Sem. {w} — {WEEK_LABELS[w]}
+                  </div>
+                  {groupedSidebar[w].map(note => (
+                    <div key={note.id}
+                      onClick={() => {
+                        setSelectedNote(note.id);
+                        // Load content into editor after render
+                        setTimeout(() => {
+                          if (editorRef.current) editorRef.current.innerHTML = note.body || "";
+                        }, 50);
+                      }}
+                      style={{
+                        margin: "0 10px", padding: "10px 12px",
+                        borderRadius: 8, cursor: "pointer",
+                        border: `1px solid ${selectedNote === note.id ? "#7a6230" : "transparent"}`,
+                        background: selectedNote === note.id ? "rgba(42,34,21,.8)" : "transparent",
+                        transition: "all .15s",
+                      }}
+                      onMouseEnter={e => { if (selectedNote !== note.id) e.currentTarget.style.background = "rgba(34,28,16,.6)"; }}
+                      onMouseLeave={e => { if (selectedNote !== note.id) e.currentTarget.style.background = "transparent"; }}
+                    >
+                      <div style={{
+                        fontSize: 13, color: "#e8c97a", fontWeight: 500,
+                        whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                      }}>
+                        {note.title || "Sem título"}
+                      </div>
+                      <div style={{ fontSize: 11, color: "#8a7d5e", marginTop: 2 }}>
+                        {preview(note.body, 35)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ))
+            )}
+
+            <button onClick={() => createNote()} style={{
+              margin: "12px 10px 0", padding: "9px 14px",
+              background: "rgba(201,168,76,.1)", border: "1px dashed #7a6230",
+              borderRadius: 8, color: "#c9a84c", fontSize: 13,
+              cursor: "pointer", fontFamily: "inherit", textAlign: "center",
+            }}>
+              ＋ Nova anotação
+            </button>
+          </div>
+        )}
+
+        {/* ── EDITOR AREA ── */}
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "20px 24px", minWidth: 0 }}>
+          {!currentNote ? (
+            <div style={{
+              flex: 1, display: "flex", flexDirection: "column",
+              alignItems: "center", justifyContent: "center", color: "#5a4a38",
+            }}>
+              <div style={{ fontSize: 48, marginBottom: 16 }}>📝</div>
+              <div style={{ fontSize: 16, fontWeight: 600, color: "#8a7d5e", marginBottom: 8 }}>
+                Selecione ou crie uma nota
+              </div>
+              <button onClick={() => createNote()} style={{
+                padding: "10px 24px", borderRadius: 12,
+                border: "1px solid rgba(200,170,100,.3)",
+                background: "rgba(200,170,100,.08)", color: "#c9a84c",
+                fontSize: 14, cursor: "pointer", fontFamily: "inherit", fontWeight: 600,
+              }}>
+                ✏️ Criar nota
+              </button>
+            </div>
+          ) : (
+            <>
+              {/* Title input */}
+              <input
+                ref={titleRef}
+                value={currentNote.title}
+                onChange={e => updateNote(currentNote.id, { title: e.target.value })}
+                placeholder="Título da anotação"
+                style={{
+                  background: "transparent", border: "none",
+                  borderBottom: "1px solid rgba(200,180,140,.15)",
+                  color: "#e8c97a", fontSize: 22, fontWeight: 400,
+                  padding: "0 0 10px", width: "100%", outline: "none",
+                  fontFamily: "inherit", letterSpacing: 0.5,
+                }}
+              />
+
+              {/* Meta row */}
+              <div style={{
+                display: "flex", alignItems: "center", gap: 10,
+                marginTop: 8, marginBottom: 14, flexWrap: "wrap",
+              }}>
+                <select
+                  value={currentNote.section}
+                  onChange={e => updateNote(currentNote.id, { section: e.target.value as Section })}
+                  style={{
+                    background: "rgba(34,28,16,.8)", border: "1px solid rgba(200,180,140,.15)",
+                    borderRadius: 6, color: "#8a7d5e", fontSize: 12,
+                    padding: "5px 10px", fontFamily: "inherit", outline: "none",
+                  }}
+                >
+                  {SECTIONS.map(s => (
+                    <option key={s.key} value={s.key} style={{ background: "#1a160d" }}>
+                      {s.icon} {s.label}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={currentNote.week}
+                  onChange={e => updateNote(currentNote.id, { week: Number(e.target.value) })}
+                  style={{
+                    background: "rgba(34,28,16,.8)", border: "1px solid rgba(200,180,140,.15)",
+                    borderRadius: 6, color: "#8a7d5e", fontSize: 12,
+                    padding: "5px 10px", fontFamily: "inherit", outline: "none",
+                  }}
+                >
+                  {WEEKS.map(w => (
+                    <option key={w} value={w} style={{ background: "#1a160d" }}>
+                      Sem. {w} — {WEEK_LABELS[w]}
+                    </option>
+                  ))}
+                </select>
+
+                <span style={{ fontSize: 12, color: "#8a7d5e", marginLeft: "auto" }}>
+                  {fmtDate(currentNote.updatedAt)}
+                </span>
+              </div>
+
+              {/* References tags */}
+              {currentNote.references.length > 0 && (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
+                  {currentNote.references.map((ref, i) => (
+                    <span key={i} style={{
+                      display: "inline-flex", alignItems: "center", gap: 5,
+                      padding: "4px 10px", borderRadius: 6,
+                      background: "rgba(200,170,100,.1)", border: "1px solid rgba(200,170,100,.2)",
+                      color: "#c9a84c", fontSize: 11, fontWeight: 600,
+                    }}>
+                      📖 {ref}
+                      <button onClick={() => {
+                        updateNote(currentNote.id, { references: currentNote.references.filter((_, idx) => idx !== i) });
+                      }} style={{
+                        background: "none", border: "none", color: "#7a6230",
+                        cursor: "pointer", fontSize: 13, padding: 0, lineHeight: 1,
+                      }}>×</button>
+                    </span>
+                  ))}
                 </div>
               )}
-            </div>
-          </div>
-        </div>
-        <button onClick={() => openNew()} style={{
-          padding: "10px 18px", borderRadius: 12,
-          border: "1px solid rgba(200,170,100,.4)",
-          background: "linear-gradient(135deg,rgba(200,170,100,.18),rgba(180,140,80,.08))",
-          color: "#C8A55C", fontSize: 14, fontWeight: 600, cursor: "pointer",
-          fontFamily: "inherit", display: "flex", alignItems: "center", gap: 6,
-        }}>
-          ✏️ Nova
-        </button>
-      </div>
 
-      {/* Search bar */}
-      <div style={{ marginBottom: 16, position: "relative" }}>
-        <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", fontSize: 14, color: "#6a5a48" }}>🔍</span>
-        <input
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Buscar anotações…"
-          style={{
-            ...inputStyle,
-            paddingLeft: 36,
-            background: "rgba(255,255,255,.03)",
-            border: "1px solid rgba(200,180,140,.1)",
-          }}
-        />
-      </div>
+              {/* ── TOOLBAR ── */}
+              <div style={{
+                display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap",
+                padding: "8px 10px",
+                background: "rgba(26,22,13,.8)",
+                border: "1px solid rgba(200,180,140,.15)",
+                borderRadius: "10px 10px 0 0",
+              }}>
+                {/* Block type */}
+                <select onChange={e => setBlock(e.target.value)} defaultValue="p" style={{
+                  height: 30, padding: "0 8px",
+                  background: "rgba(34,28,16,.8)", border: "1px solid rgba(200,180,140,.15)",
+                  borderRadius: 5, color: "#8a7d5e", fontSize: 12,
+                  fontFamily: "inherit", cursor: "pointer", outline: "none",
+                }}>
+                  <option value="p">Parágrafo</option>
+                  <option value="h1">Título</option>
+                  <option value="h2">Subtítulo</option>
+                  <option value="h3">Seção</option>
+                  <option value="blockquote">Citação</option>
+                </select>
 
-      {/* Week filter pills */}
-      <div style={{ overflowX: "auto", display: "flex", gap: 6, marginBottom: 20, paddingBottom: 4 }}>
-        <button onClick={() => setSelectedWeek(null)} style={{
-          padding: "5px 14px", borderRadius: 16, whiteSpace: "nowrap", cursor: "pointer",
-          fontSize: 12, fontWeight: selectedWeek === null ? 600 : 500, fontFamily: "inherit",
-          border: `1px solid ${selectedWeek === null ? "rgba(200,170,100,.5)" : "rgba(200,180,140,.12)"}`,
-          background: selectedWeek === null ? "rgba(200,170,100,.15)" : "rgba(255,255,255,.025)",
-          color: selectedWeek === null ? "#e8d8b8" : "#7a6a58",
-        }}>
-          Todas
-        </button>
-        {WEEKS.map(w => {
-          const count = sectionNotes.filter(n => n.week === w).length;
-          const isActive = selectedWeek === w;
-          return (
-            <button key={w} onClick={() => setSelectedWeek(isActive ? null : w)} style={{
-              padding: "5px 12px", borderRadius: 16, whiteSpace: "nowrap", cursor: "pointer",
-              fontSize: 12, fontWeight: isActive ? 600 : 500, fontFamily: "inherit",
-              border: `1px solid ${isActive ? "rgba(200,170,100,.5)" : "rgba(200,180,140,.12)"}`,
-              background: isActive ? "rgba(200,170,100,.15)" : "rgba(255,255,255,.025)",
-              color: isActive ? "#e8d8b8" : "#7a6a58",
-              opacity: count === 0 && !isActive ? 0.4 : 1,
-            }}>
-              {w}{count > 0 ? ` (${count})` : ""}
-            </button>
-          );
-        })}
-      </div>
+                {/* Font size */}
+                <select onChange={e => setFontSize(e.target.value)} defaultValue="3" style={{
+                  height: 30, padding: "0 8px",
+                  background: "rgba(34,28,16,.8)", border: "1px solid rgba(200,180,140,.15)",
+                  borderRadius: 5, color: "#8a7d5e", fontSize: 12,
+                  fontFamily: "inherit", cursor: "pointer", outline: "none",
+                }}>
+                  <option value="1">Pequeno</option>
+                  <option value="3">Normal</option>
+                  <option value="4">Médio</option>
+                  <option value="5">Grande</option>
+                  <option value="7">Enorme</option>
+                </select>
 
-      {/* Empty */}
-      {weekKeys.length === 0 ? (
-        <div style={{
-          textAlign: "center", padding: "48px 20px",
-          border: "1px dashed rgba(200,180,140,.1)", borderRadius: 16, color: "#5a4a38",
-        }}>
-          <div style={{ fontSize: 44, marginBottom: 12 }}>📝</div>
-          <div style={{ fontSize: 16, fontWeight: 600, color: "#8a7a60", marginBottom: 6 }}>
-            {search ? "Nenhuma nota encontrada" : "Nenhuma anotação ainda"}
-          </div>
-          <div style={{ fontSize: 13, color: "#5a4a38", marginBottom: 18, lineHeight: 1.5 }}>
-            {search
-              ? "Tente buscar com outros termos."
-              : "Crie sua primeira nota nesta seção."}
-          </div>
-          {!search && (
-            <button onClick={() => openNew()} style={{
-              padding: "10px 24px", borderRadius: 12,
-              border: "1px solid rgba(200,170,100,.3)",
-              background: "rgba(200,170,100,.08)", color: "#C8A55C",
-              fontSize: 14, cursor: "pointer", fontFamily: "inherit", fontWeight: 600,
-            }}>
-              ✏️ Criar primeira nota
-            </button>
-          )}
-        </div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-          {weekKeys.map(w => {
-            const weekNotes = grouped[w];
-            const collapsed = !!collapsedWeeks[w];
-            const accent = ACCENT[(w - 1) % ACCENT.length];
-            return (
-              <div key={w}>
-                <div
-                  onClick={() => toggleCollapse(w)}
-                  style={{
-                    display: "flex", alignItems: "center", gap: 10, cursor: "pointer",
-                    padding: "8px 0", marginBottom: collapsed ? 0 : 8,
-                  }}>
-                  <div style={{
-                    width: 28, height: 28, borderRadius: 8, flexShrink: 0,
-                    background: accent + "20", border: `1px solid ${accent}35`,
+                <div style={{ width: 1, height: 20, background: "rgba(200,180,140,.15)", margin: "0 4px" }} />
+
+                {/* Format buttons */}
+                {[
+                  { cmd: "bold", label: "N", title: "Negrito" },
+                  { cmd: "italic", label: "I", title: "Itálico" },
+                  { cmd: "strikeThrough", label: "S", title: "Tachado" },
+                  { cmd: "underline", label: "T", title: "Sublinhado" },
+                ].map(b => (
+                  <button key={b.cmd} onClick={() => exec(b.cmd)} title={b.title} style={{
+                    width: 30, height: 30, border: "none", borderRadius: 5,
+                    background: "transparent", color: "#8a7d5e", cursor: "pointer",
+                    fontSize: 14, fontWeight: 700, fontFamily: "inherit",
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: 13, fontWeight: 700, color: accent,
+                  }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "rgba(42,34,21,.8)"; e.currentTarget.style.color = "#e8c97a"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#8a7d5e"; }}
+                  >
+                    {b.label === "I" ? <em>{b.label}</em> : b.label === "S" ? <s>{b.label}</s> : b.label === "T" ? <u>{b.label}</u> : b.label}
+                  </button>
+                ))}
+
+                <div style={{ width: 1, height: 20, background: "rgba(200,180,140,.15)", margin: "0 4px" }} />
+
+                {/* List buttons */}
+                {[
+                  { cmd: "insertUnorderedList", label: "≡" },
+                  { cmd: "insertOrderedList", label: "①" },
+                  { cmd: "indent", label: "→" },
+                  { cmd: "outdent", label: "←" },
+                ].map(b => (
+                  <button key={b.cmd} onClick={() => exec(b.cmd)} style={{
+                    width: 30, height: 30, border: "none", borderRadius: 5,
+                    background: "transparent", color: "#8a7d5e", cursor: "pointer",
+                    fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center",
+                  }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "rgba(42,34,21,.8)"; e.currentTarget.style.color = "#e8c97a"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#8a7d5e"; }}
+                  >
+                    {b.label}
+                  </button>
+                ))}
+
+                <div style={{ width: 1, height: 20, background: "rgba(200,180,140,.15)", margin: "0 4px" }} />
+
+                {/* Alignment */}
+                {[
+                  { cmd: "justifyLeft", label: "⬅" },
+                  { cmd: "justifyCenter", label: "↔" },
+                  { cmd: "justifyRight", label: "➡" },
+                ].map(b => (
+                  <button key={b.cmd} onClick={() => exec(b.cmd)} style={{
+                    width: 30, height: 30, border: "none", borderRadius: 5,
+                    background: "transparent", color: "#8a7d5e", cursor: "pointer",
+                    fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center",
+                  }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "rgba(42,34,21,.8)"; e.currentTarget.style.color = "#e8c97a"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#8a7d5e"; }}
+                  >
+                    {b.label}
+                  </button>
+                ))}
+
+                <div style={{ width: 1, height: 20, background: "rgba(200,180,140,.15)", margin: "0 4px" }} />
+
+                {/* Undo/Redo */}
+                <button onClick={() => exec("undo")} style={{
+                  width: 30, height: 30, border: "none", borderRadius: 5,
+                  background: "transparent", color: "#8a7d5e", cursor: "pointer",
+                  fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center",
+                }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "rgba(42,34,21,.8)"; e.currentTarget.style.color = "#e8c97a"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#8a7d5e"; }}
+                >↩</button>
+                <button onClick={() => exec("redo")} style={{
+                  width: 30, height: 30, border: "none", borderRadius: 5,
+                  background: "transparent", color: "#8a7d5e", cursor: "pointer",
+                  fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center",
+                }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "rgba(42,34,21,.8)"; e.currentTarget.style.color = "#e8c97a"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#8a7d5e"; }}
+                >↪</button>
+
+                {/* Delete note */}
+                <button onClick={() => setDeleteId(currentNote.id)} style={{
+                  marginLeft: "auto", width: 30, height: 30, border: "none", borderRadius: 5,
+                  background: "transparent", color: "#8a5a4a", cursor: "pointer",
+                  fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center",
+                }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "rgba(200,80,60,.1)"; e.currentTarget.style.color = "#C8553D"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#8a5a4a"; }}
+                  title="Remover nota"
+                >🗑️</button>
+              </div>
+
+              {/* ── EDITOR (contentEditable) ── */}
+              <div
+                ref={editorRef}
+                contentEditable
+                suppressContentEditableWarning
+                data-placeholder="Comece a escrever suas anotações, reflexões, resumos de aula…"
+                onBlur={handleEditorBlur}
+                dangerouslySetInnerHTML={{ __html: currentNote.body }}
+                style={{
+                  flex: 1,
+                  background: "rgba(26,22,13,.6)",
+                  border: "1px solid rgba(200,180,140,.15)",
+                  borderTop: "none",
+                  borderRadius: "0 0 10px 10px",
+                  padding: 24,
+                  outline: "none",
+                  fontFamily: "inherit",
+                  fontSize: 17,
+                  lineHeight: 1.8,
+                  color: "#e8dfc4",
+                  minHeight: 280,
+                  overflowY: "auto",
+                }}
+              />
+
+              {/* ── VERSE LOOKUP PANEL ── */}
+              <div style={{
+                marginTop: 20,
+                background: "rgba(26,22,13,.6)",
+                border: "1px solid rgba(200,180,140,.15)",
+                borderRadius: 10,
+                overflow: "hidden",
+              }}>
+                <div onClick={() => setVerseOpen(!verseOpen)} style={{
+                  padding: "12px 18px",
+                  background: "rgba(34,28,16,.8)",
+                  borderBottom: verseOpen ? "1px solid rgba(200,180,140,.15)" : "none",
+                  display: "flex", alignItems: "center", gap: 10,
+                  cursor: "pointer", userSelect: "none",
+                }}>
+                  <span style={{
+                    fontSize: 11, letterSpacing: 2, color: "#c9a84c",
+                    textTransform: "uppercase", fontWeight: 600, flex: 1,
                   }}>
-                    {w}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: "#d4c4a8" }}>
-                      Semana {w}
-                    </div>
-                    <div style={{ fontSize: 11, color: "#5a4a38" }}>{WEEK_LABELS[w]}</div>
-                  </div>
-                  <span style={{ fontSize: 12, color: "#6a5a48", marginRight: 4 }}>
-                    {weekNotes.length} {weekNotes.length === 1 ? "nota" : "notas"}
+                    🔖 Buscar versículo da Bíblia
                   </span>
-                  <span style={{ fontSize: 14, color: "#6a5a48", transition: "transform .2s", transform: collapsed ? "rotate(-90deg)" : "rotate(0)" }}>
-                    ▾
+                  <span style={{
+                    color: "#7a6230", fontSize: 12,
+                    transform: verseOpen ? "rotate(180deg)" : "rotate(0)",
+                    transition: "transform .2s",
+                  }}>
+                    ▼
                   </span>
                 </div>
 
-                {!collapsed && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                    {weekNotes.map(note => (
-                      <div key={note.id}
-                        onClick={() => setEditing(note)}
+                {verseOpen && (
+                  <div style={{ padding: "16px 18px" }}>
+                    {/* Search */}
+                    <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+                      <input
+                        value={verseQuery}
+                        onChange={e => setVerseQuery(e.target.value)}
+                        onKeyDown={e => { if (e.key === "Enter") doFetchVerse(); }}
+                        placeholder='Ex: "Rm 8:28", "Ef 2:8-9", "João 3:16"'
                         style={{
-                          display: "flex", alignItems: "center", gap: 12,
-                          padding: "12px 14px", cursor: "pointer",
-                          background: "rgba(255,255,255,.02)",
-                          borderRadius: 12,
-                          borderLeft: `3px solid ${accent}50`,
-                          transition: "background .15s",
+                          flex: 1,
+                          background: "rgba(34,28,16,.8)",
+                          border: "1px solid rgba(200,180,140,.15)",
+                          borderRadius: 6, color: "#e8dfc4",
+                          fontSize: 15, padding: "8px 14px",
+                          fontFamily: "inherit", outline: "none",
                         }}
-                        onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,.05)")}
-                        onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,.02)")}
+                      />
+                      <button
+                        onClick={doFetchVerse}
+                        disabled={!verseQuery.trim() || verseLoading}
+                        style={{
+                          padding: "8px 18px",
+                          background: "rgba(201,168,76,.1)",
+                          border: "1px solid #7a6230",
+                          borderRadius: 6, color: "#c9a84c",
+                          fontSize: 11, letterSpacing: 1,
+                          cursor: verseQuery.trim() && !verseLoading ? "pointer" : "default",
+                          fontFamily: "inherit", whiteSpace: "nowrap",
+                          opacity: verseQuery.trim() && !verseLoading ? 1 : 0.5,
+                        }}
                       >
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{
-                            fontSize: 14, fontWeight: 600, color: "#e8d8b8",
-                            whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                          }}>
-                            {note.title || "Sem título"}
-                          </div>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 3 }}>
-                            <span style={{ fontSize: 11, color: "#5a4a38" }}>
-                              {fmtDate(note.updatedAt)}
-                            </span>
-                            <span style={{
-                              fontSize: 12, color: "#6a5a48",
-                              whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                              maxWidth: 180,
-                            }}>
-                              {preview(note.body)}
-                            </span>
-                          </div>
-                          {(note.references?.length > 0 || note.reference) && (
-                            <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 4 }}>
-                              {(note.references?.length > 0 ? note.references : [note.reference]).map((ref, ri) => (
-                                <span key={ri} style={{
-                                  display: "inline-block",
-                                  fontSize: 11, fontWeight: 600, color: accent,
-                                  background: accent + "15", padding: "1px 8px", borderRadius: 5,
-                                  border: `1px solid ${accent}25`,
-                                }}>
-                                  📖 {ref}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                        <span style={{ fontSize: 14, color: "#4a4038", flexShrink: 0 }}>›</span>
-                      </div>
-                    ))}
+                        Buscar
+                      </button>
+                    </div>
 
-                    <button onClick={() => openNew(w)} style={{
-                      display: "flex", alignItems: "center", gap: 8,
-                      padding: "10px 14px", cursor: "pointer",
-                      background: "transparent", border: "1px dashed rgba(200,180,140,.1)",
-                      borderRadius: 12, color: "#6a5a48", fontSize: 12,
-                      fontFamily: "inherit", marginTop: 2,
-                    }}>
-                      <span style={{ fontSize: 14 }}>+</span> Adicionar nota na Semana {w}
-                    </button>
+                    <div style={{ fontSize: 12, color: "#8a7d5e", fontStyle: "italic", marginBottom: 10 }}>
+                      Escreva o livro, capítulo e versículo. Ex: "Rm 8:28", "Ef 2:8-9"
+                    </div>
+
+                    {/* Loading */}
+                    {verseLoading && (
+                      <div style={{ color: "#7a6230", fontSize: 13, fontStyle: "italic" }}>
+                        Buscando versículo...
+                      </div>
+                    )}
+
+                    {/* Error */}
+                    {verseError && (
+                      <div style={{ color: "#c26b5a", fontSize: 13 }}>
+                        Não foi possível encontrar o versículo. Verifique a referência.
+                      </div>
+                    )}
+
+                    {/* Result */}
+                    {verseResult && (
+                      <div style={{
+                        background: "rgba(34,28,16,.8)",
+                        border: "1px solid rgba(200,180,140,.15)",
+                        borderLeft: "3px solid #c9a84c",
+                        borderRadius: 8, padding: "14px 16px",
+                      }}>
+                        <div style={{
+                          fontSize: 11, letterSpacing: 2, color: "#c9a84c",
+                          marginBottom: 8, textTransform: "uppercase", fontWeight: 600,
+                        }}>
+                          {verseResult.reference}
+                        </div>
+                        <div style={{
+                          fontSize: 16, lineHeight: 1.7,
+                          color: "#e8dfc4", fontStyle: "italic",
+                        }}>
+                          {verseResult.text}
+                        </div>
+                        <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                          <button onClick={insertVerseInEditor} style={{
+                            padding: "6px 14px",
+                            background: "rgba(201,168,76,.1)",
+                            border: "1px solid #7a6230",
+                            borderRadius: 5, color: "#c9a84c",
+                            fontSize: 13, cursor: "pointer", fontFamily: "inherit",
+                          }}>
+                            ＋ Inserir na nota
+                          </button>
+                          <button onClick={copyVerse} style={{
+                            padding: "6px 14px",
+                            background: "transparent",
+                            border: "1px solid rgba(200,180,140,.15)",
+                            borderRadius: 5, color: "#8a7d5e",
+                            fontSize: 13, cursor: "pointer", fontFamily: "inherit",
+                          }}>
+                            📋 Copiar
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
-            );
-          })}
+            </>
+          )}
         </div>
-      )}
+      </div>
 
-      {/* DELETE CONFIRM */}
+      {/* ── DELETE CONFIRM ── */}
       {deleteId && (
         <div style={{
           position: "fixed", inset: 0, zIndex: 50,
           background: "rgba(0,0,0,.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
         }}>
           <div style={{
-            background: "#232018", border: "1px solid rgba(200,80,60,.2)",
+            background: "#1e1a14", border: "1px solid rgba(200,80,60,.2)",
             borderRadius: 16, padding: "24px 20px", maxWidth: 320, width: "100%", textAlign: "center",
           }}>
             <div style={{ fontSize: 32, marginBottom: 12 }}>🗑️</div>
-            <div style={{ fontSize: 16, fontWeight: 600, color: "#e8d8b8", marginBottom: 8 }}>Remover anotação?</div>
-            <div style={{ fontSize: 13, color: "#7a6a58", marginBottom: 20 }}>Esta ação não pode ser desfeita.</div>
+            <div style={{ fontSize: 16, fontWeight: 600, color: "#e8dfc4", marginBottom: 8 }}>Remover anotação?</div>
+            <div style={{ fontSize: 13, color: "#8a7d5e", marginBottom: 20 }}>Esta ação não pode ser desfeita.</div>
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={() => setDeleteId(null)} style={{
                 flex: 1, padding: "10px", borderRadius: 10,
                 border: "1px solid rgba(200,180,140,.15)",
-                background: "rgba(200,180,140,.06)", color: "#a09078",
+                background: "rgba(200,180,140,.06)", color: "#8a7d5e",
                 cursor: "pointer", fontFamily: "inherit", fontSize: 14,
               }}>Cancelar</button>
               <button onClick={() => removeNote(deleteId)} style={{
@@ -725,6 +822,20 @@ export default function BibleNotes() {
               }}>Remover</button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Toast */}
+      {toast && (
+        <div style={{
+          position: "fixed", bottom: 24, left: "50%",
+          transform: "translateX(-50%)",
+          background: "rgba(42,34,21,.95)", border: "1px solid #7a6230",
+          borderRadius: 8, padding: "10px 20px",
+          color: "#e8c97a", fontSize: 14, fontFamily: "inherit",
+          zIndex: 999,
+        }}>
+          {toast}
         </div>
       )}
     </div>
