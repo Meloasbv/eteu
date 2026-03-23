@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
-type Section = "proclamadores" | "aulas";
+type Section = "proclamadores" | "aulas" | "pensamentos";
 
 type Note = {
   id: number;
