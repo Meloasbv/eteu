@@ -94,6 +94,7 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
   const [editingNote, setEditingNote] = useState<Note | null>(null);
   const [toast, setToast] = useState("");
   const [saveStatus, setSaveStatus] = useState<"idle" | "typing" | "saved">("idle");
+  const [previewMode, setPreviewMode] = useState(false);
 
   // Verse sheet
   const [verseOpen, setVerseOpen] = useState(false);
