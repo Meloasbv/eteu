@@ -557,11 +557,9 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
                 <div style={{
                   fontFamily: "'Cormorant Garamond', serif",
                   fontSize: 16, lineHeight: 1.8, color: v("text"),
-                  whiteSpace: "pre-wrap", marginBottom: 16,
+                  marginBottom: 16,
                   transition: `color ${transition}`,
-                }}>
-                  {aiResult.content}
-                </div>
+                }} dangerouslySetInnerHTML={{ __html: renderMarkdown(aiResult.content) }} />
                 <div className="notes-vr-actions" style={{ flexDirection: "column", gap: 8 }}>
                   <button className="notes-vr-btn primary" onClick={() => {
                     if (editingNote) {
