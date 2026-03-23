@@ -226,7 +226,51 @@ export default function BibleNotes() {
     }
   }, [currentNote, updateNote]);
 
-  // ── Section selector (no section active) ──────────────────────────────────
+  // ── AI actions ─────────────────────────────────────────────────────────────
+  const callAI = useCallback(async (action: "summarize" | "questions" | "organize") => {
+    setAiLoading(action);
+    setAiResult(null);
+    try {
+      const body: Record<string, any> = { action };
+      if (action === "organize") {
+        body.allNotes = notes.map(n => ({ title: n.title, body: n.body, week: n.week, section: n.section }));
+      } else if (currentNote) {
+        body.noteTitle = currentNote.title || "Sem título";
+        body.noteBody = currentNote.body;
+      } else {
+        showToast("Selecione uma nota primeiro");
+        setAiLoading(null);
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke("notes-ai", { body });
+
+      if (error) {
+        showToast("Erro ao chamar IA");
+        setAiLoading(null);
+        return;
+      }
+
+      if (data?.error) {
+        showToast(data.error);
+        setAiLoading(null);
+        return;
+      }
+
+      const titles: Record<string, string> = {
+        summarize: "📋 Resumo da Nota",
+        questions: "❓ Perguntas de Estudo",
+        organize: "🗂️ Organização Sugerida",
+      };
+
+      setAiResult({ title: titles[action], content: data.result });
+    } catch (e) {
+      showToast("Erro de conexão com a IA");
+    }
+    setAiLoading(null);
+  }, [notes, currentNote, showToast]);
+
+
   if (!activeSection) {
     return (
       <div style={{ padding: "24px 16px 40px" }}>
