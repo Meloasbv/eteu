@@ -436,15 +436,24 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
           </button>
         </div>
 
-        {/* Textarea */}
+        {/* Textarea or Preview */}
         <div className="notes-editor-canvas">
-          <textarea
-            ref={textareaRef}
-            className="notes-editor-field"
-            value={editingNote.texto}
-            onChange={e => handleTextChange(e.target.value)}
-            placeholder="Comece a escrever..."
-          />
+          {previewMode ? (
+            <div
+              className="notes-editor-field"
+              style={{ cursor: "text", minHeight: "calc(100dvh - 260px)" }}
+              dangerouslySetInnerHTML={{ __html: renderMarkdown(editingNote.texto) || '<em style="color:var(--notes-placeholder)">Nada para visualizar</em>' }}
+              onClick={() => setPreviewMode(false)}
+            />
+          ) : (
+            <textarea
+              ref={textareaRef}
+              className="notes-editor-field"
+              value={editingNote.texto}
+              onChange={e => handleTextChange(e.target.value)}
+              placeholder="Comece a escrever..."
+            />
+          )}
         </div>
 
         {/* Bottom bar */}
