@@ -403,11 +403,95 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
     };
   }, []);
 
-  // ── Print ───────────────────────────────────────────────────────────────────
-  const handlePrint = useCallback(() => {
+  // ── PDF Generation ──────────────────────────────────────────────────────────
+  const handleGeneratePDF = useCallback(() => {
+    if (!editingNote) return;
     setMenuOpen(false);
-    setTimeout(() => window.print(), 100);
-  }, []);
+
+    const doc = new jsPDF({ unit: "mm", format: "a4" });
+    const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
+    const marginL = 20;
+    const marginR = 20;
+    const marginTop = 25;
+    const marginBottom = 20;
+    const usableW = pageW - marginL - marginR;
+    let y = marginTop;
+
+    const addPage = () => { doc.addPage(); y = marginTop; };
+    const checkPage = (needed: number) => { if (y + needed > pageH - marginBottom) addPage(); };
+
+    // Title
+    const title = noteTitle(editingNote.texto);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18);
+    const titleLines = doc.splitTextToSize(title, usableW);
+    checkPage(titleLines.length * 8);
+    doc.text(titleLines, marginL, y);
+    y += titleLines.length * 8 + 2;
+
+    // Date
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(120, 120, 120);
+    doc.text(formatDateFull(editingNote.atualizadoEm), marginL, y);
+    y += 8;
+    doc.setTextColor(0, 0, 0);
+
+    // Separator
+    doc.setDrawColor(200, 200, 200);
+    doc.line(marginL, y, pageW - marginR, y);
+    y += 8;
+
+    // Body
+    const plainText = editingNote.texto
+      .split("\n")
+      .map(line => line.replace(/^#{1,3}\s*/, "").replace(/\*\*/g, "").replace(/_/g, ""))
+      .join("\n");
+
+    const lines = plainText.split("\n");
+    for (const line of lines) {
+      if (!line.trim()) { y += 4; continue; }
+      if (/^-{3,}$/.test(line.trim())) {
+        checkPage(6);
+        doc.setDrawColor(200, 200, 200);
+        doc.line(marginL, y, pageW - marginR, y);
+        y += 6;
+        continue;
+      }
+
+      const isHeading = line.startsWith("# ") || line.startsWith("## ") || line.startsWith("### ");
+      if (isHeading) {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(13);
+        y += 3;
+      } else {
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(11);
+      }
+
+      const wrapped = doc.splitTextToSize(line, usableW);
+      const lineH = isHeading ? 6 : 5.5;
+      checkPage(wrapped.length * lineH);
+      doc.text(wrapped, marginL, y);
+      y += wrapped.length * lineH + 1.5;
+    }
+
+    // Footer on each page
+    const totalPages = doc.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(160, 160, 160);
+      doc.text(`Página ${i} de ${totalPages}`, pageW / 2, pageH - 10, { align: "center" });
+      doc.setTextColor(0, 0, 0);
+    }
+
+    const fileName = title.replace(/[^a-zA-Z0-9À-ÿ\s]/g, "").trim().replace(/\s+/g, "_").slice(0, 40) || "nota";
+    doc.save(`${fileName}.pdf`);
+    showToast("PDF gerado!");
+  }, [editingNote, showToast]);
 
   // ── RENDER ──────────────────────────────────────────────────────────────────
 
