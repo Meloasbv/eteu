@@ -177,6 +177,10 @@
 .highlight-red { background: rgba(180,100,100,0.3); }
 .highlight-blue { background: rgba(100,140,200,0.3); }
 
+/* ── Exegese rendered HTML ── */
+.exegese-html strong { color: hsl(var(--foreground)); font-weight: 700; }
+.exegese-html em { color: hsl(var(--primary)); font-style: italic; }
+
 /* ── TipTap editor styles ── */
 .tiptap-editor-content {
   color: hsl(var(--foreground));
