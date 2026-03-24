@@ -256,7 +256,7 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
     setSaveStatus("saved");
     setTimeout(() => setSaveStatus("idle"), 1500);
 
-    await supabase
+    await (supabase as any)
       .from("notes")
       .update({
         texto: note.texto,
