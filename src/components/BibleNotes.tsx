@@ -216,35 +216,65 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
   }, [notes, activeSection]);
 
   // ── Note operations ────────────────────────────────────────────────────────
-  const createNote = useCallback(() => {
+  const createNote = useCallback(async () => {
     const now = new Date().toISOString();
+    const categoria = activeSection || "aulas";
+    
+    const { data, error } = await supabase
+      .from("notes")
+      .insert({
+        user_code_id: userCodeId,
+        categoria,
+        semana: WEEKS_LIST[0],
+        texto: "",
+      })
+      .select()
+      .single();
+
+    if (error || !data) {
+      showToast("Erro ao criar nota");
+      return;
+    }
+
     const note: Note = {
-      id: Date.now(),
-      categoria: activeSection || "aulas",
-      semana: WEEKS_LIST[0],
-      texto: "",
-      criadoEm: now,
-      atualizadoEm: now,
+      id: data.id,
+      categoria: data.categoria as Section,
+      semana: data.semana || "",
+      texto: data.texto || "",
+      criadoEm: data.created_at,
+      atualizadoEm: data.updated_at,
     };
-    const updated = [note, ...notes];
-    persist(updated);
+    setNotes(prev => [note, ...prev]);
     setEditingNote(note);
     setTimeout(() => textareaRef.current?.focus(), 100);
-  }, [notes, activeSection, persist]);
+  }, [activeSection, userCodeId, showToast]);
 
-  const saveNote = useCallback((note: Note) => {
-    const updated = notes.map(n => n.id === note.id ? { ...note, atualizadoEm: new Date().toISOString() } : n);
-    persist(updated);
+  const saveNote = useCallback(async (note: Note) => {
+    const now = new Date().toISOString();
+    const updatedNote = { ...note, atualizadoEm: now };
+    setNotes(prev => prev.map(n => n.id === note.id ? updatedNote : n));
     setSaveStatus("saved");
     setTimeout(() => setSaveStatus("idle"), 1500);
-  }, [notes, persist]);
 
-  const deleteNote = useCallback((id: number) => {
-    persist(notes.filter(n => n.id !== id));
+    await supabase
+      .from("notes")
+      .update({
+        texto: note.texto,
+        categoria: note.categoria,
+        semana: note.semana,
+        updated_at: now,
+      })
+      .eq("id", note.id);
+  }, []);
+
+  const deleteNote = useCallback(async (id: string) => {
+    setNotes(prev => prev.filter(n => n.id !== id));
     if (editingNote?.id === id) setEditingNote(null);
     showToast("Nota removida");
     setMenuOpen(false);
-  }, [notes, editingNote, persist, showToast]);
+
+    await supabase.from("notes").delete().eq("id", id);
+  }, [editingNote, showToast]);
 
   const handleTextChange = useCallback((text: string) => {
     if (!editingNote) return;
