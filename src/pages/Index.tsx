@@ -178,6 +178,41 @@ const THEME_KEY = "theme_preference";
 // ── COMPONENT ─────────────────────────────────────────────────────────────────
 
 export default function BiblePlan() {
+  // ── Auth state ──
+  const [userCodeId, setUserCodeId] = useState<string | null>(() => {
+    try { return localStorage.getItem("bible-user-code-id"); } catch { return null; }
+  });
+  const [accessCode, setAccessCode] = useState<string | null>(() => {
+    try { return localStorage.getItem("bible-access-code"); } catch { return null; }
+  });
+
+  const handleLogin = useCallback((id: string, code: string) => {
+    setUserCodeId(id);
+    setAccessCode(code);
+    try {
+      localStorage.setItem("bible-user-code-id", id);
+      localStorage.setItem("bible-access-code", code);
+    } catch {}
+  }, []);
+
+  const handleLogout = useCallback(() => {
+    setUserCodeId(null);
+    setAccessCode(null);
+    try {
+      localStorage.removeItem("bible-user-code-id");
+      localStorage.removeItem("bible-access-code");
+    } catch {}
+  }, []);
+
+  // Show login if not authenticated
+  if (!userCodeId) {
+    return <CodeLogin onLogin={handleLogin} />;
+  }
+
+  return <BiblePlanApp userCodeId={userCodeId} accessCode={accessCode} onLogout={handleLogout} />;
+}
+
+function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string; accessCode: string | null; onLogout: () => void }) {
   const [tab, setTab] = useState<"home" | "leitura" | "devocional" | "agenda" | "anotacoes">("home");
   const [activeWeek, setActiveWeek] = useState(0);
   const [checked, setChecked] = useState<Record<string, boolean>>({});
