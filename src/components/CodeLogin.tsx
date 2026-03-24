@@ -113,7 +113,7 @@ export default function CodeLogin({ onLogin }: CodeLoginProps) {
 
     try {
       // Check if code exists
-      const { data: existing, error: fetchError } = await supabase
+      const { data: existing, error: fetchError } = await (supabase as any)
         .from("access_codes")
         .select("id")
         .eq("code", trimmed)
@@ -130,11 +130,11 @@ export default function CodeLogin({ onLogin }: CodeLoginProps) {
         onLogin(existing.id, trimmed);
       } else {
         // Create new code
-        const { data: newCode, error: insertError } = await supabase
+        const { data: newCode, error: insertError } = await (supabase as any)
           .from("access_codes")
           .insert({ code: trimmed })
           .select("id")
-          .single();
+          .maybeSingle();
 
         if (insertError) {
           if (insertError.message?.includes("unique")) {

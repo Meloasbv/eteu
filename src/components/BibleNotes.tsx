@@ -162,7 +162,7 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
   // Load notes from Supabase
   useEffect(() => {
     const loadNotes = async () => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("notes")
         .select("*")
         .eq("user_code_id", userCodeId)
@@ -220,7 +220,7 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
     const now = new Date().toISOString();
     const categoria = activeSection || "aulas";
     
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from("notes")
       .insert({
         user_code_id: userCodeId,
@@ -229,7 +229,7 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
         texto: "",
       })
       .select()
-      .single();
+      .maybeSingle();
 
     if (error || !data) {
       showToast("Erro ao criar nota");
@@ -256,7 +256,7 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
     setSaveStatus("saved");
     setTimeout(() => setSaveStatus("idle"), 1500);
 
-    await supabase
+    await (supabase as any)
       .from("notes")
       .update({
         texto: note.texto,
@@ -273,7 +273,7 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
     showToast("Nota removida");
     setMenuOpen(false);
 
-    await supabase.from("notes").delete().eq("id", id);
+    await (supabase as any).from("notes").delete().eq("id", id);
   }, [editingNote, showToast]);
 
   const handleTextChange = useCallback((text: string) => {
