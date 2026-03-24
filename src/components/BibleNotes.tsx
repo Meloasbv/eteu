@@ -42,25 +42,35 @@ function notePreview(texto: string, len = 60) {
   return second.length > len ? second.slice(0, len) + "…" : second;
 }
 
+const MONTHS_SHORT = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+const MONTHS_FULL = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+
+function formatDateShort(iso: string) {
+  const d = new Date(iso);
+  return `${d.getDate()} de ${MONTHS_SHORT[d.getMonth()]}. de ${d.getFullYear()}`;
+}
+
+function formatDateFull(iso: string) {
+  const d = new Date(iso);
+  const h = d.getHours().toString().padStart(2, "0");
+  const m = d.getMinutes().toString().padStart(2, "0");
+  return `${d.getDate()} de ${MONTHS_FULL[d.getMonth()]} de ${d.getFullYear()} às ${h}:${m}`;
+}
+
 // Simple markdown to HTML
 function renderMarkdown(text: string): string {
   return text
     .split("\n")
     .map(line => {
-      // Headings
       if (line.startsWith("### ")) return `<h4 style="font-family:'Cinzel',serif;font-size:14px;color:var(--notes-accent);margin:14px 0 4px;font-weight:500;">${line.slice(4)}</h4>`;
       if (line.startsWith("## ")) return `<h3 style="font-family:'Cinzel',serif;font-size:16px;color:var(--notes-accent);margin:18px 0 6px;font-weight:500;">${line.slice(3)}</h3>`;
       if (line.startsWith("# ")) return `<h2 style="font-family:'Cinzel',serif;font-size:18px;color:var(--notes-accent);margin:20px 0 8px;font-weight:500;">${line.slice(2)}</h2>`;
-      // Horizontal rule
       if (/^-{3,}$/.test(line.trim())) return `<hr style="border:none;border-top:1px solid var(--notes-border);margin:12px 0;" />`;
-      // Bullet points
       if (line.startsWith("- ")) {
         const content = applyInline(line.slice(2));
         return `<div style="display:flex;gap:8px;margin:3px 0;"><span style="color:var(--notes-accent);flex-shrink:0;">•</span><span>${content}</span></div>`;
       }
-      // Empty line
       if (!line.trim()) return `<br/>`;
-      // Normal paragraph
       return `<p style="margin:2px 0;">${applyInline(line)}</p>`;
     })
     .join("");
@@ -85,8 +95,8 @@ async function fetchVerse(ref: string, version = "almeida"): Promise<{ text: str
   return null;
 }
 
-// ── CSS-in-JS helpers using CSS variables ────────────────────────────────────
-const v = (name: string) => `var(--${name})`;
+// ── CSS variable helper ──────────────────────────────────────────────────────
+const v = (name: string) => `var(--notes-${name})`;
 const transition = "0.3s cubic-bezier(.4,0,.2,1)";
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -97,6 +107,7 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
   const [toast, setToast] = useState("");
   const [saveStatus, setSaveStatus] = useState<"idle" | "typing" | "saved">("idle");
   const [previewMode, setPreviewMode] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   // Verse sheet
   const [verseOpen, setVerseOpen] = useState(false);
@@ -124,7 +135,6 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
       const d = localStorage.getItem(STORAGE_KEY);
       if (d) {
         const parsed = JSON.parse(d);
-        // Migrate old format
         if (Array.isArray(parsed)) {
           const migrated: Note[] = parsed.map((n: any) => ({
             id: n.id ? (typeof n.id === "number" ? n.id : Date.now() + Math.random()) : Date.now() + Math.random(),
@@ -200,6 +210,7 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
     persist(notes.filter(n => n.id !== id));
     if (editingNote?.id === id) setEditingNote(null);
     showToast("Nota removida");
+    setMenuOpen(false);
   }, [notes, editingNote, persist, showToast]);
 
   const handleTextChange = useCallback((text: string) => {
@@ -218,6 +229,7 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
     }
     setEditingNote(null);
     setVerseOpen(false);
+    setMenuOpen(false);
   }, [editingNote, saveNote]);
 
   // ── Markdown formatting ────────────────────────────────────────────────────
@@ -229,13 +241,11 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
     const text = editingNote.texto;
     const selected = text.substring(start, end);
     const newText = text.substring(0, start) + prefix + selected + suffix + text.substring(end);
-    // Update textarea value directly first to preserve cursor
     ta.value = newText;
     const newCursorStart = start + prefix.length;
     const newCursorEnd = end + prefix.length;
     ta.setSelectionRange(newCursorStart, newCursorEnd);
     ta.focus();
-    // Then sync state
     handleTextChange(newText);
   }, [editingNote, handleTextChange]);
 
@@ -277,6 +287,7 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
     }
     setAiLoading(action);
     setAiResult(null);
+    setMenuOpen(false);
     try {
       if (action === "organize") {
         const body = {
@@ -333,7 +344,7 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
     const recognition = new SpeechRecognition();
     recognition.lang = "pt-BR";
     recognition.continuous = true;
-    recognition.interimResults = false; // only final results to avoid duplicates
+    recognition.interimResults = false;
     recognitionRef.current = recognition;
 
     recognition.onresult = (event: any) => {
@@ -363,7 +374,6 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
     };
 
     recognition.onend = () => {
-      // If still marked as recording, restart (browser may stop after silence)
       if (recognitionRef.current) {
         try { recognitionRef.current.start(); } catch {
           setIsRecording(false);
@@ -391,7 +401,12 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
       }
     };
   }, []);
-  
+
+  // ── Print ───────────────────────────────────────────────────────────────────
+  const handlePrint = useCallback(() => {
+    setMenuOpen(false);
+    setTimeout(() => window.print(), 100);
+  }, []);
 
   // ── RENDER ──────────────────────────────────────────────────────────────────
 
@@ -428,7 +443,7 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
     );
   }
 
-  // TELA 2 — Notes sub-list
+  // TELA 2 — Notes sub-list (iPhone Notes style)
   if (activeSection && !editingNote) {
     const sec = SECTIONS.find(s => s.key === activeSection)!;
     return (
@@ -455,9 +470,9 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
                   setTimeout(() => textareaRef.current?.focus(), 100);
                 }}
               >
-                <div className="notes-dot" />
                 <div className="notes-row-body">
                   <div className="notes-row-name">{noteTitle(note.texto)}</div>
+                  <div className="notes-row-date">{formatDateShort(note.atualizadoEm)}</div>
                   <div className="notes-row-preview">{notePreview(note.texto)}</div>
                 </div>
                 <span className="notes-row-chevron">›</span>
@@ -472,93 +487,68 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
     );
   }
 
-  // TELA 3 — Editor
+  // TELA 3 — Editor (iPhone Notes style)
   if (editingNote) {
+    const sec = SECTIONS.find(s => s.key === editingNote.categoria);
     return (
       <div className="notes-editor-view" style={{ animation: "notesSlideIn .22s ease" }}>
         <style>{notesCSS}</style>
 
-        {/* Editor bar */}
+        {/* Editor header */}
         <div className="notes-editor-bar">
           <button className="notes-ed-back" onClick={closeEditor}>‹ voltar</button>
           <div style={{ flex: 1 }} />
           <div className="notes-save-indicator">
-            {saveStatus === "typing" ? "..." : saveStatus === "saved" ? "Salvo" : "·"}
+            {saveStatus === "typing" ? "..." : saveStatus === "saved" ? "Salvo ✓" : ""}
+          </div>
+          <button className="notes-menu-btn" onClick={() => setMenuOpen(o => !o)}>⋯</button>
+        </div>
+
+        {/* Date + category pill */}
+        <div className="notes-editor-meta" id="notes-print-meta">
+          <div className="notes-editor-date">{formatDateFull(editingNote.atualizadoEm)}</div>
+          <div className="notes-editor-pill">
+            <select
+              value={editingNote.categoria}
+              onChange={e => {
+                const updated = { ...editingNote, categoria: e.target.value as Section };
+                setEditingNote(updated);
+                saveNote(updated);
+              }}
+              className="notes-pill-select"
+            >
+              {SECTIONS.map(s => (
+                <option key={s.key} value={s.key}>{s.icon} {s.label}</option>
+              ))}
+            </select>
           </div>
         </div>
 
-        {/* Meta selectors */}
-        <div style={{ padding: "0 20px 8px", display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <select
-            value={editingNote.categoria}
-            onChange={e => {
-              const updated = { ...editingNote, categoria: e.target.value as Section };
-              setEditingNote(updated);
-              saveNote(updated);
-            }}
-            className="notes-meta-select"
-          >
-            {SECTIONS.map(s => (
-              <option key={s.key} value={s.key}>{s.icon} {s.label}</option>
-            ))}
-          </select>
-          <select
-            value={editingNote.semana}
-            onChange={e => {
-              const updated = { ...editingNote, semana: e.target.value };
-              setEditingNote(updated);
-              saveNote(updated);
-            }}
-            className="notes-meta-select"
-          >
-            {WEEKS_LIST.map(w => (
-              <option key={w} value={w}>{w}</option>
-            ))}
-          </select>
-
-          {/* AI buttons */}
-          <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
-            <button
-              onClick={() => callAI("resumir")}
-              disabled={!!aiLoading}
-              className="notes-ai-btn"
-              title="Resumir em tópicos"
-              style={{
-                display: "flex", alignItems: "center", gap: 5,
-                padding: "5px 10px", borderRadius: 8,
-                fontSize: 12,
-              }}
-            >
-              {aiLoading === "resumir" ? "⏳ Resumindo..." : "📋 Resumir"}
-            </button>
-            <button
-              onClick={() => callAI("organize")}
-              disabled={!!aiLoading}
-              className="notes-ai-btn"
-              title="Organizar com IA"
-              style={{
-                display: "flex", alignItems: "center", gap: 5,
-                padding: "5px 10px", borderRadius: 8,
-                fontSize: 12,
-              }}
-            >
+        {/* Overflow menu */}
+        {menuOpen && (
+          <div className="notes-overflow-menu">
+            <button className="notes-overflow-item" onClick={() => callAI("organize")} disabled={!!aiLoading}>
               {aiLoading === "organize" ? "⏳ Organizando..." : "✨ Organizar"}
             </button>
+            <button className="notes-overflow-item" onClick={() => callAI("resumir")} disabled={!!aiLoading}>
+              {aiLoading === "resumir" ? "⏳ Resumindo..." : "📋 Resumir em Tópicos"}
+            </button>
+            <div className="notes-overflow-sep" />
+            <button className="notes-overflow-item" onClick={handlePrint}>
+              🖨️ Imprimir
+            </button>
+            <div className="notes-overflow-sep" />
+            <button className="notes-overflow-item danger" onClick={() => deleteNote(editingNote.id)}>
+              🗑️ Remover nota
+            </button>
           </div>
-        </div>
+        )}
 
-        {/* Delete button */}
-        <div style={{ padding: "0 20px 8px", display: "flex", justifyContent: "flex-end" }}>
-          <button
-            onClick={() => deleteNote(editingNote.id)}
-            className="notes-delete-btn"
-          >
-            🗑️ Remover
-          </button>
-        </div>
+        {/* Click outside to close menu */}
+        {menuOpen && <div className="notes-menu-backdrop" onClick={() => setMenuOpen(false)} />}
 
         {/* Textarea or Preview */}
-        <div className="notes-editor-canvas">
+        <div className="notes-editor-canvas" id="notes-print-content">
           {previewMode ? (
             <div
               className="notes-editor-field"
@@ -578,7 +568,7 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
         </div>
 
         {/* Bottom bar */}
-        <div className="notes-bottom-bar">
+        <div className="notes-bottom-bar no-print">
           <button
             className={`notes-bb-btn ${isRecording ? "recording" : ""}`}
             onClick={toggleRecording}
@@ -599,7 +589,7 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
             className="notes-bb-btn"
             onClick={() => setPreviewMode(p => !p)}
             title={previewMode ? "Editar" : "Visualizar"}
-            style={{ fontSize: 13, fontWeight: previewMode ? 700 : 400, color: previewMode ? v("accent") : undefined }}
+            style={{ fontSize: 13, fontWeight: previewMode ? 700 : 400 }}
           >
             {previewMode ? "✏️" : "👁"}
           </button>
@@ -616,7 +606,6 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
             <div className="notes-sheet-pip" />
             <div className="notes-sheet-heading">Buscar versículo</div>
             <div className="notes-sheet-body">
-              {/* Translation selector */}
               <div className="notes-trans-row">
                 {[
                   { key: "almeida", label: "ARC" },
@@ -632,8 +621,6 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
                   </button>
                 ))}
               </div>
-
-              {/* Search row */}
               <div className="notes-search-row">
                 <input
                   className="notes-verse-input"
@@ -650,7 +637,6 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
                   Buscar
                 </button>
               </div>
-
               <div className="notes-verse-status">
                 {verseLoading
                   ? "Buscando versículo..."
@@ -660,10 +646,8 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
                       ? "Ex: Rm 8:28 · Sl 23:1 · Ef 2:8"
                       : ""}
               </div>
-
-              {/* Result */}
               {verseResult && (
-                <div className={`notes-verse-result show`}>
+                <div className="notes-verse-result show">
                   <div className="notes-vr-ref">{verseResult.reference}</div>
                   <div className="notes-vr-text">{verseResult.text}</div>
                   <div className="notes-vr-actions">
@@ -686,7 +670,7 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
               <div className="notes-sheet-body">
                 <div style={{
                   fontFamily: "'Cormorant Garamond', serif",
-                  fontSize: 16, lineHeight: 1.8, color: v("text"),
+                  fontSize: 16, lineHeight: 1.8, color: `var(--notes-text)`,
                   marginBottom: 16,
                   transition: `color ${transition}`,
                 }} dangerouslySetInnerHTML={{ __html: renderMarkdown(aiResult.content) }} />
@@ -734,6 +718,36 @@ const notesCSS = `
 @keyframes notesPulse {
   0%, 100% { opacity: 1; }
   50% { opacity: .4; }
+}
+
+/* ── Print ── */
+@media print {
+  body * { visibility: hidden !important; }
+  #notes-print-meta, #notes-print-meta *,
+  #notes-print-content, #notes-print-content * {
+    visibility: visible !important;
+  }
+  #notes-print-meta {
+    position: absolute; top: 0; left: 0;
+    padding: 20px 24px 10px !important;
+  }
+  #notes-print-content {
+    position: absolute; top: 60px; left: 0; right: 0;
+    padding: 10px 24px !important;
+  }
+  .no-print, .notes-editor-bar, .notes-bottom-bar,
+  .notes-sheet-overlay, .notes-overflow-menu,
+  .notes-menu-backdrop, .notes-toast,
+  .notes-pill-select { display: none !important; }
+  .notes-editor-date {
+    font-size: 13px !important;
+    color: #666 !important;
+  }
+  .notes-editor-field {
+    font-size: 14pt !important;
+    line-height: 1.7 !important;
+    color: #000 !important;
+  }
 }
 
 /* ── List head ── */
@@ -809,35 +823,35 @@ const notesCSS = `
   transition: color .3s;
 }
 .notes-rows { flex: 1; overflow-y: auto; padding: 8px 0 90px; }
+
+/* ── Note row (iPhone style) ── */
 .notes-row {
-  display: flex; align-items: center;
-  padding: 14px 24px; gap: 14px;
+  display: flex; align-items: flex-start;
+  padding: 14px 24px; gap: 12px;
   border-bottom: 1px solid var(--notes-border2);
   cursor: pointer; transition: background .15s;
   -webkit-tap-highlight-color: transparent;
 }
 .notes-row:active { background: var(--notes-hover); }
-.notes-dot {
-  width: 6px; height: 6px; border-radius: 50%;
-  background: var(--notes-accent);
-  flex-shrink: 0; margin-top: 3px; opacity: .5;
-  transition: opacity .2s;
-}
-.notes-row:hover .notes-dot, .notes-row:active .notes-dot { opacity: 1; }
 .notes-row-body { flex: 1; min-width: 0; }
 .notes-row-name {
   font-family: 'Cormorant Garamond', serif;
-  font-size: 17px; color: var(--notes-text);
+  font-size: 17px; font-weight: 700; color: var(--notes-text);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   transition: color .3s;
 }
+.notes-row-date {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 13px; color: var(--notes-text3);
+  margin-top: 2px; transition: color .3s;
+}
 .notes-row-preview {
   font-family: 'Cormorant Garamond', serif;
-  font-size: 13px; color: var(--notes-text3); font-style: italic;
-  margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font-size: 14px; color: var(--notes-text3); font-style: italic;
+  margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   transition: color .3s;
 }
-.notes-row-chevron { color: var(--notes-text3); font-size: 16px; }
+.notes-row-chevron { color: var(--notes-text3); font-size: 16px; margin-top: 4px; }
 .notes-empty {
   padding: 40px 24px; text-align: center;
   font-family: 'Cormorant Garamond', serif;
@@ -861,10 +875,11 @@ const notesCSS = `
 /* ── Editor ── */
 .notes-editor-view {
   display: flex; flex-direction: column; flex: 1; min-height: 0;
+  position: relative;
 }
 .notes-editor-bar {
   display: flex; align-items: center;
-  padding: 14px 20px 10px; gap: 10px;
+  padding: 14px 20px 6px; gap: 10px;
 }
 .notes-ed-back {
   background: none; border: none;
@@ -876,36 +891,72 @@ const notesCSS = `
 }
 .notes-ed-back:active { opacity: .6; }
 .notes-save-indicator {
-  font-family: 'Cinzel', serif;
-  font-size: 9px; letter-spacing: 2px;
-  color: var(--notes-text3); text-transform: uppercase;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 12px; color: var(--notes-text3);
   transition: color .3s;
 }
-.notes-meta-select {
+.notes-menu-btn {
+  background: none; border: none;
+  color: var(--notes-text2);
+  font-size: 22px; cursor: pointer;
+  padding: 4px 8px; border-radius: 8px;
+  letter-spacing: 2px;
+  transition: background .15s;
+}
+.notes-menu-btn:active { background: var(--notes-hover); }
+
+/* ── Editor meta (date + pill) ── */
+.notes-editor-meta {
+  padding: 2px 24px 12px;
+}
+.notes-editor-date {
   font-family: 'Cormorant Garamond', serif;
-  font-size: 12px; padding: 5px 10px;
-  background: var(--notes-hover); border: 1px solid var(--notes-border);
-  border-radius: 6px; color: var(--notes-text2);
+  font-size: 14px; color: var(--notes-text3);
+  margin-bottom: 6px; transition: color .3s;
+}
+.notes-editor-pill { display: inline-block; }
+.notes-pill-select {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 12px; padding: 4px 10px;
+  background: var(--notes-accent-faint);
+  border: 1px solid var(--notes-border);
+  border-radius: 99px; color: var(--notes-accent);
   outline: none; cursor: pointer;
   transition: background .3s, border-color .3s, color .3s;
+  appearance: none;
+  -webkit-appearance: none;
 }
-.notes-ai-btn {
-  width: 32px; height: 32px; border-radius: 8px;
+
+/* ── Overflow menu ── */
+.notes-menu-backdrop {
+  position: fixed; inset: 0; z-index: 90;
+}
+.notes-overflow-menu {
+  position: absolute; top: 52px; right: 16px;
+  background: var(--notes-card);
   border: 1px solid var(--notes-border);
-  background: var(--notes-accent-faint);
-  color: var(--notes-accent); cursor: pointer;
-  font-size: 14px; display: flex; align-items: center; justify-content: center;
-  transition: all .2s;
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0,0,0,.15);
+  z-index: 100; min-width: 200px;
+  padding: 6px 0;
+  animation: notesFadeIn .15s ease;
 }
-.notes-ai-btn:active { opacity: .7; }
-.notes-delete-btn {
+.notes-overflow-item {
+  display: block; width: 100%;
+  padding: 12px 18px;
   background: none; border: none;
-  color: var(--notes-text3); font-family: 'Cormorant Garamond', serif;
-  font-size: 12px; cursor: pointer;
-  padding: 4px 8px; border-radius: 6px;
-  transition: color .2s;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 15px; color: var(--notes-text);
+  text-align: left; cursor: pointer;
+  transition: background .1s;
 }
-.notes-delete-btn:active { color: #c26b5a; }
+.notes-overflow-item:active { background: var(--notes-hover); }
+.notes-overflow-item:disabled { opacity: .5; cursor: default; }
+.notes-overflow-item.danger { color: #c26b5a; }
+.notes-overflow-sep {
+  height: 1px; background: var(--notes-border2);
+  margin: 4px 0;
+}
 
 .notes-editor-canvas {
   flex: 1; overflow-y: auto;
