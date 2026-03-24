@@ -229,11 +229,14 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
     const text = editingNote.texto;
     const selected = text.substring(start, end);
     const newText = text.substring(0, start) + prefix + selected + suffix + text.substring(end);
+    // Update textarea value directly first to preserve cursor
+    ta.value = newText;
+    const newCursorStart = start + prefix.length;
+    const newCursorEnd = end + prefix.length;
+    ta.setSelectionRange(newCursorStart, newCursorEnd);
+    ta.focus();
+    // Then sync state
     handleTextChange(newText);
-    setTimeout(() => {
-      ta.focus();
-      ta.setSelectionRange(start + prefix.length, end + prefix.length);
-    }, 10);
   }, [editingNote, handleTextChange]);
 
   // ── Verse lookup ───────────────────────────────────────────────────────────

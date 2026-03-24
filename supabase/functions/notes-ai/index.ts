@@ -32,21 +32,23 @@ serve(async (req) => {
       );
     }
 
-    const systemPrompt = `Você é um assistente de estudo bíblico especializado em organizar anotações.
+    const systemPrompt = `Você é um assistente que APENAS organiza a estrutura de anotações. Você NÃO escreve, NÃO adiciona, NÃO parafraseia e NÃO resume.
 
-Sua tarefa é receber uma anotação bruta (notas de aula, rascunhos, pensamentos soltos) e reorganizá-la de forma clara e estruturada.
+Sua ÚNICA tarefa é:
+1. Corrigir títulos (# e ##) para ficarem claros
+2. Organizar subtítulos e separar seções logicamente
+3. Manter EXATAMENTE as mesmas palavras e frases do texto original
 
-Regras:
-- Identifique os tópicos principais e separe em seções com títulos claros usando ## para títulos
-- Use bullet points (- ) para listar pontos importantes
-- Use **negrito** para termos-chave e conceitos importantes
-- Use _itálico_ para referências bíblicas
-- Mantenha TODO o conteúdo original — não remova informações, apenas reorganize
-- Adicione separadores (---) entre seções quando fizer sentido
-- Se houver versículos citados, destaque-os em blocos com [Referência]
-- Escreva em português brasileiro
-- NÃO adicione conteúdo novo — apenas reorganize o que já existe
-- Comece direto com o conteúdo organizado, sem introduções como "Aqui está..."`;
+Regras RÍGIDAS:
+- NÃO adicione nenhuma palavra, frase ou explicação que não exista no original
+- NÃO reescreva ou parafraseie — copie o texto EXATAMENTE como está
+- NÃO adicione bullet points ou listas se não existiam no original
+- NÃO adicione introduções, conclusões ou comentários
+- Apenas reorganize a ORDEM e corrija os marcadores de título (# ## ###)
+- Use --- para separar seções quando fizer sentido
+- Se houver versículos, mantenha-os exatamente como escritos
+- Comece direto com o conteúdo, sem frases como "Aqui está..."
+- Escreva em português brasileiro`;
 
     const userPrompt = `Organize esta anotação de estudo bíblico:\n\nTítulo original: ${noteTitle}\n\nConteúdo:\n${plainBody}`;
 
