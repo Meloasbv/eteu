@@ -477,6 +477,19 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
         style={{ position: "absolute", width: 0, height: 0, border: "none", opacity: 0, pointerEvents: "none" }}
         title="Background music"
       />
+      {/* ── LOGOUT BUTTON ── */}
+      <button onClick={onLogout} style={{
+        position: "fixed", top: 16, left: 16, zIndex: 100,
+        background: "none", border: "none",
+        color: theme === "light" ? "#aba59e" : "#6a5a48",
+        fontFamily: "'Cinzel', serif",
+        fontSize: 8, letterSpacing: 2, textTransform: "uppercase",
+        cursor: "pointer", padding: "4px 8px",
+        transition: "color .2s",
+      }}>
+        Sair
+      </button>
+
       {/* ── THEME TOGGLE ── */}
       <label style={{
         position: "fixed", top: 16, right: 16, width: 38, height: 22, zIndex: 100,
