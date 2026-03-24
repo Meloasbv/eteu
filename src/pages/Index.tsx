@@ -1113,33 +1113,64 @@ export default function BiblePlan() {
                   }}>
                     {devTranscript}
                   </div>
-                  <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
                     <button
-                      onClick={saveDevTranscript}
+                      onClick={summarizeTranscript}
+                      disabled={devSummarizing}
                       style={{
-                        flex: 1, padding: "11px", borderRadius: 10,
-                        background: tc ? "rgba(139,111,78,.1)" : "rgba(200,170,100,.12)",
-                        border: `1px solid ${tc ? "#8b6f4e" : "#C8A55C"}`,
-                        color: tc ? "#8b6f4e" : "#C8A55C",
+                        width: "100%", padding: "11px", borderRadius: 10,
+                        background: tc ? "rgba(106,90,205,.1)" : "rgba(106,90,205,.12)",
+                        border: `1px solid ${tc ? "rgba(106,90,205,.3)" : "rgba(106,90,205,.25)"}`,
+                        color: tc ? "#6a5acd" : "#9b8ec4",
                         fontFamily: "'Cinzel', serif", fontSize: 9, letterSpacing: 1,
-                        textTransform: "uppercase", cursor: "pointer",
+                        textTransform: "uppercase", cursor: devSummarizing ? "wait" : "pointer",
+                        opacity: devSummarizing ? 0.6 : 1,
                       }}
                     >
-                      🔥 Salvar em Devocionais
+                      {devSummarizing ? "⏳ Resumindo..." : "✨ Resumir em Tópicos com IA"}
                     </button>
-                    <button
-                      onClick={() => { setDevTranscript(""); devTranscriptRef.current = ""; }}
-                      style={{
-                        padding: "11px 16px", borderRadius: 10,
-                        border: `1px solid ${tc ? "rgba(0,0,0,.08)" : "rgba(200,170,100,.1)"}`,
-                        background: "transparent",
-                        color: tc ? "#6b6560" : "#8a7d65",
-                        fontFamily: "'Cinzel', serif", fontSize: 9, letterSpacing: 1,
-                        textTransform: "uppercase", cursor: "pointer",
-                      }}
-                    >
-                      Limpar
-                    </button>
+                    {devSummary && (
+                      <div style={{
+                        background: tc ? "rgba(106,90,205,.04)" : "rgba(106,90,205,.06)",
+                        border: `1px solid ${tc ? "rgba(106,90,205,.12)" : "rgba(106,90,205,.1)"}`,
+                        borderLeft: `3px solid ${tc ? "#6a5acd" : "#9b8ec4"}`,
+                        borderRadius: "0 10px 10px 0",
+                        padding: "14px 16px",
+                        fontSize: 14, lineHeight: 1.8,
+                        color: tc ? "#4a4540" : "#c4b498",
+                        whiteSpace: "pre-wrap",
+                      }}>
+                        {devSummary}
+                      </div>
+                    )}
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button
+                        onClick={() => saveDevTranscript(!!devSummary)}
+                        style={{
+                          flex: 1, padding: "11px", borderRadius: 10,
+                          background: tc ? "rgba(139,111,78,.1)" : "rgba(200,170,100,.12)",
+                          border: `1px solid ${tc ? "#8b6f4e" : "#C8A55C"}`,
+                          color: tc ? "#8b6f4e" : "#C8A55C",
+                          fontFamily: "'Cinzel', serif", fontSize: 9, letterSpacing: 1,
+                          textTransform: "uppercase", cursor: "pointer",
+                        }}
+                      >
+                        🔥 Salvar em Devocionais
+                      </button>
+                      <button
+                        onClick={() => { setDevTranscript(""); devTranscriptRef.current = ""; setDevSummary(""); }}
+                        style={{
+                          padding: "11px 16px", borderRadius: 10,
+                          border: `1px solid ${tc ? "rgba(0,0,0,.08)" : "rgba(200,170,100,.1)"}`,
+                          background: "transparent",
+                          color: tc ? "#6b6560" : "#8a7d65",
+                          fontFamily: "'Cinzel', serif", fontSize: 9, letterSpacing: 1,
+                          textTransform: "uppercase", cursor: "pointer",
+                        }}
+                      >
+                        Limpar
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
