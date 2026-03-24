@@ -130,7 +130,7 @@ const v = (name: string) => `var(--notes-${name})`;
 const transition = "0.3s cubic-bezier(.4,0,.2,1)";
 
 // ── Component ─────────────────────────────────────────────────────────────────
-export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: string) => void }) {
+export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChange?: (title: string) => void; userCodeId: string }) {
   const [notes, setNotes] = useState<Note[]>([]);
   const [activeSection, setActiveSection] = useState<Section | null>(null);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
@@ -159,31 +159,34 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Load notes
+  // Load notes from Supabase
   useEffect(() => {
-    try {
-      const d = localStorage.getItem(STORAGE_KEY);
-      if (d) {
-        const parsed = JSON.parse(d);
-        if (Array.isArray(parsed)) {
-          const migrated: Note[] = parsed.map((n: any) => ({
-            id: n.id ? (typeof n.id === "number" ? n.id : Date.now() + Math.random()) : Date.now() + Math.random(),
-            categoria: n.categoria || n.section || "aulas",
-            semana: n.semana || `Sem. ${n.week || 1} — ${n.week ? "" : ""}`,
-            texto: n.texto || n.body?.replace(/<[^>]*>/g, "") || `${n.title || ""}\n${n.summary || n.body?.replace(/<[^>]*>/g, "") || ""}`.trim(),
-            criadoEm: n.criadoEm || n.createdAt || new Date().toISOString(),
-            atualizadoEm: n.atualizadoEm || n.updatedAt || new Date().toISOString(),
-          }));
-          setNotes(migrated);
-        }
-      }
-    } catch {}
-  }, []);
+    const loadNotes = async () => {
+      const { data, error } = await supabase
+        .from("notes")
+        .select("*")
+        .eq("user_code_id", userCodeId)
+        .order("updated_at", { ascending: false });
 
-  const persist = useCallback((updated: Note[]) => {
-    setNotes(updated);
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(updated)); } catch {}
-  }, []);
+      if (error) {
+        console.error("Error loading notes:", error);
+        return;
+      }
+
+      if (data) {
+        const mapped: Note[] = data.map((n: any) => ({
+          id: n.id,
+          categoria: n.categoria as Section,
+          semana: n.semana || "",
+          texto: n.texto || "",
+          criadoEm: n.created_at,
+          atualizadoEm: n.updated_at,
+        }));
+        setNotes(mapped);
+      }
+    };
+    loadNotes();
+  }, [userCodeId]);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
