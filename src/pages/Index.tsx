@@ -429,37 +429,8 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
     setTimeout(() => setSaved(false), 2000);
   }, [devTranscript, devSummary]);
 
-  // CSS variables for notes theming
-  const themeVars = theme === "light" ? {
-    "--notes-bg": "#faf9f7",
-    "--notes-card": "#ffffff",
-    "--notes-hover": "#f0ede8",
-    "--notes-text": "#1a1714",
-    "--notes-text2": "#6b6560",
-    "--notes-text3": "#aba59e",
-    "--notes-accent": "#8b6f4e",
-    "--notes-accent-faint": "rgba(139,111,78,.07)",
-    "--notes-border": "rgba(0,0,0,.08)",
-    "--notes-border2": "rgba(0,0,0,.05)",
-    "--notes-placeholder": "#c0b9b0",
-    "--notes-shadow": "0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04)",
-  } : {
-    "--notes-bg": "#110e08",
-    "--notes-card": "#1d1810",
-    "--notes-hover": "#261f13",
-    "--notes-text": "#e6dcc8",
-    "--notes-text2": "#8a7d65",
-    "--notes-text3": "#4e4535",
-    "--notes-accent": "#c9a052",
-    "--notes-accent-faint": "rgba(201,160,82,.08)",
-    "--notes-border": "rgba(201,160,82,.1)",
-    "--notes-border2": "rgba(201,160,82,.06)",
-    "--notes-placeholder": "#3a3225",
-    "--notes-shadow": "0 1px 4px rgba(0,0,0,.3)",
-  };
-
   return (
-    <div className="min-h-screen bg-background text-foreground font-body transition-colors duration-300" style={themeVars as any}>
+    <div className="min-h-screen bg-background text-foreground font-body transition-colors duration-300">
       {/* Hidden YouTube player */}
       <iframe
         ref={playerRef}
