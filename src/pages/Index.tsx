@@ -699,7 +699,6 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
           }
         }
 
-        // Render exegese markdown to HTML using CSS classes
         const renderExegese = (text: string) => {
           return text
             .replace(/\*\*\"(.+?)\"\*\*/g, '<strong>"$1"</strong>')
@@ -731,252 +730,319 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
         };
 
         return (
-          <div className="px-4 pt-5 pb-10">
-            {/* ── TODAY'S DEVOTIONAL ── */}
+          <div className="px-4 pt-5 pb-24 space-y-6">
+
+            {/* ── HERO: TODAY'S DEVOTIONAL ── */}
             {todayDev ? (
-              <div className="rounded-2xl p-5 mb-6 relative overflow-hidden bg-primary/10 border border-primary/20">
-                <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-primary to-transparent opacity-70" />
-                <p className="font-display text-[10px] tracking-[3px] uppercase text-primary font-bold mb-2.5">
-                  🔥 Devocional de Hoje — {todayDev.day}
-                </p>
-                <h3 className="font-display text-xl font-semibold text-foreground mb-2">
-                  {todayDev.ref}
-                </h3>
-                {todayDev.verseText && (
-                  <div className="text-[17px] leading-relaxed text-foreground italic font-body
-                    px-4 py-3 mb-3 bg-primary/5 border-l-[3px] border-l-primary rounded-r-lg">
-                    "{todayDev.verseText}"
+              <div className="relative rounded-2xl overflow-hidden">
+                {/* Gradient top accent */}
+                <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-fire via-primary to-transparent" />
+                {/* Glow bg */}
+                <div className="absolute inset-0 bg-gradient-to-br from-fire/10 via-primary/5 to-transparent pointer-events-none" />
+                
+                <div className="relative p-6 border border-fire/20 rounded-2xl">
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="text-2xl">🔥</span>
+                    <div>
+                      <p className="font-display text-[9px] tracking-[3px] uppercase text-fire font-bold">
+                        Devocional de Hoje
+                      </p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        {todayDev.day} · {todayDev.period}
+                      </p>
+                    </div>
                   </div>
-                )}
-                <p className="text-[15px] leading-relaxed text-text-secondary italic">
-                  {todayDev.summary}
-                </p>
-                {todayDev.exegese && (
-                  <div className="bg-primary/5 border border-primary/10 border-l-[3px] border-l-primary rounded-r-[10px] p-4 mt-3.5">
-                    <p className="font-display text-[9px] tracking-[3px] uppercase text-primary font-bold mb-2.5">
-                      📜 Exegese — Palavra por Palavra
-                    </p>
-                    <div className="exegese-html text-[13px] leading-[1.85] text-text-secondary"
-                      dangerouslySetInnerHTML={{ __html: renderExegese(todayDev.exegese) }} />
-                  </div>
-                )}
-                <p className="text-[11px] text-muted-foreground mt-2.5">
-                  Período: {todayDev.period}
-                </p>
+
+                  <h3 className="font-display text-2xl font-semibold text-foreground mb-3 leading-tight">
+                    {todayDev.ref}
+                  </h3>
+
+                  {todayDev.verseText && (
+                    <blockquote className="text-[17px] leading-relaxed text-foreground/90 italic font-body
+                      px-5 py-4 mb-4 bg-fire/5 border-l-[3px] border-l-fire rounded-r-xl">
+                      "{todayDev.verseText}"
+                    </blockquote>
+                  )}
+
+                  <p className="text-[15px] leading-relaxed text-text-secondary mb-1">
+                    {todayDev.summary}
+                  </p>
+
+                  {todayDev.exegese && (
+                    <details className="mt-4 group">
+                      <summary className="font-display text-[9px] tracking-[3px] uppercase text-fire font-bold cursor-pointer
+                        flex items-center gap-2 select-none hover:text-fire/80 transition-colors">
+                        <span>📜 Exegese — Palavra por Palavra</span>
+                        <span className="text-[14px] text-muted-foreground group-open:rotate-180 transition-transform duration-200">▾</span>
+                      </summary>
+                      <div className="mt-3 bg-fire/5 border border-fire/10 border-l-[3px] border-l-fire rounded-r-xl p-4">
+                        <div className="exegese-html text-[13px] leading-[1.85] text-text-secondary"
+                          dangerouslySetInnerHTML={{ __html: renderExegese(todayDev.exegese) }} />
+                      </div>
+                    </details>
+                  )}
+                </div>
               </div>
             ) : (
-              <div className="rounded-2xl p-5 mb-6 text-center bg-primary/5 border border-primary/15">
-                <p className="font-display text-[10px] tracking-[3px] uppercase text-primary font-bold mb-2">
-                  Devocional de Hoje
-                </p>
-                <p className="text-sm text-muted-foreground italic">
-                  Sem devocional programado para hoje
-                </p>
+              <div className="relative rounded-2xl overflow-hidden">
+                <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-fire/50 via-primary/30 to-transparent" />
+                <div className="relative p-6 border border-border rounded-2xl text-center bg-card/50">
+                  <span className="text-3xl mb-3 block">🕊️</span>
+                  <p className="font-display text-[10px] tracking-[3px] uppercase text-muted-foreground font-bold mb-1.5">
+                    Devocional de Hoje
+                  </p>
+                  <p className="text-sm text-muted-foreground italic">
+                    Sem devocional programado para hoje.
+                  </p>
+                  <p className="text-[11px] text-muted-foreground/60 mt-1">
+                    Explore os devocionais anteriores abaixo
+                  </p>
+                </div>
               </div>
             )}
 
-            {/* ── Exegesis Study Field ── */}
-            <div className="bg-primary/5 border border-primary/15 rounded-2xl p-5 mb-7">
-              <p className="font-display text-[11px] tracking-[3px] uppercase text-primary font-semibold mb-3.5">
-                📜 Estudo Exegético
-              </p>
-              <p className="text-[13px] text-muted-foreground mb-3.5 leading-relaxed">
-                Envie um versículo e receba uma análise palavra por palavra com o significado original em grego/hebraico.
-              </p>
-
-              <div className="flex gap-2 mb-3">
-                <input
-                  type="text"
-                  value={exegeseVerse}
-                  onChange={e => setExegeseVerse(e.target.value)}
-                  onKeyDown={e => { if (e.key === "Enter") handleExegese(); }}
-                  placeholder="Ex: João 3:16, Rm 8:28"
-                  className="flex-1 px-4 py-3 rounded-[10px] border border-border bg-input
-                    text-foreground font-body text-[17px] outline-none
-                    focus:border-primary placeholder:text-muted-foreground placeholder:italic
-                    transition-colors duration-200"
-                />
-                <button
-                  onClick={handleExegese}
-                  disabled={!exegeseVerse.trim() || exegeseLoading}
-                  className="px-5 py-3 rounded-[10px] bg-primary/10 border border-primary
-                    text-primary font-display text-[10px] tracking-wide cursor-pointer shrink-0
-                    disabled:opacity-50 hover:bg-primary/15 active:opacity-70 transition-all duration-200"
-                >
-                  {exegeseLoading ? "⏳" : "Estudar"}
-                </button>
-              </div>
-
-              {exegeseError && (
-                <p className="text-[13px] text-destructive italic mb-2">{exegeseError}</p>
-              )}
-
-              {exegeseResult && (
-                <div className="bg-primary/3 border border-primary/10 border-l-[3px] border-l-primary rounded-r-xl p-4 mt-2">
-                  <div className="exegese-html text-sm leading-[2] text-text-secondary"
-                    dangerouslySetInnerHTML={{ __html: renderExegeseBlock(exegeseResult.content) }} />
-                  <div className="flex gap-2 mt-4">
-                    <button
-                      onClick={() => {
-                        const noteText = `# Exegese: ${exegeseResult.verse}\n\n${exegeseResult.content}`;
-                        const notes = JSON.parse(localStorage.getItem("bible-notes-2026") || "[]");
-                        const now2 = new Date().toISOString();
-                        notes.unshift({ id: Date.now(), categoria: "devocionais", semana: "", texto: noteText, criadoEm: now2, atualizadoEm: now2 });
-                        localStorage.setItem("bible-notes-2026", JSON.stringify(notes));
-                        setSaved(true); setTimeout(() => setSaved(false), 2000);
-                      }}
-                      className="flex-1 py-2.5 rounded-[10px] bg-primary/10 border border-primary
-                        text-primary font-display text-[9px] tracking-wide uppercase text-center cursor-pointer
-                        hover:bg-primary/15 active:opacity-70 transition-all duration-150"
-                    >
-                      🔥 Salvar em Devocionais
-                    </button>
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(exegeseResult.content);
-                        setSaved(true); setTimeout(() => setSaved(false), 2000);
-                      }}
-                      className="px-4 py-2.5 rounded-[10px] border border-border bg-transparent
-                        text-muted-foreground font-display text-[9px] tracking-wide uppercase cursor-pointer
-                        hover:border-primary/30 active:opacity-70 transition-all duration-150"
-                    >
-                      Copiar
-                    </button>
-                  </div>
-                </div>
-              )}
+            {/* ── DIVIDER ── */}
+            <div className="flex items-center gap-3">
+              <div className="h-px flex-1 bg-border" />
+              <span className="font-display text-[8px] tracking-[3px] uppercase text-muted-foreground">Ferramentas</span>
+              <div className="h-px flex-1 bg-border" />
             </div>
 
-            {/* ── Gravar Devocional ── */}
-            <div className="bg-primary/5 border border-primary/15 rounded-2xl p-5 mb-7">
-              <p className="font-display text-[11px] tracking-[3px] uppercase text-primary font-semibold mb-3.5">
-                🎙️ Gravar Devocional
-              </p>
-              <p className="text-[13px] text-muted-foreground mb-3.5 leading-relaxed">
-                Grave sua reflexão em áudio e ela será transcrita automaticamente. Depois salve nas suas anotações.
-              </p>
+            {/* ── EXEGESIS STUDY ── */}
+            <div className="rounded-2xl border border-primary/15 bg-card/50 overflow-hidden">
+              <div className="p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-base">📜</span>
+                  <p className="font-display text-[10px] tracking-[3px] uppercase text-primary font-semibold">
+                    Estudo Exegético
+                  </p>
+                </div>
+                <p className="text-[13px] text-muted-foreground mb-4 leading-relaxed">
+                  Envie um versículo e receba uma análise palavra por palavra com o significado original em grego/hebraico.
+                </p>
 
-              <button
-                onClick={toggleDevRecording}
-                className={`w-full py-3.5 rounded-xl border font-display text-[11px] tracking-[2px] uppercase cursor-pointer
-                  flex items-center justify-center gap-2 transition-all duration-200
-                  ${devRecording
-                    ? "bg-destructive/10 border-destructive text-destructive animate-pulse"
-                    : "bg-primary/10 border-primary text-primary hover:bg-primary/15"}`}
-              >
-                {devRecording ? "⏹ Parar Gravação" : "🎙️ Iniciar Gravação"}
-              </button>
+                <div className="flex gap-2 mb-3">
+                  <input
+                    type="text"
+                    value={exegeseVerse}
+                    onChange={e => setExegeseVerse(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Enter") handleExegese(); }}
+                    placeholder="Ex: João 3:16, Rm 8:28"
+                    className="flex-1 px-4 py-3 rounded-xl border border-border bg-input
+                      text-foreground font-body text-[16px] outline-none
+                      focus:border-primary focus:ring-1 focus:ring-primary/30
+                      placeholder:text-muted-foreground placeholder:italic
+                      transition-all duration-200"
+                  />
+                  <button
+                    onClick={handleExegese}
+                    disabled={!exegeseVerse.trim() || exegeseLoading}
+                    className="px-5 py-3 rounded-xl bg-primary text-primary-foreground font-display text-[10px] tracking-wider uppercase cursor-pointer shrink-0
+                      disabled:opacity-40 hover:bg-primary-hover active:scale-95 transition-all duration-200 shadow-elegant"
+                  >
+                    {exegeseLoading ? "⏳" : "Estudar"}
+                  </button>
+                </div>
 
-              {devTranscript && (
-                <div className="mt-3.5">
-                  <div className="bg-primary/5 border border-primary/10 border-l-[3px] border-l-primary
-                    rounded-r-[10px] p-4 text-[15px] leading-relaxed text-text-secondary italic font-body">
-                    {devTranscript}
+                {exegeseError && (
+                  <p className="text-[13px] text-destructive italic mb-2 flex items-center gap-1.5">
+                    <span>⚠</span> {exegeseError}
+                  </p>
+                )}
+
+                {exegeseResult && (
+                  <div className="mt-3 rounded-xl bg-primary/5 border border-primary/10 border-l-[3px] border-l-primary p-4">
+                    <p className="font-display text-[9px] tracking-[2px] uppercase text-primary font-bold mb-3">
+                      Resultado: {exegeseResult.verse}
+                    </p>
+                    <div className="exegese-html text-sm leading-[2] text-text-secondary"
+                      dangerouslySetInnerHTML={{ __html: renderExegeseBlock(exegeseResult.content) }} />
+                    <div className="flex gap-2 mt-4 pt-3 border-t border-border-subtle">
+                      <button
+                        onClick={() => {
+                          const noteText = `# Exegese: ${exegeseResult.verse}\n\n${exegeseResult.content}`;
+                          const notes = JSON.parse(localStorage.getItem("bible-notes-2026") || "[]");
+                          const now2 = new Date().toISOString();
+                          notes.unshift({ id: Date.now(), categoria: "devocionais", semana: "", texto: noteText, criadoEm: now2, atualizadoEm: now2 });
+                          localStorage.setItem("bible-notes-2026", JSON.stringify(notes));
+                          setSaved(true); setTimeout(() => setSaved(false), 2000);
+                        }}
+                        className="flex-1 py-2.5 rounded-xl bg-fire/10 border border-fire/30
+                          text-fire font-display text-[9px] tracking-wide uppercase text-center cursor-pointer
+                          hover:bg-fire/15 active:scale-[0.98] transition-all duration-150"
+                      >
+                        🔥 Salvar em Devocionais
+                      </button>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(exegeseResult.content);
+                          setSaved(true); setTimeout(() => setSaved(false), 2000);
+                        }}
+                        className="px-4 py-2.5 rounded-xl border border-border bg-transparent
+                          text-muted-foreground font-display text-[9px] tracking-wide uppercase cursor-pointer
+                          hover:border-primary/30 hover:text-foreground active:scale-[0.98] transition-all duration-150"
+                      >
+                        Copiar
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex flex-col gap-2 mt-2.5">
+                )}
+              </div>
+            </div>
+
+            {/* ── RECORD DEVOTIONAL ── */}
+            <div className="rounded-2xl border border-primary/15 bg-card/50 overflow-hidden">
+              <div className="p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-base">🎙️</span>
+                  <p className="font-display text-[10px] tracking-[3px] uppercase text-primary font-semibold">
+                    Gravar Devocional
+                  </p>
+                </div>
+                <p className="text-[13px] text-muted-foreground mb-4 leading-relaxed">
+                  Grave sua reflexão em áudio e ela será transcrita automaticamente.
+                </p>
+
+                <button
+                  onClick={toggleDevRecording}
+                  className={`w-full py-3.5 rounded-xl border-2 font-display text-[11px] tracking-[2px] uppercase cursor-pointer
+                    flex items-center justify-center gap-2.5 transition-all duration-200
+                    ${devRecording
+                      ? "bg-destructive/10 border-destructive text-destructive animate-pulse shadow-[0_0_20px_rgba(220,60,60,0.15)]"
+                      : "bg-primary/5 border-primary/30 text-primary hover:bg-primary/10 hover:border-primary/50 active:scale-[0.98]"}`}
+                >
+                  {devRecording ? "⏹ Parar Gravação" : "🎙️ Iniciar Gravação"}
+                </button>
+
+                {devTranscript && (
+                  <div className="mt-4 space-y-3">
+                    <div className="bg-primary/5 border border-primary/10 border-l-[3px] border-l-primary
+                      rounded-r-xl p-4 text-[15px] leading-relaxed text-text-secondary italic font-body">
+                      {devTranscript}
+                    </div>
                     <button
                       onClick={summarizeTranscript}
                       disabled={devSummarizing}
-                      className="w-full py-2.5 rounded-[10px] bg-accent/10 border border-accent/25
+                      className="w-full py-2.5 rounded-xl bg-accent/10 border border-accent/25
                         text-accent font-display text-[9px] tracking-wide uppercase cursor-pointer
-                        disabled:opacity-60 hover:bg-accent/15 transition-all duration-200"
+                        disabled:opacity-50 hover:bg-accent/15 active:scale-[0.98] transition-all duration-200"
                     >
                       {devSummarizing ? "⏳ Resumindo..." : "✨ Resumir em Tópicos com IA"}
                     </button>
                     {devSummary && (
                       <div className="bg-accent/5 border border-accent/10 border-l-[3px] border-l-accent
-                        rounded-r-[10px] p-4 text-sm leading-relaxed text-text-secondary whitespace-pre-wrap">
+                        rounded-r-xl p-4 text-sm leading-relaxed text-text-secondary whitespace-pre-wrap">
                         {devSummary}
                       </div>
                     )}
                     <div className="flex gap-2">
                       <button
                         onClick={() => saveDevTranscript(!!devSummary)}
-                        className="flex-1 py-2.5 rounded-[10px] bg-primary/10 border border-primary
-                          text-primary font-display text-[9px] tracking-wide uppercase cursor-pointer
-                          hover:bg-primary/15 active:opacity-70 transition-all duration-150"
+                        className="flex-1 py-2.5 rounded-xl bg-fire/10 border border-fire/30
+                          text-fire font-display text-[9px] tracking-wide uppercase cursor-pointer
+                          hover:bg-fire/15 active:scale-[0.98] transition-all duration-150"
                       >
                         🔥 Salvar em Devocionais
                       </button>
                       <button
                         onClick={() => { setDevTranscript(""); devTranscriptRef.current = ""; setDevSummary(""); }}
-                        className="px-4 py-2.5 rounded-[10px] border border-border bg-transparent
+                        className="px-4 py-2.5 rounded-xl border border-border bg-transparent
                           text-muted-foreground font-display text-[9px] tracking-wide uppercase cursor-pointer
-                          hover:border-primary/30 active:opacity-70 transition-all duration-150"
+                          hover:border-primary/30 active:scale-[0.98] transition-all duration-150"
                       >
                         Limpar
                       </button>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
 
-            {/* Devotional weeks list */}
-            <p className="font-display text-[11px] tracking-[3px] uppercase text-muted-foreground font-semibold mb-4">
-              Todos os Devocionais
-            </p>
-            {DEVOTIONALS.map((week, wi) => (
-              <div key={wi} className="mb-6">
-                <div className="inline-flex items-center px-3.5 py-1 rounded-full border border-border
-                  bg-card/50 mb-3 text-[13px] text-text-secondary font-semibold tracking-wide">
-                  {week.period}
-                </div>
-                <div className="grid gap-2.5" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(260px,1fr))" }}>
-                  {week.days.map((d, di) => {
-                    const key = `dev-${wi}-${di}`;
-                    const isOpen = expandedDev === key;
-                    const c = DEV_DAY_COLORS[d.day] ?? "#C8A55C";
-                    return (
-                      <div key={di} onClick={() => setExpandedDev(isOpen ? null : key)}
-                        className={`rounded-xl p-4 cursor-pointer relative overflow-hidden border transition-all duration-300
-                          ${isOpen ? "border-primary/30" : "border-border hover:border-primary/15"} bg-card/50`}>
-                        <div className="absolute top-0 left-0 right-0 h-[2px] opacity-50"
-                          style={{ background: `linear-gradient(90deg,${c},transparent)` }} />
-                        <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <div className="text-[11px] font-semibold tracking-wide uppercase mb-1" style={{ color: c }}>
-                              {d.day}
-                            </div>
-                            <div className="text-[15px] font-semibold text-foreground">
-                              {d.ref}
+            {/* ── DIVIDER ── */}
+            <div className="flex items-center gap-3">
+              <div className="h-px flex-1 bg-border" />
+              <span className="font-display text-[8px] tracking-[3px] uppercase text-muted-foreground">Arquivo</span>
+              <div className="h-px flex-1 bg-border" />
+            </div>
+
+            {/* ── ALL DEVOTIONALS LIST ── */}
+            <div>
+              <p className="font-display text-[10px] tracking-[3px] uppercase text-muted-foreground font-semibold mb-4">
+                📖 Todos os Devocionais
+              </p>
+              {DEVOTIONALS.map((week, wi) => (
+                <div key={wi} className="mb-6">
+                  <div className="inline-flex items-center px-3.5 py-1.5 rounded-full border border-border
+                    bg-card/80 mb-3 text-[12px] text-text-secondary font-display font-semibold tracking-wider uppercase">
+                    📅 {week.period}
+                  </div>
+                  <div className="grid gap-2.5" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(260px,1fr))" }}>
+                    {week.days.map((d, di) => {
+                      const key = `dev-${wi}-${di}`;
+                      const isOpen = expandedDev === key;
+                      const c = DEV_DAY_COLORS[d.day] ?? "#C8A55C";
+                      return (
+                        <div key={di} onClick={() => setExpandedDev(isOpen ? null : key)}
+                          className={`rounded-xl cursor-pointer relative overflow-hidden border transition-all duration-300
+                            ${isOpen
+                              ? "border-primary/30 bg-card shadow-elegant-lg"
+                              : "border-border hover:border-primary/20 bg-card/50 hover:bg-card/80"}`}>
+                          <div className="absolute top-0 left-0 right-0 h-[2px] opacity-60"
+                            style={{ background: `linear-gradient(90deg,${c},transparent)` }} />
+                          <div className="p-4">
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <div className="text-[10px] font-display font-bold tracking-wider uppercase mb-1" style={{ color: c }}>
+                                  {d.day}
+                                </div>
+                                <div className="text-[15px] font-semibold text-foreground font-display">
+                                  {d.ref}
+                                </div>
+                              </div>
+                              <span className={`text-lg text-muted-foreground shrink-0 mt-0.5 transition-transform duration-200
+                                ${isOpen ? "rotate-45" : ""}`}>
+                                +
+                              </span>
                             </div>
                           </div>
-                          <span className="text-lg text-muted-foreground shrink-0 mt-0.5">
-                            {isOpen ? "−" : "+"}
-                          </span>
-                        </div>
-                        {isOpen && (
-                          <div className="pt-2 mt-2 border-t border-border-subtle">
-                            {d.verseText && (
-                              <div className="text-[15px] leading-relaxed text-foreground italic font-body
-                                px-3.5 py-2.5 mb-2.5 bg-primary/5 rounded-r-lg"
-                                style={{ borderLeft: `3px solid ${c}` }}>
-                                "{d.verseText}"
-                              </div>
-                            )}
-                            <p className="text-[13.5px] text-text-secondary leading-relaxed mb-3">
-                              {d.summary}
-                            </p>
-                            {d.exegese && (
-                              <div className="bg-primary/5 border border-primary/10 rounded-r-[10px] p-4"
-                                style={{ borderLeft: `3px solid ${c}` }}>
-                                <p className="font-display text-[9px] tracking-[3px] uppercase font-bold mb-2.5"
-                                  style={{ color: c }}>
-                                  📜 Exegese — Palavra por Palavra
+                          {isOpen && (
+                            <div className="px-4 pb-4 pt-0 border-t border-border-subtle animate-fade-in">
+                              <div className="pt-3">
+                                {d.verseText && (
+                                  <blockquote className="text-[15px] leading-relaxed text-foreground/90 italic font-body
+                                    px-4 py-3 mb-3 rounded-r-xl bg-card-hover"
+                                    style={{ borderLeft: `3px solid ${c}` }}>
+                                    "{d.verseText}"
+                                  </blockquote>
+                                )}
+                                <p className="text-[13.5px] text-text-secondary leading-relaxed mb-3">
+                                  {d.summary}
                                 </p>
-                                <div className="exegese-html text-[13px] leading-[1.85] text-text-secondary"
-                                  dangerouslySetInnerHTML={{ __html: renderExegese(d.exegese) }} />
+                                {d.exegese && (
+                                  <details className="group">
+                                    <summary className="font-display text-[9px] tracking-[2px] uppercase font-bold cursor-pointer
+                                      flex items-center gap-1.5 select-none transition-colors" style={{ color: c }}>
+                                      <span>📜 Exegese</span>
+                                      <span className="text-[12px] text-muted-foreground group-open:rotate-180 transition-transform duration-200">▾</span>
+                                    </summary>
+                                    <div className="mt-2 rounded-r-xl p-4 bg-primary/5 border border-primary/10"
+                                      style={{ borderLeft: `3px solid ${c}` }}>
+                                      <div className="exegese-html text-[13px] leading-[1.85] text-text-secondary"
+                                        dangerouslySetInnerHTML={{ __html: renderExegese(d.exegese) }} />
+                                    </div>
+                                  </details>
+                                )}
                               </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
+
           </div>
         );
       })()}
