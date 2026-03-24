@@ -14,7 +14,7 @@ type Note = {
   atualizadoEm: string;
 };
 
-const STORAGE_KEY = "bible-notes-2026";
+
 const WEEKS_LIST = [
   "Sem. 1 — 24/01–30/01", "Sem. 2 — 31/01–06/02", "Sem. 3 — 07/02–13/02",
   "Sem. 4 — 14/02–20/02", "Sem. 5 — 21/02–27/02", "Sem. 6 — 28/02–06/03",
