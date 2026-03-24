@@ -684,8 +684,6 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
         const dayNames = ["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"];
         const todayName = dayNames[now.getDay()];
         let todayDev: { ref: string; summary: string; day: string; period: string; exegese?: string; verseText?: string } | null = null;
-        const monthDay = now.getDate();
-        const month = now.getMonth();
         const year = now.getFullYear();
 
         for (const week of DEVOTIONALS) {
