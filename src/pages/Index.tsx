@@ -349,24 +349,49 @@ export default function BiblePlan() {
     } catch { setDevRecording(false); }
   }, [devRecording, devTranscript]);
 
-  const saveDevTranscript = useCallback(() => {
+  const [devSummarizing, setDevSummarizing] = useState(false);
+  const [devSummary, setDevSummary] = useState("");
+
+  const summarizeTranscript = useCallback(async () => {
+    if (!devTranscript.trim()) return;
+    setDevSummarizing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("summarize-transcript", {
+        body: { transcript: devTranscript },
+      });
+      if (error) throw error;
+      setDevSummary(data?.result || "");
+    } catch (e) {
+      console.error("Summarize error:", e);
+      setDevSummary("");
+    } finally {
+      setDevSummarizing(false);
+    }
+  }, [devTranscript]);
+
+  const saveDevTranscript = useCallback((includeSummary = false) => {
     if (!devTranscript.trim()) return;
     const notes = JSON.parse(localStorage.getItem("bible-notes-2026") || "[]");
     const now = new Date().toISOString();
+    let texto = `# Devocional gravado\n\n${devTranscript}`;
+    if (includeSummary && devSummary) {
+      texto += `\n\n---\n\n## Resumo em tópicos\n\n${devSummary}`;
+    }
     notes.unshift({
       id: Date.now(),
       categoria: "devocionais",
       semana: "",
-      texto: `# Devocional gravado\n\n${devTranscript}`,
+      texto,
       criadoEm: now,
       atualizadoEm: now,
     });
     localStorage.setItem("bible-notes-2026", JSON.stringify(notes));
     setDevTranscript("");
     devTranscriptRef.current = "";
+    setDevSummary("");
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
-  }, [devTranscript]);
+  }, [devTranscript, devSummary]);
 
   // CSS variables for notes theming
   const themeVars = theme === "light" ? {
