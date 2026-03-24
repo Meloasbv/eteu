@@ -6,7 +6,7 @@ import jsPDF from "jspdf";
 type Section = "proclamadores" | "aulas" | "pensamentos" | "devocionais";
 
 type Note = {
-  id: number;
+  id: string;
   categoria: Section;
   semana: string;
   texto: string;
