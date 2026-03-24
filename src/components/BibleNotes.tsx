@@ -162,7 +162,7 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
   // Load notes from Supabase
   useEffect(() => {
     const loadNotes = async () => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("notes")
         .select("*")
         .eq("user_code_id", userCodeId)
