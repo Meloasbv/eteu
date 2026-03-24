@@ -85,13 +85,42 @@ function applyInline(text: string): string {
 }
 
 // ── Bible API fetch ──────────────────────────────────────────────────────────
+const ABBREV_MAP: Record<string, string> = {
+  gn: "Gênesis", ex: "Êxodo", lv: "Levítico", nm: "Números", dt: "Deuteronômio",
+  js: "Josué", jz: "Juízes", rt: "Rute", "1sm": "1 Samuel", "2sm": "2 Samuel",
+  "1rs": "1 Reis", "2rs": "2 Reis", "1cr": "1 Crônicas", "2cr": "2 Crônicas",
+  ed: "Esdras", ne: "Neemias", et: "Ester", jó: "Jó", sl: "Salmos",
+  pv: "Provérbios", ec: "Eclesiastes", ct: "Cânticos", is: "Isaías",
+  jr: "Jeremias", lm: "Lamentações", ez: "Ezequiel", dn: "Daniel",
+  os: "Oséias", jl: "Joel", am: "Amós", ob: "Obadias", jn: "Jonas",
+  mq: "Miquéias", na: "Naum", hc: "Habacuque", sf: "Sofonias", ag: "Ageu",
+  zc: "Zacarias", ml: "Malaquias",
+  mt: "Mateus", mc: "Marcos", lc: "Lucas", jo: "João",
+  at: "Atos", rm: "Romanos", "1co": "1 Coríntios", "2co": "2 Coríntios",
+  gl: "Gálatas", ef: "Efésios", fp: "Filipenses", cl: "Colossenses",
+  "1ts": "1 Tessalonicenses", "2ts": "2 Tessalonicenses",
+  "1tm": "1 Timóteo", "2tm": "2 Timóteo", tt: "Tito", fm: "Filemom",
+  hb: "Hebreus", tg: "Tiago", "1pe": "1 Pedro", "2pe": "2 Pedro",
+  "1jo": "1 João", "2jo": "2 João", "3jo": "3 João", jd: "Judas", ap: "Apocalipse",
+};
+
+function expandAbbrev(ref: string): string {
+  const match = ref.match(/^(\d?\s*[a-záàâãéêíóôõúç]+)\s*(\d.*)$/i);
+  if (!match) return ref;
+  const bookPart = match[1].trim().toLowerCase().replace(/\s+/g, "");
+  const rest = match[2];
+  const full = ABBREV_MAP[bookPart];
+  return full ? `${full} ${rest}` : ref;
+}
+
 async function fetchVerse(ref: string, version = "almeida"): Promise<{ text: string; reference: string } | null> {
+  const expanded = expandAbbrev(ref);
   try {
-    const url = `https://bible-api.com/${encodeURIComponent(ref)}?translation=${version}`;
+    const url = `https://bible-api.com/${encodeURIComponent(expanded)}?translation=${version}`;
     const res = await fetch(url);
     if (!res.ok) return null;
     const data = await res.json();
-    if (data.text) return { text: data.text.trim(), reference: data.reference || ref };
+    if (data.text) return { text: data.text.trim(), reference: data.reference || expanded };
   } catch {}
   return null;
 }
