@@ -432,141 +432,236 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
     };
   }, []);
 
-  // ── PDF Generation (screenshot-style) ───────────────────────────────────────
+  // ── Professional PDF Generation ─────────────────────────────────────────────
   const handleGeneratePDF = useCallback(async () => {
     if (!editingNote) return;
     setMenuOpen(false);
     showToast("Gerando PDF...");
 
-    // Read computed CSS vars from the app to match the current theme
-    const rootStyles = getComputedStyle(document.documentElement);
-    const getBg = () => rootStyles.getPropertyValue("--notes-bg").trim() || "#1a1611";
-    const getText = () => rootStyles.getPropertyValue("--notes-text").trim() || "#e8e0d4";
-    const getText3 = () => rootStyles.getPropertyValue("--notes-text3").trim() || "#6b6156";
-    const getAccent = () => rootStyles.getPropertyValue("--notes-accent").trim() || "#c9a96e";
-    const getAccentFaint = () => rootStyles.getPropertyValue("--notes-accent-faint").trim() || "rgba(201,169,110,.1)";
+    const BG = "#1a1a1a";
+    const GOLD = "#c9a84c";
+    const GOLD_DIM = "#a08638";
+    const TEXT = "#e8e0d4";
+    const TEXT_DIM = "#8a8278";
+    const LINE_COLOR = "#2e2e2e";
 
-    // Build an off-screen clone with the note rendered in preview mode
-    const container = document.createElement("div");
-    container.style.cssText = `
-      position: fixed; left: -9999px; top: 0;
-      width: 420px; padding: 36px 30px 44px;
-      background: ${getBg()};
-      color: ${getText()};
-      font-family: 'Cormorant Garamond', serif;
-    `;
+    const doc = new jsPDF({ unit: "mm", format: "a4" });
+    const W = doc.internal.pageSize.getWidth();   // 210
+    const H = doc.internal.pageSize.getHeight();   // 297
+    const ML = 24; const MR = 24; const MT = 28; const MB = 22;
+    const UW = W - ML - MR;
+
+    const fillBg = () => { doc.setFillColor(BG); doc.rect(0, 0, W, H, "F"); };
+    const hLine = (y: number, x1 = ML, x2 = W - MR) => {
+      doc.setDrawColor(LINE_COLOR); doc.setLineWidth(0.3); doc.line(x1, y, x2, y);
+    };
+
+    // Parse note into sections
+    const rawLines = editingNote.texto.split("\n");
+    type Section = { heading: string; lines: string[] };
+    const sections: Section[] = [];
+    let current: Section | null = null;
+
+    for (const line of rawLines) {
+      if (/^#{1,3}\s/.test(line)) {
+        const heading = line.replace(/^#{1,3}\s*/, "").trim();
+        current = { heading, lines: [] };
+        sections.push(current);
+      } else if (/^-{3,}$/.test(line.trim())) {
+        // separator — skip
+      } else {
+        if (!current) { current = { heading: "", lines: [] }; sections.push(current); }
+        current.lines.push(line);
+      }
+    }
+
+    const title = noteTitle(editingNote.texto);
+    const sec = SECTIONS.find(s => s.key === editingNote.categoria);
+    const catLabel = sec ? `${sec.icon} ${sec.label}` : "";
+
+    // ─── PAGE 1: COVER ──────────────────────────────────────────────────
+    fillBg();
+
+    // Top decorative line
+    doc.setDrawColor(GOLD); doc.setLineWidth(0.5);
+    doc.line(W / 2 - 30, 80, W / 2 + 30, 80);
+
+    // Category
+    if (catLabel) {
+      doc.setFont("helvetica", "normal"); doc.setFontSize(10);
+      doc.setTextColor(GOLD_DIM);
+      doc.text(catLabel.toUpperCase(), W / 2, 92, { align: "center" });
+    }
+
+    // Title
+    doc.setFont("helvetica", "bold"); doc.setFontSize(26);
+    doc.setTextColor(GOLD);
+    const titleWrapped = doc.splitTextToSize(title.toUpperCase(), UW);
+    const titleY = 110;
+    doc.text(titleWrapped, W / 2, titleY, { align: "center" });
+
+    // Bottom decorative line
+    const afterTitle = titleY + titleWrapped.length * 11 + 8;
+    doc.setDrawColor(GOLD); doc.setLineWidth(0.5);
+    doc.line(W / 2 - 30, afterTitle, W / 2 + 30, afterTitle);
 
     // Date
-    const dateEl = document.createElement("div");
-    dateEl.style.cssText = `
-      font-size: 13px; color: ${getText3()};
-      margin-bottom: 16px; font-family: 'Cormorant Garamond', serif;
-    `;
-    dateEl.textContent = formatDateFull(editingNote.atualizadoEm);
-    container.appendChild(dateEl);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(11);
+    doc.setTextColor(TEXT_DIM);
+    doc.text(formatDateFull(editingNote.atualizadoEm), W / 2, afterTitle + 14, { align: "center" });
 
-    // Category pill
-    const sec = SECTIONS.find(s => s.key === editingNote.categoria);
-    if (sec) {
-      const pill = document.createElement("div");
-      pill.style.cssText = `
-        display: inline-block; font-size: 11px; padding: 3px 12px;
-        border-radius: 99px; margin-bottom: 20px;
-        background: ${getAccentFaint()};
-        color: ${getAccent()};
-        font-family: 'Cormorant Garamond', serif;
-      `;
-      pill.textContent = `${sec.icon} ${sec.label}`;
-      container.appendChild(pill);
+    // Footer on cover
+    doc.setFontSize(8); doc.setTextColor(TEXT_DIM);
+    doc.text("Material de Estudo Bíblico", W / 2, H - 20, { align: "center" });
+
+    // ─── PAGE 2: TABLE OF CONTENTS ──────────────────────────────────────
+    const tocSections = sections.filter(s => s.heading);
+    if (tocSections.length > 1) {
+      doc.addPage(); fillBg();
+
+      doc.setFont("helvetica", "bold"); doc.setFontSize(14);
+      doc.setTextColor(GOLD);
+      doc.text("SUMÁRIO", W / 2, MT + 5, { align: "center" });
+      hLine(MT + 10);
+
+      let tocY = MT + 20;
+      tocSections.forEach((s, i) => {
+        doc.setFont("helvetica", "normal"); doc.setFontSize(11);
+        doc.setTextColor(TEXT);
+        const num = `${(i + 1).toString().padStart(2, "0")}`;
+        doc.setTextColor(GOLD_DIM);
+        doc.text(num, ML, tocY);
+        doc.setTextColor(TEXT);
+        const tocLine = doc.splitTextToSize(s.heading, UW - 16);
+        doc.text(tocLine, ML + 12, tocY);
+        tocY += tocLine.length * 6 + 4;
+        if (tocY > H - MB) { doc.addPage(); fillBg(); tocY = MT; }
+      });
     }
 
-    // Note content (rendered markdown) — override inline colors to match theme
-    const content = document.createElement("div");
-    content.style.cssText = `
-      font-size: 18px; line-height: 1.9;
-      color: ${getText()};
-      font-family: 'Cormorant Garamond', serif;
-    `;
-    // Render markdown but replace CSS var references with actual computed values
-    let html = renderMarkdown(editingNote.texto) || "<em>Sem conteúdo</em>";
-    html = html
-      .replace(/var\(--notes-accent\)/g, getAccent())
-      .replace(/var\(--notes-text\)/g, getText())
-      .replace(/var\(--notes-border\)/g, getText3())
-      .replace(/color:var\(--notes-placeholder\)/g, `color:${getText3()}`);
-    content.innerHTML = html;
-    container.appendChild(content);
+    // ─── CONTENT PAGES ──────────────────────────────────────────────────
+    doc.addPage(); fillBg();
+    let y = MT;
 
-    document.body.appendChild(container);
+    const ensureSpace = (needed: number) => {
+      if (y + needed > H - MB) {
+        doc.addPage(); fillBg(); y = MT;
+      }
+    };
 
-    try {
-      await document.fonts.ready;
+    const writeText = (text: string, opts: { bold?: boolean; size?: number; color?: string; indent?: number } = {}) => {
+      const { bold = false, size = 10.5, color = TEXT, indent = 0 } = opts;
+      doc.setFont("helvetica", bold ? "bold" : "normal");
+      doc.setFontSize(size);
+      doc.setTextColor(color);
+      const maxW = UW - indent;
+      const wrapped = doc.splitTextToSize(text, maxW);
+      const lineH = size * 0.45;
+      ensureSpace(wrapped.length * lineH);
+      doc.text(wrapped, ML + indent, y);
+      y += wrapped.length * lineH + 1.5;
+    };
 
-      const canvas = await html2canvas(container, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: getBg(),
-        logging: false,
-      });
+    for (let si = 0; si < sections.length; si++) {
+      const section = sections[si];
 
-      const imgW = canvas.width;
-      const imgH = canvas.height;
+      // Section heading
+      if (section.heading) {
+        ensureSpace(18);
+        if (si > 0) { y += 4; }
 
-      const pdfW = 210; // A4 mm
-      const pdfH = 297;
-      const margin = 0; // full bleed for dark bg
-      const usableW = pdfW;
-      const usableH = pdfH;
+        // Gold heading
+        doc.setFont("helvetica", "bold"); doc.setFontSize(12);
+        doc.setTextColor(GOLD);
+        const headWrapped = doc.splitTextToSize(section.heading.toUpperCase(), UW);
+        doc.text(headWrapped, ML, y);
+        y += headWrapped.length * 5.5 + 2;
 
-      const scale = usableW / imgW;
-      const scaledH = imgH * scale;
-
-      // Parse bg color for page fill
-      const bgHex = getBg();
-      const doc = new jsPDF({ unit: "mm", format: "a4" });
-
-      const fillPageBg = () => {
-        doc.setFillColor(bgHex);
-        doc.rect(0, 0, pdfW, pdfH, "F");
-      };
-
-      if (scaledH <= usableH) {
-        fillPageBg();
-        doc.addImage(canvas.toDataURL("image/png"), "PNG", margin, margin, usableW, scaledH);
-      } else {
-        const pageImgH = usableH / scale;
-        let srcY = 0;
-        let pageNum = 0;
-
-        while (srcY < imgH) {
-          if (pageNum > 0) doc.addPage();
-          fillPageBg();
-
-          const sliceH = Math.min(pageImgH, imgH - srcY);
-          const sliceCanvas = document.createElement("canvas");
-          sliceCanvas.width = imgW;
-          sliceCanvas.height = Math.ceil(sliceH);
-          const ctx = sliceCanvas.getContext("2d")!;
-          ctx.drawImage(canvas, 0, srcY, imgW, sliceH, 0, 0, imgW, Math.ceil(sliceH));
-
-          const sliceScaledH = sliceH * scale;
-          doc.addImage(sliceCanvas.toDataURL("image/png"), "PNG", 0, 0, usableW, sliceScaledH);
-
-          srcY += pageImgH;
-          pageNum++;
-        }
+        // Subtle line under heading
+        hLine(y); y += 6;
       }
 
-      const title = noteTitle(editingNote.texto);
-      const fileName = title.replace(/[^a-zA-Z0-9À-ÿ\s]/g, "").trim().replace(/\s+/g, "_").slice(0, 40) || "nota";
-      doc.save(`${fileName}.pdf`);
-      showToast("PDF gerado!");
-    } catch (err) {
-      console.error("PDF generation error:", err);
-      showToast("Erro ao gerar PDF");
-    } finally {
-      document.body.removeChild(container);
+      // Section body
+      for (const line of section.lines) {
+        if (!line.trim()) { y += 2.5; continue; }
+
+        // Bullet points: * or - or •
+        const bulletMatch = line.match(/^\s*[\*\-•›]\s+(.*)$/);
+        if (bulletMatch) {
+          const bulletText = bulletMatch[1]
+            .replace(/\*\*(.+?)\*\*/g, "$1")
+            .replace(/_(.+?)_/g, "$1");
+
+          ensureSpace(8);
+          // Gold bullet
+          doc.setFont("helvetica", "normal"); doc.setFontSize(10.5);
+          doc.setTextColor(GOLD);
+          doc.text("›", ML + 2, y);
+
+          // Check for bold prefix like "**Term:** rest"
+          const boldMatch = bulletText.match(/^(.+?):\s*(.*)$/);
+          if (boldMatch) {
+            doc.setTextColor(TEXT);
+            doc.setFont("helvetica", "bold"); doc.setFontSize(10.5);
+            const keyW = doc.getTextWidth(boldMatch[1] + ": ");
+            doc.text(boldMatch[1] + ":", ML + 8, y);
+            doc.setFont("helvetica", "normal");
+            const rest = doc.splitTextToSize(boldMatch[2], UW - 8 - keyW);
+            if (rest.length === 1) {
+              doc.text(rest[0], ML + 8 + keyW, y);
+              y += 5.5;
+            } else {
+              // First part on same line, rest wraps
+              const fullText = doc.splitTextToSize(boldMatch[1] + ": " + boldMatch[2], UW - 8);
+              doc.setFont("helvetica", "normal");
+              doc.text("", 0, 0); // reset
+              // Just write all wrapped
+              doc.setFont("helvetica", "normal"); doc.setFontSize(10.5); doc.setTextColor(TEXT);
+              const allWrapped = doc.splitTextToSize(bulletText, UW - 8);
+              // Re-draw: first line bold key
+              for (let li = 0; li < allWrapped.length; li++) {
+                ensureSpace(5.5);
+                doc.setFont("helvetica", "normal"); doc.setTextColor(TEXT);
+                doc.text(allWrapped[li], ML + 8, y);
+                y += 5;
+              }
+            }
+          } else {
+            doc.setTextColor(TEXT);
+            const wrapped = doc.splitTextToSize(bulletText, UW - 8);
+            for (let li = 0; li < wrapped.length; li++) {
+              ensureSpace(5.5);
+              doc.text(wrapped[li], ML + 8, y);
+              y += 5;
+            }
+          }
+          y += 1;
+          continue;
+        }
+
+        // Regular paragraph
+        const cleanLine = line
+          .replace(/\*\*(.+?)\*\*/g, "$1")
+          .replace(/_(.+?)_/g, "$1");
+        writeText(cleanLine);
+      }
     }
+
+    // ─── ADD PAGE NUMBERS ────────────────────────────────────────────────
+    const totalPages = doc.getNumberOfPages();
+    for (let i = 2; i <= totalPages; i++) { // skip cover
+      doc.setPage(i);
+      doc.setFont("helvetica", "normal"); doc.setFontSize(8);
+      doc.setTextColor(TEXT_DIM);
+      doc.text(`${i - 1}`, W / 2, H - 12, { align: "center" });
+      // Top gold accent line
+      doc.setDrawColor(GOLD); doc.setLineWidth(0.2);
+      doc.line(ML, 18, W - MR, 18);
+    }
+
+    const fileName = title.replace(/[^a-zA-Z0-9À-ÿ\s]/g, "").trim().replace(/\s+/g, "_").slice(0, 40) || "nota";
+    doc.save(`${fileName}.pdf`);
+    showToast("PDF gerado!");
   }, [editingNote, showToast]);
 
   // ── RENDER ──────────────────────────────────────────────────────────────────
