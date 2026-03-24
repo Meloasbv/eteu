@@ -236,7 +236,17 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
   });
   const [titleFading, setTitleFading] = useState(false);
   const [displayTitle, setDisplayTitle] = useState("Estudo Tudo Em Um");
-...
+  const playerRef = useRef<HTMLIFrameElement>(null);
+
+  // Apply theme to html element
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    try { localStorage.setItem(THEME_KEY, theme); } catch {}
+  }, [theme]);
+
+  // Animate title changes
+  const prevTab = useRef(tab);
+  const prevNotesTitle = useRef(notesTitle);
   useEffect(() => {
     const newTitle = tab === "home" ? "Estudo Tudo Em Um"
       : tab === "leitura" ? "📖 Plano de Leitura"
