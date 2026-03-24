@@ -439,20 +439,28 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
     setMenuOpen(false);
     showToast("Gerando PDF...");
 
+    // Read computed CSS vars from the app to match the current theme
+    const rootStyles = getComputedStyle(document.documentElement);
+    const getBg = () => rootStyles.getPropertyValue("--notes-bg").trim() || "#1a1611";
+    const getText = () => rootStyles.getPropertyValue("--notes-text").trim() || "#e8e0d4";
+    const getText3 = () => rootStyles.getPropertyValue("--notes-text3").trim() || "#6b6156";
+    const getAccent = () => rootStyles.getPropertyValue("--notes-accent").trim() || "#c9a96e";
+    const getAccentFaint = () => rootStyles.getPropertyValue("--notes-accent-faint").trim() || "rgba(201,169,110,.1)";
+
     // Build an off-screen clone with the note rendered in preview mode
     const container = document.createElement("div");
     container.style.cssText = `
       position: fixed; left: -9999px; top: 0;
-      width: 420px; padding: 32px 28px 40px;
-      background: var(--notes-bg, #faf8f4);
-      color: var(--notes-text, #2c2420);
+      width: 420px; padding: 36px 30px 44px;
+      background: ${getBg()};
+      color: ${getText()};
       font-family: 'Cormorant Garamond', serif;
     `;
 
     // Date
     const dateEl = document.createElement("div");
     dateEl.style.cssText = `
-      font-size: 13px; color: var(--notes-text3, #b0a89c);
+      font-size: 13px; color: ${getText3()};
       margin-bottom: 16px; font-family: 'Cormorant Garamond', serif;
     `;
     dateEl.textContent = formatDateFull(editingNote.atualizadoEm);
@@ -465,77 +473,87 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
       pill.style.cssText = `
         display: inline-block; font-size: 11px; padding: 3px 12px;
         border-radius: 99px; margin-bottom: 20px;
-        background: var(--notes-accent-faint, rgba(139,115,85,.08));
-        color: var(--notes-accent, #8b7355);
+        background: ${getAccentFaint()};
+        color: ${getAccent()};
         font-family: 'Cormorant Garamond', serif;
       `;
       pill.textContent = `${sec.icon} ${sec.label}`;
       container.appendChild(pill);
     }
 
-    // Note content (rendered markdown)
+    // Note content (rendered markdown) — override inline colors to match theme
     const content = document.createElement("div");
     content.style.cssText = `
       font-size: 18px; line-height: 1.9;
-      color: var(--notes-text, #2c2420);
+      color: ${getText()};
       font-family: 'Cormorant Garamond', serif;
     `;
-    content.innerHTML = renderMarkdown(editingNote.texto) || "<em>Sem conteúdo</em>";
+    // Render markdown but replace CSS var references with actual computed values
+    let html = renderMarkdown(editingNote.texto) || "<em>Sem conteúdo</em>";
+    html = html
+      .replace(/var\(--notes-accent\)/g, getAccent())
+      .replace(/var\(--notes-text\)/g, getText())
+      .replace(/var\(--notes-border\)/g, getText3())
+      .replace(/color:var\(--notes-placeholder\)/g, `color:${getText3()}`);
+    content.innerHTML = html;
     container.appendChild(content);
 
     document.body.appendChild(container);
 
     try {
-      // Wait for fonts
       await document.fonts.ready;
 
       const canvas = await html2canvas(container, {
         scale: 2,
         useCORS: true,
-        backgroundColor: null,
+        backgroundColor: getBg(),
         logging: false,
       });
 
-      const imgData = canvas.toDataURL("image/png");
       const imgW = canvas.width;
       const imgH = canvas.height;
 
       const pdfW = 210; // A4 mm
       const pdfH = 297;
-      const margin = 10;
-      const usableW = pdfW - margin * 2;
-      const usableH = pdfH - margin * 2;
+      const margin = 0; // full bleed for dark bg
+      const usableW = pdfW;
+      const usableH = pdfH;
 
       const scale = usableW / imgW;
       const scaledH = imgH * scale;
 
+      // Parse bg color for page fill
+      const bgHex = getBg();
       const doc = new jsPDF({ unit: "mm", format: "a4" });
 
+      const fillPageBg = () => {
+        doc.setFillColor(bgHex);
+        doc.rect(0, 0, pdfW, pdfH, "F");
+      };
+
       if (scaledH <= usableH) {
-        // Fits on one page
-        doc.addImage(imgData, "PNG", margin, margin, usableW, scaledH);
+        fillPageBg();
+        doc.addImage(canvas.toDataURL("image/png"), "PNG", margin, margin, usableW, scaledH);
       } else {
-        // Split across pages
-        const pageImgH = usableH / scale; // px per page
+        const pageImgH = usableH / scale;
         let srcY = 0;
         let pageNum = 0;
 
         while (srcY < imgH) {
           if (pageNum > 0) doc.addPage();
-          const sliceH = Math.min(pageImgH, imgH - srcY);
+          fillPageBg();
 
-          // Create a slice canvas
+          const sliceH = Math.min(pageImgH, imgH - srcY);
           const sliceCanvas = document.createElement("canvas");
           sliceCanvas.width = imgW;
-          sliceCanvas.height = sliceH;
+          sliceCanvas.height = Math.ceil(sliceH);
           const ctx = sliceCanvas.getContext("2d")!;
-          ctx.drawImage(canvas, 0, srcY, imgW, sliceH, 0, 0, imgW, sliceH);
+          ctx.drawImage(canvas, 0, srcY, imgW, sliceH, 0, 0, imgW, Math.ceil(sliceH));
 
-          const sliceData = sliceCanvas.toDataURL("image/png");
           const sliceScaledH = sliceH * scale;
-          doc.addImage(sliceData, "PNG", margin, margin, usableW, sliceScaledH);
+          doc.addImage(sliceCanvas.toDataURL("image/png"), "PNG", 0, 0, usableW, sliceScaledH);
 
-          srcY += sliceH;
+          srcY += pageImgH;
           pageNum++;
         }
       }
