@@ -540,165 +540,135 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
         <>
           {/* Today's reading card */}
           {todayReading && (
-            <div style={{ padding: "20px 16px 8px" }}>
+            <div className="px-4 pt-5 pb-2">
               <div
                 onClick={() => {
                   setActiveWeek(todayReading.weekIdx);
                   if (!todayReading.isDone) toggle(todayReading.weekIdx, todayReading.dayIdx);
                 }}
-                style={{
-                  background: todayReading.isDone
-                    ? "linear-gradient(135deg,rgba(107,142,107,.12),rgba(90,122,90,.06))"
-                    : "linear-gradient(135deg,rgba(200,170,100,.1),rgba(180,140,80,.04))",
-                  border: `1px solid ${todayReading.isDone ? "rgba(107,142,107,.3)" : "rgba(200,170,100,.3)"}`,
-                  borderRadius: 16, padding: "18px 20px", cursor: "pointer",
-                  position: "relative", overflow: "hidden",
-                }}>
-                <div style={{
-                  position: "absolute", top: 0, left: 0, right: 0, height: 3,
-                  background: todayReading.isDone
-                    ? "linear-gradient(90deg,#6B8E6B,transparent)"
-                    : "linear-gradient(90deg,#C8A55C,transparent)",
-                  opacity: 0.7, borderRadius: "16px 16px 0 0",
-                }} />
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <span style={{ fontSize: 22 }}>{todayReading.isDone ? "✅" : "📖"}</span>
+                className={`rounded-2xl p-5 cursor-pointer relative overflow-hidden border transition-all duration-300
+                  ${todayReading.isDone
+                    ? "bg-success/10 border-success/30"
+                    : "bg-primary/10 border-primary/30"}`}
+              >
+                <div className={`absolute top-0 left-0 right-0 h-[3px] rounded-t-2xl opacity-70
+                  ${todayReading.isDone ? "bg-gradient-to-r from-success to-transparent" : "bg-gradient-to-r from-primary to-transparent"}`} />
+                <div className="flex items-center justify-between mb-2.5">
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-[22px]">{todayReading.isDone ? "✅" : "📖"}</span>
                     <div>
-                      <div style={{
-                        fontSize: 11, letterSpacing: 2, textTransform: "uppercase",
-                        color: todayReading.isDone ? "#6B8E6B" : "#C8A55C",
-                        fontWeight: 700,
-                      }}>
+                      <div className={`text-[11px] tracking-[2px] uppercase font-bold font-display
+                        ${todayReading.isDone ? "text-success" : "text-primary"}`}>
                         Leitura de Hoje
                       </div>
-                      <div style={{ fontSize: 15, fontWeight: 600, color: "#e8d8b8", marginTop: 2 }}>
-                        {todayReading.day.day} — Semana {todayReading.week.week}
+                      <div className="text-foreground font-bold mt-0.5">
+                        {todayReading.day.day} — Semana {todayReading.weekIdx + 1}
                       </div>
                     </div>
                   </div>
-                  <div style={{
-                    width: 28, height: 28, borderRadius: "50%",
-                    border: todayReading.isDone ? "none" : "2px solid rgba(200,170,100,.35)",
-                    background: todayReading.isDone ? "linear-gradient(135deg,#6B8E6B,#5a7a5a)" : "transparent",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                  }}>
-                    {todayReading.isDone && (
-                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                        <path d="M3 7l3 3 5-6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    )}
-                  </div>
                 </div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                <div className="flex flex-wrap">
                   {todayReading.day.r.map((r, ri) => (
-                    <span key={ri} style={{
-                      display: "inline-block", padding: "5px 12px", borderRadius: 8,
-                      fontSize: 13, fontWeight: 500,
-                      background: todayReading.isDone ? "rgba(107,142,107,.12)" : "rgba(200,170,100,.1)",
-                      color: todayReading.isDone ? "#8aaa8a" : "#d4c4a8",
-                      border: `1px solid ${todayReading.isDone ? "rgba(107,142,107,.2)" : "rgba(200,170,100,.2)"}`,
-                      textDecoration: todayReading.isDone ? "line-through" : "none",
-                      opacity: todayReading.isDone ? 0.7 : 1,
-                    }}>{r}</span>
+                    <span key={ri} className={`inline-block px-3 py-1 rounded-lg text-[13.5px] m-1 border transition-colors
+                      ${todayReading.isDone
+                        ? "bg-success/10 text-success/70 border-success/15 line-through"
+                        : "bg-primary/10 text-foreground border-primary/20"}`}>
+                      {r}
+                    </span>
                   ))}
                 </div>
                 {!todayReading.isDone && (
-                  <div style={{ fontSize: 11, color: "#8a7a60", marginTop: 10, textAlign: "right" }}>
+                  <div className="text-[11px] text-muted-foreground mt-2.5 text-right">
                     Toque para marcar como lida
                   </div>
                 )}
               </div>
             </div>
           )}
-          <div style={{ padding: "16px 16px 12px", overflowX: "auto", display: "flex", gap: 8, borderBottom: "1px solid rgba(200,180,140,.06)" }}>
+
+          {/* Week pills */}
+          <div className="px-4 pt-4 pb-3 overflow-x-auto flex gap-2 border-b border-border-subtle no-scrollbar">
             {WEEKS.map((w, i) => (
-              <button key={i} onClick={() => setActiveWeek(i)} style={{
-                padding: "6px 14px", borderRadius: 20,
-                border: `1px solid ${i === activeWeek ? "rgba(200,170,100,.5)" : weekProg(i) >= 1 ? "rgba(107,142,107,.4)" : "rgba(200,180,140,.15)"}`,
-                background: i === activeWeek ? "linear-gradient(135deg,rgba(200,170,100,.15),rgba(180,140,80,.08))" : "rgba(200,180,140,.04)",
-                color: i === activeWeek ? "#e8d8b8" : "#a09078",
-                fontSize: 13, cursor: "pointer", whiteSpace: "nowrap",
-                fontWeight: i === activeWeek ? 600 : 500, fontFamily: "inherit",
-              }}>
+              <button key={i} onClick={() => setActiveWeek(i)}
+                className={`px-3.5 py-1.5 rounded-full border text-[13px] cursor-pointer whitespace-nowrap font-body transition-all duration-200
+                  ${i === activeWeek
+                    ? "border-primary/50 bg-primary/15 text-foreground font-semibold"
+                    : weekProg(i) >= 1
+                      ? "border-success/40 bg-success/10 text-success"
+                      : "border-border bg-card/50 text-muted-foreground"}`}>
                 {w.week}{weekProg(i) >= 1 ? " ✓" : ""}
               </button>
             ))}
           </div>
 
           {/* Week header */}
-          <div style={{ padding: "20px 24px 8px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div className="px-6 pt-5 pb-2 flex items-center justify-between">
             <div>
-              <div style={{ fontSize: 24, fontWeight: 600, color: "#e8d8b8" }}>Semana {cw.week}</div>
-              <div style={{ fontSize: 13, color: "#8a7a60", marginTop: 2 }}>{cw.dates}</div>
+              <div className="text-2xl font-semibold text-foreground">Semana {cw.week}</div>
+              <div className="text-[13px] text-muted-foreground mt-0.5">{cw.dates}</div>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ width: 80, height: 4, background: "rgba(200,180,140,.1)", borderRadius: 2, overflow: "hidden" }}>
-                <div style={{ width: `${wp * 100}%`, height: "100%", borderRadius: 2, transition: "width .4s ease",
-                  background: wp >= 1 ? "linear-gradient(90deg,#6B8E6B,#5a7a5a)" : "linear-gradient(90deg,#C8A55C,#B8953C)" }}/>
+            <div className="flex items-center gap-2.5">
+              <div className="w-20 h-1 bg-border rounded overflow-hidden">
+                <div className={`h-full rounded transition-all duration-400
+                  ${wp >= 1 ? "bg-success" : "bg-primary"}`}
+                  style={{ width: `${wp * 100}%` }} />
               </div>
-              <span style={{ fontSize: 13, color: "#a09078", fontWeight: 500 }}>{Math.round(wp * 100)}%</span>
+              <span className="text-[13px] text-muted-foreground font-medium">{Math.round(wp * 100)}%</span>
             </div>
           </div>
 
           {/* Nav arrows */}
-          <div style={{ padding: "4px 24px 12px", display: "flex", gap: 8 }}>
+          <div className="px-6 pt-1 pb-3 flex gap-2">
             {([-1, 1] as const).map(delta => (
               <button key={delta} onClick={() => setActiveWeek(w => Math.max(0, Math.min(WEEKS.length - 1, w + delta)))}
                 disabled={(delta === -1 && activeWeek === 0) || (delta === 1 && activeWeek === WEEKS.length - 1)}
-                style={{
-                  width: 40, height: 40, borderRadius: "50%",
-                  border: "1px solid rgba(200,180,140,.15)", background: "rgba(200,180,140,.04)",
-                  color: "#a09078", cursor: "pointer", fontSize: 18,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  opacity: ((delta === -1 && activeWeek === 0) || (delta === 1 && activeWeek === WEEKS.length - 1)) ? 0.3 : 1,
-                }}>
+                className="w-10 h-10 rounded-full border border-border bg-card/50 text-muted-foreground cursor-pointer text-lg
+                  flex items-center justify-center hover:border-primary/30 disabled:opacity-30 transition-all duration-200">
                 {delta === -1 ? "‹" : "›"}
               </button>
             ))}
           </div>
 
           {/* Days grid */}
-          <div style={{ padding: "4px 16px 32px", display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))", gap: 12 }}>
+          <div className="px-4 pt-1 pb-8 grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))" }}>
             {cw.days.map((day, di) => {
               if (!day.r.length) return null;
               const isDone = !!checked[`${activeWeek}-${di}`];
               const c = COLORS[di];
               return (
-                <div key={di} onClick={() => toggle(activeWeek, di)} style={{
-                  background: isDone ? "rgba(107,142,107,.06)" : "rgba(255,255,255,.025)",
-                  border: `1px solid ${isDone ? "rgba(107,142,107,.2)" : "rgba(200,180,140,.08)"}`,
-                  borderRadius: 14, padding: 20, cursor: "pointer", position: "relative", overflow: "hidden",
-                  transition: "all .3s ease",
-                }}>
-                  <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, borderRadius: "14px 14px 0 0",
-                    background: isDone ? "linear-gradient(90deg,#6B8E6B,transparent)" : `linear-gradient(90deg,${c},transparent)`,
-                    opacity: isDone ? 0.7 : 0.5 }}/>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <span style={{ fontSize: 17, fontWeight: 600, color: isDone ? "#6B8E6B" : c }}>{ABBREVS[di]}</span>
-                      <span style={{ fontSize: 12, color: "#6a5a48" }}>{day.r.length} {day.r.length === 1 ? "leitura" : "leituras"}</span>
+                <div key={di} onClick={() => toggle(activeWeek, di)}
+                  className={`rounded-xl p-5 cursor-pointer relative overflow-hidden border transition-all duration-300
+                    ${isDone ? "bg-success/5 border-success/20" : "bg-card/50 border-border hover:border-primary/20"}`}>
+                  <div className="absolute top-0 left-0 right-0 h-[3px] rounded-t-xl"
+                    style={{
+                      background: isDone ? "linear-gradient(90deg,hsl(var(--success)),transparent)" : `linear-gradient(90deg,${c},transparent)`,
+                      opacity: isDone ? 0.7 : 0.5
+                    }} />
+                  <div className="flex items-center justify-between mb-3.5">
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-[17px] font-semibold" style={{ color: isDone ? "hsl(var(--success))" : c }}>
+                        {ABBREVS[di]}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {day.r.length} {day.r.length === 1 ? "leitura" : "leituras"}
+                      </span>
                     </div>
-                    <div style={{ width: 24, height: 24, borderRadius: "50%",
-                      border: isDone ? "none" : "2px solid rgba(200,180,140,.25)",
-                      background: isDone ? "linear-gradient(135deg,#6B8E6B,#5a7a5a)" : "transparent",
-                      display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center
+                      ${isDone ? "bg-success" : "border-2 border-border"}`}>
                       {isDone && <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                         <path d="M3 7l3 3 5-6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>}
                     </div>
                   </div>
-                  <div style={{ display: "flex", flexWrap: "wrap" }}>
+                  <div className="flex flex-wrap">
                     {day.r.map((r, ri) => (
-                      <span key={ri} style={{
-                        display: "inline-block", padding: "5px 12px", borderRadius: 8,
-                        fontSize: 13.5, margin: "3px 4px 3px 0",
-                        background: isDone ? "rgba(107,142,107,.1)" : `${c}18`,
-                        color: isDone ? "#8aaa8a" : "#d4c4a8",
-                        border: `1px solid ${isDone ? "rgba(107,142,107,.15)" : c + "25"}`,
-                        textDecoration: isDone ? "line-through" : "none",
-                        opacity: isDone ? 0.7 : 1,
-                      }}>{r}</span>
+                      <span key={ri} className={`inline-block px-3 py-1 rounded-lg text-[13.5px] m-1 border
+                        ${isDone
+                          ? "bg-success/10 text-success/70 border-success/15 line-through opacity-70"
+                          : "text-foreground/75 border-border-subtle"}`}
+                        style={!isDone ? { background: `${c}18`, borderColor: `${c}25` } : {}}>
+                        {r}
+                      </span>
                     ))}
                   </div>
                 </div>
@@ -710,18 +680,14 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
 
       {/* ── DEVOCIONAL TAB ── */}
       {tab === "devocional" && (() => {
-        // Find today's devotional
         const now = new Date();
         const dayNames = ["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"];
         const todayName = dayNames[now.getDay()];
-        // Find matching devotional for today
         let todayDev: { ref: string; summary: string; day: string; period: string; exegese?: string; verseText?: string } | null = null;
-        // Try to match by checking which period covers today (March 2026)
         const monthDay = now.getDate();
-        const month = now.getMonth(); // 2 = March
+        const month = now.getMonth();
         const year = now.getFullYear();
-        
-        // Parse period dates to find the right week
+
         for (const week of DEVOTIONALS) {
           const [startStr, endStr] = week.period.split(" a ");
           const [sd, sm] = startStr.split("/").map(Number);
@@ -730,271 +696,151 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
           const end = new Date(year, em - 1, ed, 23, 59, 59);
           if (now >= start && now <= end) {
             const match = week.days.find(d => d.day === todayName);
-            if (match) {
-              todayDev = { ...match, period: week.period };
-            }
+            if (match) todayDev = { ...match, period: week.period };
             break;
           }
         }
 
-        const tc = theme === "light";
+        // Render exegese markdown to HTML using CSS classes
+        const renderExegese = (text: string) => {
+          return text
+            .replace(/\*\*\"(.+?)\"\*\*/g, '<strong>"$1"</strong>')
+            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.+?)\*/g, '<em>$1</em>')
+            .replace(/\. /g, '.<br/>');
+        };
+
+        const renderExegeseBlock = (text: string) => {
+          return text
+            .split("\n")
+            .map(line => {
+              if (line.startsWith("## ")) return `<h3 class="font-display text-base font-medium text-primary my-4">${line.slice(3)}</h3>`;
+              if (line.startsWith("- ")) {
+                const content = line.slice(2)
+                  .replace(/\*\*\"(.+?)\"\*\*/g, '<strong>"$1"</strong>')
+                  .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                  .replace(/\*(.+?)\*/g, '<em>$1</em>');
+                return `<div class="flex gap-2 my-1"><span class="text-primary shrink-0">•</span><span>${content}</span></div>`;
+              }
+              if (!line.trim()) return "<br/>";
+              const content = line
+                .replace(/\*\*\"(.+?)\"\*\*/g, '<strong>"$1"</strong>')
+                .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.+?)\*/g, '<em>$1</em>');
+              return `<p class="my-1">${content}</p>`;
+            })
+            .join("");
+        };
 
         return (
-          <div style={{ padding: "20px 16px 40px" }}>
+          <div className="px-4 pt-5 pb-10">
             {/* ── TODAY'S DEVOTIONAL ── */}
             {todayDev ? (
-              <div style={{
-                background: tc
-                  ? "linear-gradient(135deg,rgba(139,111,78,.08),rgba(139,111,78,.03))"
-                  : "linear-gradient(135deg,rgba(200,170,100,.1),rgba(180,140,80,.04))",
-                border: `1px solid ${tc ? "rgba(139,111,78,.18)" : "rgba(200,170,100,.3)"}`,
-                borderRadius: 16, padding: "22px 20px", marginBottom: 24,
-                position: "relative", overflow: "hidden",
-              }}>
-                <div style={{
-                  position: "absolute", top: 0, left: 0, right: 0, height: 3,
-                  background: tc
-                    ? "linear-gradient(90deg,#8b6f4e,transparent)"
-                    : "linear-gradient(90deg,#C8A55C,transparent)",
-                  opacity: 0.7,
-                }} />
-                <div style={{
-                  fontSize: 10, letterSpacing: 3, textTransform: "uppercase",
-                  color: tc ? "#8b6f4e" : "#C8A55C",
-                  fontWeight: 700, fontFamily: "'Cinzel', serif", marginBottom: 10,
-                }}>
+              <div className="rounded-2xl p-5 mb-6 relative overflow-hidden bg-primary/10 border border-primary/20">
+                <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-primary to-transparent opacity-70" />
+                <p className="font-display text-[10px] tracking-[3px] uppercase text-primary font-bold mb-2.5">
                   🔥 Devocional de Hoje — {todayDev.day}
-                </div>
-                <div style={{
-                  fontSize: 20, fontWeight: 600, color: tc ? "#1a1714" : "#e8d8b8",
-                  marginBottom: 8, fontFamily: "'Cinzel', serif",
-                  transition: "color .3s",
-                }}>
+                </p>
+                <h3 className="font-display text-xl font-semibold text-foreground mb-2">
                   {todayDev.ref}
-                </div>
+                </h3>
                 {todayDev.verseText && (
-                  <div style={{
-                    fontSize: 17, lineHeight: 1.8,
-                    color: tc ? "#1a1714" : "#e8d8b8",
-                    fontStyle: "italic", fontFamily: "'Cormorant Garamond', serif",
-                    padding: "12px 16px", marginBottom: 12,
-                    background: tc ? "rgba(139,111,78,.04)" : "rgba(200,170,100,.06)",
-                    borderLeft: `3px solid ${tc ? "#8b6f4e" : "#C8A55C"}`,
-                    borderRadius: "0 8px 8px 0",
-                    transition: "color .3s, background .3s",
-                  }}>
+                  <div className="text-[17px] leading-relaxed text-foreground italic font-body
+                    px-4 py-3 mb-3 bg-primary/5 border-l-[3px] border-l-primary rounded-r-lg">
                     "{todayDev.verseText}"
                   </div>
                 )}
-                <div style={{
-                  fontSize: 15, lineHeight: 1.7,
-                  color: tc ? "#6b6560" : "#b0a090",
-                  fontStyle: "italic",
-                  transition: "color .3s",
-                }}>
+                <p className="text-[15px] leading-relaxed text-text-secondary italic">
                   {todayDev.summary}
-                </div>
+                </p>
                 {todayDev.exegese && (
-                  <div style={{
-                    background: tc ? "rgba(139,111,78,.04)" : "rgba(200,170,100,.06)",
-                    border: `1px solid ${tc ? "rgba(139,111,78,.1)" : "rgba(200,170,100,.12)"}`,
-                    borderLeft: `3px solid ${tc ? "#8b6f4e" : "#C8A55C"}`,
-                    borderRadius: "0 10px 10px 0",
-                    padding: "14px 16px", marginTop: 14,
-                  }}>
-                    <div style={{
-                      fontSize: 9, letterSpacing: 3, textTransform: "uppercase",
-                      color: tc ? "#8b6f4e" : "#C8A55C",
-                      fontWeight: 700, fontFamily: "'Cinzel', serif", marginBottom: 10,
-                    }}>
+                  <div className="bg-primary/5 border border-primary/10 border-l-[3px] border-l-primary rounded-r-[10px] p-4 mt-3.5">
+                    <p className="font-display text-[9px] tracking-[3px] uppercase text-primary font-bold mb-2.5">
                       📜 Exegese — Palavra por Palavra
-                    </div>
-                    <div
-                      style={{
-                        fontSize: 13, lineHeight: 1.85,
-                        color: tc ? "#4a4540" : "#c4b498",
-                      }}
-                      dangerouslySetInnerHTML={{
-                        __html: todayDev.exegese
-                          .replace(/\*\*\"(.+?)\"\*\*/g, '<strong style="color:' + (tc ? "#1a1714" : "#e8d8b8") + ';">"$1"</strong>')
-                          .replace(/\*\*(.+?)\*\*/g, '<strong style="color:' + (tc ? "#1a1714" : "#e8d8b8") + ';">$1</strong>')
-                          .replace(/\*(.+?)\*/g, '<em style="color:' + (tc ? "#8b6f4e" : "#C8A55C") + ';">$1</em>')
-                          .replace(/\. /g, '.<br/>')
-                      }}
-                    />
+                    </p>
+                    <div className="exegese-html text-[13px] leading-[1.85] text-text-secondary"
+                      dangerouslySetInnerHTML={{ __html: renderExegese(todayDev.exegese) }} />
                   </div>
                 )}
-                <div style={{
-                  fontSize: 11, color: tc ? "#aba59e" : "#6a5a48",
-                  marginTop: 10, transition: "color .3s",
-                }}>
+                <p className="text-[11px] text-muted-foreground mt-2.5">
                   Período: {todayDev.period}
-                </div>
+                </p>
               </div>
             ) : (
-              <div style={{
-                background: tc ? "rgba(139,111,78,.05)" : "rgba(200,170,100,.06)",
-                border: `1px solid ${tc ? "rgba(139,111,78,.1)" : "rgba(200,170,100,.18)"}`,
-                borderRadius: 16, padding: "22px 20px", marginBottom: 24,
-                textAlign: "center",
-              }}>
-                <div style={{
-                  fontSize: 10, letterSpacing: 3, textTransform: "uppercase",
-                  color: tc ? "#8b6f4e" : "#C8A55C",
-                  fontWeight: 700, fontFamily: "'Cinzel', serif", marginBottom: 8,
-                }}>
+              <div className="rounded-2xl p-5 mb-6 text-center bg-primary/5 border border-primary/15">
+                <p className="font-display text-[10px] tracking-[3px] uppercase text-primary font-bold mb-2">
                   Devocional de Hoje
-                </div>
-                <div style={{
-                  fontSize: 14, color: tc ? "#aba59e" : "#7a6a58",
-                  fontStyle: "italic",
-                }}>
+                </p>
+                <p className="text-sm text-muted-foreground italic">
                   Sem devocional programado para hoje
-                </div>
+                </p>
               </div>
             )}
 
             {/* ── Exegesis Study Field ── */}
-            <div style={{
-              background: tc ? "rgba(139,111,78,.04)" : "rgba(200,170,100,.06)",
-              border: `1px solid ${tc ? "rgba(139,111,78,.12)" : "rgba(200,170,100,.18)"}`,
-              borderRadius: 16, padding: "20px 20px", marginBottom: 28,
-              transition: "background .3s, border-color .3s",
-            }}>
-              <div style={{
-                fontSize: 11, letterSpacing: 3, textTransform: "uppercase",
-                color: tc ? "#8b6f4e" : "#C8A55C",
-                marginBottom: 14, fontWeight: 600, fontFamily: "'Cinzel', serif",
-              }}>
+            <div className="bg-primary/5 border border-primary/15 rounded-2xl p-5 mb-7">
+              <p className="font-display text-[11px] tracking-[3px] uppercase text-primary font-semibold mb-3.5">
                 📜 Estudo Exegético
-              </div>
-              <p style={{
-                fontSize: 13, color: tc ? "#6b6560" : "#a09078",
-                marginBottom: 14, lineHeight: 1.6,
-              }}>
+              </p>
+              <p className="text-[13px] text-muted-foreground mb-3.5 leading-relaxed">
                 Envie um versículo e receba uma análise palavra por palavra com o significado original em grego/hebraico.
               </p>
 
-              <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+              <div className="flex gap-2 mb-3">
                 <input
                   type="text"
                   value={exegeseVerse}
                   onChange={e => setExegeseVerse(e.target.value)}
                   onKeyDown={e => { if (e.key === "Enter") handleExegese(); }}
                   placeholder="Ex: João 3:16, Rm 8:28"
-                  style={{
-                    flex: 1, padding: "12px 16px", borderRadius: 10,
-                    border: `1px solid ${tc ? "rgba(0,0,0,.1)" : "rgba(200,170,100,.2)"}`,
-                    background: tc ? "#fff" : "rgba(200,170,100,.06)",
-                    color: tc ? "#1a1714" : "#e8d8b8",
-                    fontFamily: "'Cormorant Garamond', serif",
-                    fontSize: 17, outline: "none",
-                    transition: "border-color .2s, background .3s, color .3s",
-                  }}
+                  className="flex-1 px-4 py-3 rounded-[10px] border border-border bg-input
+                    text-foreground font-body text-[17px] outline-none
+                    focus:border-primary placeholder:text-muted-foreground placeholder:italic
+                    transition-colors duration-200"
                 />
                 <button
                   onClick={handleExegese}
                   disabled={!exegeseVerse.trim() || exegeseLoading}
-                  style={{
-                    padding: "12px 20px", borderRadius: 10,
-                    background: tc ? "rgba(139,111,78,.1)" : "rgba(200,170,100,.12)",
-                    border: `1px solid ${tc ? "#8b6f4e" : "#C8A55C"}`,
-                    color: tc ? "#8b6f4e" : "#C8A55C",
-                    fontFamily: "'Cinzel', serif", fontSize: 10, letterSpacing: 1,
-                    cursor: "pointer", flexShrink: 0,
-                    opacity: (!exegeseVerse.trim() || exegeseLoading) ? 0.5 : 1,
-                    transition: "all .2s",
-                  }}
+                  className="px-5 py-3 rounded-[10px] bg-primary/10 border border-primary
+                    text-primary font-display text-[10px] tracking-wide cursor-pointer shrink-0
+                    disabled:opacity-50 hover:bg-primary/15 active:opacity-70 transition-all duration-200"
                 >
                   {exegeseLoading ? "⏳" : "Estudar"}
                 </button>
               </div>
 
               {exegeseError && (
-                <p style={{ fontSize: 13, color: "#c26b5a", fontStyle: "italic", marginBottom: 8 }}>
-                  {exegeseError}
-                </p>
+                <p className="text-[13px] text-destructive italic mb-2">{exegeseError}</p>
               )}
 
               {exegeseResult && (
-                <div style={{
-                  background: tc ? "rgba(139,111,78,.03)" : "rgba(200,170,100,.04)",
-                  border: `1px solid ${tc ? "rgba(139,111,78,.1)" : "rgba(200,170,100,.1)"}`,
-                  borderLeft: `3px solid ${tc ? "#8b6f4e" : "#C8A55C"}`,
-                  borderRadius: "0 12px 12px 0",
-                  padding: "18px 18px", marginTop: 8,
-                }}>
-                  <div
-                    style={{
-                      fontSize: 14, lineHeight: 2,
-                      color: tc ? "#4a4540" : "#c4b498",
-                    }}
-                    dangerouslySetInnerHTML={{
-                      __html: exegeseResult.content
-                        .split("\n")
-                        .map(line => {
-                          if (line.startsWith("## ")) return `<h3 style="font-family:'Cinzel',serif;font-size:16px;color:${tc ? "#8b6f4e" : "#C8A55C"};margin:20px 0 8px;font-weight:500;">${line.slice(3)}</h3>`;
-                          if (line.startsWith("- ")) {
-                            const content = line.slice(2)
-                              .replace(/\*\*\"(.+?)\"\*\*/g, `<strong style="color:${tc ? "#1a1714" : "#e8d8b8"};">"$1"</strong>`)
-                              .replace(/\*\*(.+?)\*\*/g, `<strong style="color:${tc ? "#1a1714" : "#e8d8b8"};">$1</strong>`)
-                              .replace(/\*(.+?)\*/g, `<em style="color:${tc ? "#8b6f4e" : "#C8A55C"};">$1</em>`);
-                            return `<div style="display:flex;gap:8px;margin:4px 0;"><span style="color:${tc ? "#8b6f4e" : "#C8A55C"};flex-shrink:0;">•</span><span>${content}</span></div>`;
-                          }
-                          if (!line.trim()) return "<br/>";
-                          const content = line
-                            .replace(/\*\*\"(.+?)\"\*\*/g, `<strong style="color:${tc ? "#1a1714" : "#e8d8b8"};">"$1"</strong>`)
-                            .replace(/\*\*(.+?)\*\*/g, `<strong style="color:${tc ? "#1a1714" : "#e8d8b8"};">$1</strong>`)
-                            .replace(/\*(.+?)\*/g, `<em style="color:${tc ? "#8b6f4e" : "#C8A55C"};">$1</em>`);
-                          return `<p style="margin:3px 0;">${content}</p>`;
-                        })
-                        .join("")
-                    }}
-                  />
-                  {/* Save to notes button */}
-                  <div style={{ marginTop: 16, display: "flex", gap: 8 }}>
+                <div className="bg-primary/3 border border-primary/10 border-l-[3px] border-l-primary rounded-r-xl p-4 mt-2">
+                  <div className="exegese-html text-sm leading-[2] text-text-secondary"
+                    dangerouslySetInnerHTML={{ __html: renderExegeseBlock(exegeseResult.content) }} />
+                  <div className="flex gap-2 mt-4">
                     <button
                       onClick={() => {
                         const noteText = `# Exegese: ${exegeseResult.verse}\n\n${exegeseResult.content}`;
                         const notes = JSON.parse(localStorage.getItem("bible-notes-2026") || "[]");
-                        const now = new Date().toISOString();
-                        notes.unshift({
-                          id: Date.now(),
-                          categoria: "devocionais",
-                          semana: "",
-                          texto: noteText,
-                          criadoEm: now,
-                          atualizadoEm: now,
-                        });
+                        const now2 = new Date().toISOString();
+                        notes.unshift({ id: Date.now(), categoria: "devocionais", semana: "", texto: noteText, criadoEm: now2, atualizadoEm: now2 });
                         localStorage.setItem("bible-notes-2026", JSON.stringify(notes));
-                        setSaved(true);
-                        setTimeout(() => setSaved(false), 2000);
+                        setSaved(true); setTimeout(() => setSaved(false), 2000);
                       }}
-                      style={{
-                        flex: 1, padding: "11px", borderRadius: 10,
-                        background: tc ? "rgba(139,111,78,.1)" : "rgba(200,170,100,.12)",
-                        border: `1px solid ${tc ? "#8b6f4e" : "#C8A55C"}`,
-                        color: tc ? "#8b6f4e" : "#C8A55C",
-                        fontFamily: "'Cinzel', serif", fontSize: 9, letterSpacing: 1,
-                        textTransform: "uppercase", cursor: "pointer",
-                      }}
+                      className="flex-1 py-2.5 rounded-[10px] bg-primary/10 border border-primary
+                        text-primary font-display text-[9px] tracking-wide uppercase text-center cursor-pointer
+                        hover:bg-primary/15 active:opacity-70 transition-all duration-150"
                     >
                       🔥 Salvar em Devocionais
                     </button>
                     <button
                       onClick={() => {
                         navigator.clipboard.writeText(exegeseResult.content);
-                        setSaved(true);
-                        setTimeout(() => setSaved(false), 2000);
+                        setSaved(true); setTimeout(() => setSaved(false), 2000);
                       }}
-                      style={{
-                        padding: "11px 16px", borderRadius: 10,
-                        border: `1px solid ${tc ? "rgba(0,0,0,.08)" : "rgba(200,170,100,.1)"}`,
-                        background: "transparent",
-                        color: tc ? "#6b6560" : "#8a7d65",
-                        fontFamily: "'Cinzel', serif", fontSize: 9, letterSpacing: 1,
-                        textTransform: "uppercase", cursor: "pointer",
-                      }}
+                      className="px-4 py-2.5 rounded-[10px] border border-border bg-transparent
+                        text-muted-foreground font-display text-[9px] tracking-wide uppercase cursor-pointer
+                        hover:border-primary/30 active:opacity-70 transition-all duration-150"
                     >
                       Copiar
                     </button>
@@ -1004,112 +850,61 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
             </div>
 
             {/* ── Gravar Devocional ── */}
-            <div style={{
-              background: tc ? "rgba(139,111,78,.04)" : "rgba(200,170,100,.06)",
-              border: `1px solid ${tc ? "rgba(139,111,78,.12)" : "rgba(200,170,100,.18)"}`,
-              borderRadius: 16, padding: "20px 20px", marginBottom: 28,
-            }}>
-              <div style={{
-                fontSize: 11, letterSpacing: 3, textTransform: "uppercase",
-                color: tc ? "#8b6f4e" : "#C8A55C",
-                marginBottom: 14, fontWeight: 600, fontFamily: "'Cinzel', serif",
-              }}>
+            <div className="bg-primary/5 border border-primary/15 rounded-2xl p-5 mb-7">
+              <p className="font-display text-[11px] tracking-[3px] uppercase text-primary font-semibold mb-3.5">
                 🎙️ Gravar Devocional
-              </div>
-              <p style={{
-                fontSize: 13, color: tc ? "#6b6560" : "#a09078",
-                marginBottom: 14, lineHeight: 1.6,
-              }}>
+              </p>
+              <p className="text-[13px] text-muted-foreground mb-3.5 leading-relaxed">
                 Grave sua reflexão em áudio e ela será transcrita automaticamente. Depois salve nas suas anotações.
               </p>
 
               <button
                 onClick={toggleDevRecording}
-                style={{
-                  width: "100%", padding: "14px", borderRadius: 12,
-                  background: devRecording
-                    ? "rgba(194,107,90,.12)"
-                    : (tc ? "rgba(139,111,78,.08)" : "rgba(200,170,100,.1)"),
-                  border: `1px solid ${devRecording ? "#c26b5a" : (tc ? "#8b6f4e" : "#C8A55C")}`,
-                  color: devRecording ? "#c26b5a" : (tc ? "#8b6f4e" : "#C8A55C"),
-                  fontFamily: "'Cinzel', serif", fontSize: 11, letterSpacing: 2,
-                  textTransform: "uppercase", cursor: "pointer",
-                  display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                  transition: "all .2s",
-                  animation: devRecording ? "pulse 1.5s infinite" : "none",
-                }}
+                className={`w-full py-3.5 rounded-xl border font-display text-[11px] tracking-[2px] uppercase cursor-pointer
+                  flex items-center justify-center gap-2 transition-all duration-200
+                  ${devRecording
+                    ? "bg-destructive/10 border-destructive text-destructive animate-pulse"
+                    : "bg-primary/10 border-primary text-primary hover:bg-primary/15"}`}
               >
                 {devRecording ? "⏹ Parar Gravação" : "🎙️ Iniciar Gravação"}
               </button>
 
               {devTranscript && (
-                <div style={{ marginTop: 14 }}>
-                  <div style={{
-                    background: tc ? "rgba(139,111,78,.03)" : "rgba(200,170,100,.04)",
-                    border: `1px solid ${tc ? "rgba(139,111,78,.1)" : "rgba(200,170,100,.1)"}`,
-                    borderLeft: `3px solid ${tc ? "#8b6f4e" : "#C8A55C"}`,
-                    borderRadius: "0 10px 10px 0",
-                    padding: "14px 16px",
-                    fontSize: 15, lineHeight: 1.8,
-                    color: tc ? "#4a4540" : "#c4b498",
-                    fontStyle: "italic",
-                  }}>
+                <div className="mt-3.5">
+                  <div className="bg-primary/5 border border-primary/10 border-l-[3px] border-l-primary
+                    rounded-r-[10px] p-4 text-[15px] leading-relaxed text-text-secondary italic font-body">
                     {devTranscript}
                   </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
+                  <div className="flex flex-col gap-2 mt-2.5">
                     <button
                       onClick={summarizeTranscript}
                       disabled={devSummarizing}
-                      style={{
-                        width: "100%", padding: "11px", borderRadius: 10,
-                        background: tc ? "rgba(106,90,205,.1)" : "rgba(106,90,205,.12)",
-                        border: `1px solid ${tc ? "rgba(106,90,205,.3)" : "rgba(106,90,205,.25)"}`,
-                        color: tc ? "#6a5acd" : "#9b8ec4",
-                        fontFamily: "'Cinzel', serif", fontSize: 9, letterSpacing: 1,
-                        textTransform: "uppercase", cursor: devSummarizing ? "wait" : "pointer",
-                        opacity: devSummarizing ? 0.6 : 1,
-                      }}
+                      className="w-full py-2.5 rounded-[10px] bg-accent/10 border border-accent/25
+                        text-accent font-display text-[9px] tracking-wide uppercase cursor-pointer
+                        disabled:opacity-60 hover:bg-accent/15 transition-all duration-200"
                     >
                       {devSummarizing ? "⏳ Resumindo..." : "✨ Resumir em Tópicos com IA"}
                     </button>
                     {devSummary && (
-                      <div style={{
-                        background: tc ? "rgba(106,90,205,.04)" : "rgba(106,90,205,.06)",
-                        border: `1px solid ${tc ? "rgba(106,90,205,.12)" : "rgba(106,90,205,.1)"}`,
-                        borderLeft: `3px solid ${tc ? "#6a5acd" : "#9b8ec4"}`,
-                        borderRadius: "0 10px 10px 0",
-                        padding: "14px 16px",
-                        fontSize: 14, lineHeight: 1.8,
-                        color: tc ? "#4a4540" : "#c4b498",
-                        whiteSpace: "pre-wrap",
-                      }}>
+                      <div className="bg-accent/5 border border-accent/10 border-l-[3px] border-l-accent
+                        rounded-r-[10px] p-4 text-sm leading-relaxed text-text-secondary whitespace-pre-wrap">
                         {devSummary}
                       </div>
                     )}
-                    <div style={{ display: "flex", gap: 8 }}>
+                    <div className="flex gap-2">
                       <button
                         onClick={() => saveDevTranscript(!!devSummary)}
-                        style={{
-                          flex: 1, padding: "11px", borderRadius: 10,
-                          background: tc ? "rgba(139,111,78,.1)" : "rgba(200,170,100,.12)",
-                          border: `1px solid ${tc ? "#8b6f4e" : "#C8A55C"}`,
-                          color: tc ? "#8b6f4e" : "#C8A55C",
-                          fontFamily: "'Cinzel', serif", fontSize: 9, letterSpacing: 1,
-                          textTransform: "uppercase", cursor: "pointer",
-                        }}
+                        className="flex-1 py-2.5 rounded-[10px] bg-primary/10 border border-primary
+                          text-primary font-display text-[9px] tracking-wide uppercase cursor-pointer
+                          hover:bg-primary/15 active:opacity-70 transition-all duration-150"
                       >
                         🔥 Salvar em Devocionais
                       </button>
                       <button
                         onClick={() => { setDevTranscript(""); devTranscriptRef.current = ""; setDevSummary(""); }}
-                        style={{
-                          padding: "11px 16px", borderRadius: 10,
-                          border: `1px solid ${tc ? "rgba(0,0,0,.08)" : "rgba(200,170,100,.1)"}`,
-                          background: "transparent",
-                          color: tc ? "#6b6560" : "#8a7d65",
-                          fontFamily: "'Cinzel', serif", fontSize: 9, letterSpacing: 1,
-                          textTransform: "uppercase", cursor: "pointer",
-                        }}
+                        className="px-4 py-2.5 rounded-[10px] border border-border bg-transparent
+                          text-muted-foreground font-display text-[9px] tracking-wide uppercase cursor-pointer
+                          hover:border-primary/30 active:opacity-70 transition-all duration-150"
                       >
                         Limpar
                       </button>
@@ -1119,110 +914,61 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
               )}
             </div>
 
-            {/* Devotional weeks */}
-            <div style={{
-              fontSize: 11, letterSpacing: 3, textTransform: "uppercase",
-              color: tc ? "#aba59e" : "#8a7a60",
-              marginBottom: 16, fontWeight: 600, fontFamily: "'Cinzel', serif",
-              transition: "color .3s",
-            }}>
+            {/* Devotional weeks list */}
+            <p className="font-display text-[11px] tracking-[3px] uppercase text-muted-foreground font-semibold mb-4">
               Todos os Devocionais
-            </div>
+            </p>
             {DEVOTIONALS.map((week, wi) => (
-              <div key={wi} style={{ marginBottom: 24 }}>
-                <div style={{
-                  display: "inline-flex", alignItems: "center", padding: "5px 14px",
-                  borderRadius: 20, border: `1px solid ${tc ? "rgba(0,0,0,.08)" : "rgba(200,180,140,.2)"}`,
-                  background: tc ? "rgba(0,0,0,.03)" : "rgba(200,180,140,.06)", marginBottom: 12,
-                  fontSize: 13, color: tc ? "#6b6560" : "#c4b498",
-                  fontWeight: 600, letterSpacing: 0.5,
-                  transition: "all .3s",
-                }}>
+              <div key={wi} className="mb-6">
+                <div className="inline-flex items-center px-3.5 py-1 rounded-full border border-border
+                  bg-card/50 mb-3 text-[13px] text-text-secondary font-semibold tracking-wide">
                   {week.period}
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(260px,1fr))", gap: 10 }}>
+                <div className="grid gap-2.5" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(260px,1fr))" }}>
                   {week.days.map((d, di) => {
                     const key = `dev-${wi}-${di}`;
                     const isOpen = expandedDev === key;
                     const c = DEV_DAY_COLORS[d.day] ?? "#C8A55C";
                     return (
-                      <div key={di} onClick={() => setExpandedDev(isOpen ? null : key)} style={{
-                        background: tc ? "rgba(0,0,0,.02)" : "rgba(255,255,255,.025)",
-                        border: `1px solid ${isOpen ? c + "40" : (tc ? "rgba(0,0,0,.06)" : "rgba(200,180,140,.08)")}`,
-                        borderRadius: 12, padding: "16px", cursor: "pointer",
-                        transition: "all .3s ease", position: "relative", overflow: "hidden",
-                      }}>
-                        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2,
-                          background: `linear-gradient(90deg,${c},transparent)`, opacity: 0.5 }}/>
-                        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+                      <div key={di} onClick={() => setExpandedDev(isOpen ? null : key)}
+                        className={`rounded-xl p-4 cursor-pointer relative overflow-hidden border transition-all duration-300
+                          ${isOpen ? "border-primary/30" : "border-border hover:border-primary/15"} bg-card/50`}>
+                        <div className="absolute top-0 left-0 right-0 h-[2px] opacity-50"
+                          style={{ background: `linear-gradient(90deg,${c},transparent)` }} />
+                        <div className="flex items-start justify-between gap-2">
                           <div>
-                            <div style={{ fontSize: 11, color: c, fontWeight: 600, letterSpacing: 1, textTransform: "uppercase", marginBottom: 4 }}>
+                            <div className="text-[11px] font-semibold tracking-wide uppercase mb-1" style={{ color: c }}>
                               {d.day}
                             </div>
-                            <div style={{
-                              fontSize: 15, fontWeight: 600,
-                              color: tc ? "#1a1714" : "#e8d8b8",
-                              marginBottom: isOpen ? 10 : 0,
-                              transition: "color .3s",
-                            }}>
+                            <div className="text-[15px] font-semibold text-foreground">
                               {d.ref}
                             </div>
                           </div>
-                          <span style={{ fontSize: 18, color: tc ? "#aba59e" : "#6a5a48", flexShrink: 0, marginTop: 2 }}>
+                          <span className="text-lg text-muted-foreground shrink-0 mt-0.5">
                             {isOpen ? "−" : "+"}
                           </span>
                         </div>
                         {isOpen && (
-                          <div style={{ paddingTop: 8, borderTop: `1px solid ${c}20` }}>
+                          <div className="pt-2 mt-2 border-t border-border-subtle">
                             {d.verseText && (
-                              <div style={{
-                                fontSize: 15, lineHeight: 1.8,
-                                color: tc ? "#1a1714" : "#e8d8b8",
-                                fontStyle: "italic", fontFamily: "'Cormorant Garamond', serif",
-                                padding: "10px 14px", marginBottom: 10,
-                                background: tc ? "rgba(139,111,78,.04)" : "rgba(200,170,100,.06)",
-                                borderLeft: `3px solid ${c}`,
-                                borderRadius: "0 8px 8px 0",
-                                transition: "color .3s",
-                              }}>
+                              <div className="text-[15px] leading-relaxed text-foreground italic font-body
+                                px-3.5 py-2.5 mb-2.5 bg-primary/5 rounded-r-lg"
+                                style={{ borderLeft: `3px solid ${c}` }}>
                                 "{d.verseText}"
                               </div>
                             )}
-                            <div style={{
-                              fontSize: 13.5, color: tc ? "#6b6560" : "#b0a090", lineHeight: 1.65,
-                              marginBottom: 12, transition: "color .3s",
-                            }}>
+                            <p className="text-[13.5px] text-text-secondary leading-relaxed mb-3">
                               {d.summary}
-                            </div>
+                            </p>
                             {d.exegese && (
-                              <div style={{
-                                background: tc ? "rgba(139,111,78,.04)" : "rgba(200,170,100,.06)",
-                                border: `1px solid ${tc ? "rgba(139,111,78,.1)" : "rgba(200,170,100,.12)"}`,
-                                borderLeft: `3px solid ${c}`,
-                                borderRadius: "0 10px 10px 0",
-                                padding: "14px 16px",
-                              }}>
-                                <div style={{
-                                  fontSize: 9, letterSpacing: 3, textTransform: "uppercase",
-                                  color: c, fontWeight: 700, fontFamily: "'Cinzel', serif",
-                                  marginBottom: 10,
-                                }}>
+                              <div className="bg-primary/5 border border-primary/10 rounded-r-[10px] p-4"
+                                style={{ borderLeft: `3px solid ${c}` }}>
+                                <p className="font-display text-[9px] tracking-[3px] uppercase font-bold mb-2.5"
+                                  style={{ color: c }}>
                                   📜 Exegese — Palavra por Palavra
-                                </div>
-                                <div
-                                  style={{
-                                    fontSize: 13, lineHeight: 1.85,
-                                    color: tc ? "#4a4540" : "#c4b498",
-                                    transition: "color .3s",
-                                  }}
-                                  dangerouslySetInnerHTML={{
-                                    __html: d.exegese
-                                      .replace(/\*\*\"(.+?)\"\*\*/g, '<strong style="color:' + (tc ? "#1a1714" : "#e8d8b8") + ';">"$1"</strong>')
-                                      .replace(/\*\*(.+?)\*\*/g, '<strong style="color:' + (tc ? "#1a1714" : "#e8d8b8") + ';">$1</strong>')
-                                      .replace(/\*(.+?)\*/g, '<em style="color:' + c + ';">$1</em>')
-                                      .replace(/\. /g, '.<br/>')
-                                  }}
-                                />
+                                </p>
+                                <div className="exegese-html text-[13px] leading-[1.85] text-text-secondary"
+                                  dangerouslySetInnerHTML={{ __html: renderExegese(d.exegese) }} />
                               </div>
                             )}
                           </div>
