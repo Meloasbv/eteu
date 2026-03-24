@@ -270,26 +270,39 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
   }, [verseResult, showToast]);
 
   // ── AI actions ─────────────────────────────────────────────────────────────
-  const callAI = useCallback(async (action: "organize") => {
+  const callAI = useCallback(async (action: "organize" | "resumir") => {
     if (!editingNote || !editingNote.texto.trim()) {
-      showToast("Escreva algo antes de organizar");
+      showToast(action === "organize" ? "Escreva algo antes de organizar" : "Escreva algo antes de resumir");
       return;
     }
     setAiLoading(action);
     setAiResult(null);
     try {
-      const body = {
-        action: "organize",
-        noteTitle: noteTitle(editingNote.texto),
-        noteBody: editingNote.texto,
-      };
-      const { data, error } = await supabase.functions.invoke("notes-ai", { body });
-      if (error || data?.error) {
-        showToast(data?.error || "Erro ao chamar IA");
-        setAiLoading(null);
-        return;
+      if (action === "organize") {
+        const body = {
+          action: "organize",
+          noteTitle: noteTitle(editingNote.texto),
+          noteBody: editingNote.texto,
+        };
+        const { data, error } = await supabase.functions.invoke("notes-ai", { body });
+        if (error || data?.error) {
+          showToast(data?.error || "Erro ao chamar IA");
+          setAiLoading(null);
+          return;
+        }
+        setAiResult({ title: "✨ Nota Organizada", content: data.result });
+      } else {
+        const plainText = editingNote.texto.replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
+        const { data, error } = await supabase.functions.invoke("summarize-transcript", {
+          body: { transcript: plainText },
+        });
+        if (error || data?.error) {
+          showToast(data?.error || "Erro ao resumir");
+          setAiLoading(null);
+          return;
+        }
+        setAiResult({ title: "📋 Resumo em Tópicos", content: data.result });
       }
-      setAiResult({ title: "✨ Nota Organizada", content: data.result });
     } catch {
       showToast("Erro de conexão");
     }
@@ -503,21 +516,35 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
             ))}
           </select>
 
-          {/* AI organize button */}
-          <button
-            onClick={() => callAI("organize")}
-            disabled={!!aiLoading}
-            className="notes-ai-btn"
-            title="Organizar com IA"
-            style={{
-              marginLeft: "auto",
-              display: "flex", alignItems: "center", gap: 5,
-              padding: "5px 12px", borderRadius: 8,
-              fontSize: 12,
-            }}
-          >
-            {aiLoading ? "⏳ Organizando..." : "✨ Organizar"}
-          </button>
+          {/* AI buttons */}
+          <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
+            <button
+              onClick={() => callAI("resumir")}
+              disabled={!!aiLoading}
+              className="notes-ai-btn"
+              title="Resumir em tópicos"
+              style={{
+                display: "flex", alignItems: "center", gap: 5,
+                padding: "5px 10px", borderRadius: 8,
+                fontSize: 12,
+              }}
+            >
+              {aiLoading === "resumir" ? "⏳ Resumindo..." : "📋 Resumir"}
+            </button>
+            <button
+              onClick={() => callAI("organize")}
+              disabled={!!aiLoading}
+              className="notes-ai-btn"
+              title="Organizar com IA"
+              style={{
+                display: "flex", alignItems: "center", gap: 5,
+                padding: "5px 10px", borderRadius: 8,
+                fontSize: 12,
+              }}
+            >
+              {aiLoading === "organize" ? "⏳ Organizando..." : "✨ Organizar"}
+            </button>
+          </div>
         </div>
 
         {/* Delete button */}
