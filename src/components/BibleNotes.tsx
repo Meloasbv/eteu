@@ -273,7 +273,7 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
     showToast("Nota removida");
     setMenuOpen(false);
 
-    await supabase.from("notes").delete().eq("id", id);
+    await (supabase as any).from("notes").delete().eq("id", id);
   }, [editingNote, showToast]);
 
   const handleTextChange = useCallback((text: string) => {
