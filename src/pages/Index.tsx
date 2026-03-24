@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import WeekSchedule from "@/components/WeekSchedule";
 import BibleNotes from "@/components/BibleNotes";
 import CodeLogin from "@/components/CodeLogin";
+import RichTextEditor from "@/components/RichTextEditor";
 
 // ── DATA ──────────────────────────────────────────────────────────────────────
 
@@ -387,6 +388,7 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
 
   const [devSummarizing, setDevSummarizing] = useState(false);
   const [devSummary, setDevSummary] = useState("");
+  const [devReflection, setDevReflection] = useState("");
 
   const summarizeTranscript = useCallback(async () => {
     if (!devTranscript.trim()) return;
@@ -699,12 +701,39 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
           }
         }
 
-        const renderExegese = (text: string) => {
-          return text
-            .replace(/\*\*\"(.+?)\"\*\*/g, '<strong>"$1"</strong>')
-            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-            .replace(/\*(.+?)\*/g, '<em>$1</em>')
-            .replace(/\. /g, '.<br/>');
+        // Parse exegesis string into structured word entries
+        const parseExegeseEntries = (text: string) => {
+          // Split by **"word"** pattern to get individual entries
+          const entries: { word: string; origin: string; definition: string }[] = [];
+          const regex = /\*\*\"(.+?)\"\*\*\s*\(([^)]+)\)\s*[—–-]\s*(.+?)(?=\s*\*\*\"|$)/gs;
+          let match;
+          while ((match = regex.exec(text)) !== null) {
+            entries.push({
+              word: match[1],
+              origin: match[2].trim(),
+              definition: match[3].trim().replace(/\.\s*$/, ''),
+            });
+          }
+          // If regex didn't match, try line-by-line
+          if (entries.length === 0) {
+            const lines = text.split(/\.\s+\*\*/);
+            for (const line of lines) {
+              const m = line.match(/\*?\*?\"?(.+?)\"?\*?\*?\s*\(([^)]+)\)\s*[—–-]\s*(.+)/);
+              if (m) entries.push({ word: m[1], origin: m[2].trim(), definition: m[3].trim() });
+            }
+          }
+          return entries;
+        };
+
+        // Get theological note from exegesis (last sentence after the word entries)
+        const getTheologicalNote = (text: string) => {
+          // Look for sentences that start with context words
+          const patterns = [/(?:O\s+(?:autor|texto|verso|versículo|contexto)|Paulo|Jesus|Tiago|Davi|O\s+Espírito|A\s+(?:LXX|oração)|Teologicamente).+$/s];
+          for (const p of patterns) {
+            const m = text.match(p);
+            if (m) return m[0].replace(/\*\*/g, '').replace(/\*/g, '').trim();
+          }
+          return null;
         };
 
         const renderExegeseBlock = (text: string) => {
@@ -729,58 +758,151 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
             .join("");
         };
 
+        // Render a devotional detail view (used for both today and expanded cards)
+        const renderDevDetail = (d: { ref: string; summary: string; exegese?: string; verseText?: string }, accentColor: string) => {
+          const entries = d.exegese ? parseExegeseEntries(d.exegese) : [];
+          const theoNote = d.exegese ? getTheologicalNote(d.exegese) : null;
+
+          return (
+            <>
+              {/* Verse */}
+              {d.verseText && (
+                <blockquote className="text-[17px] leading-[1.7] text-foreground italic font-body
+                  px-5 py-4 my-5 rounded-xl bg-primary/5 border-l-[3px]"
+                  style={{ borderLeftColor: accentColor }}>
+                  "{d.verseText}"
+                </blockquote>
+              )}
+
+              {/* Summary */}
+              <p className="text-[15px] leading-relaxed text-text-secondary mb-6">
+                {d.summary}
+              </p>
+
+              {/* Exegesis - structured entries */}
+              {entries.length > 0 && (
+                <div className="rounded-2xl border border-border bg-card p-5 mb-5">
+                  <p className="font-display text-[10px] tracking-[3px] uppercase text-muted-foreground font-semibold mb-5 flex items-center gap-2">
+                    📜 Exegese — Palavra por Palavra
+                  </p>
+                  <div className="divide-y divide-border-subtle">
+                    {entries.map((entry, i) => (
+                      <div key={i} className="py-4 first:pt-0 last:pb-0">
+                        <p className="text-[16px] text-foreground mb-1">
+                          <strong>"{entry.word}"</strong>
+                          <span className="text-muted-foreground text-[13px] ml-2">
+                            ({entry.origin.split(',')[0]}.{' '}
+                            <em className="text-primary">{entry.origin.split(',').slice(1).join(',').trim() || entry.origin}</em>
+                            {' '})
+                          </span>
+                        </p>
+                        <p className="text-[14px] text-text-secondary leading-relaxed pl-0.5">
+                          — {entry.definition}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Theological note */}
+                  {theoNote && (
+                    <div className="mt-5 rounded-xl bg-primary/5 border border-primary/10 px-4 py-3.5">
+                      <p className="text-[14px] text-text-secondary italic leading-relaxed">
+                        {theoNote}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Fallback: if no structured entries found, render raw */}
+              {d.exegese && entries.length === 0 && (
+                <div className="rounded-2xl border border-border bg-card p-5 mb-5">
+                  <p className="font-display text-[10px] tracking-[3px] uppercase text-muted-foreground font-semibold mb-4">
+                    📜 Exegese — Palavra por Palavra
+                  </p>
+                  <div className="exegese-html text-[13px] leading-[1.85] text-text-secondary"
+                    dangerouslySetInnerHTML={{ __html: d.exegese
+                      .replace(/\*\*\"(.+?)\"\*\*/g, '<strong>"$1"</strong>')
+                      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                      .replace(/\*(.+?)\*/g, '<em>$1</em>')
+                      .replace(/\. /g, '.<br/>') }} />
+                </div>
+              )}
+            </>
+          );
+        };
+
         return (
           <div className="px-4 pt-5 pb-24 space-y-6">
 
             {/* ── HERO: TODAY'S DEVOTIONAL ── */}
             {todayDev ? (
-              <div className="relative rounded-2xl overflow-hidden">
-                {/* Gradient top accent */}
-                <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-fire via-primary to-transparent" />
-                {/* Glow bg */}
-                <div className="absolute inset-0 bg-gradient-to-br from-fire/10 via-primary/5 to-transparent pointer-events-none" />
-                
-                <div className="relative p-6 border border-fire/20 rounded-2xl">
-                  <div className="flex items-center gap-2 mb-4">
-                    <span className="text-2xl">🔥</span>
-                    <div>
-                      <p className="font-display text-[9px] tracking-[3px] uppercase text-fire font-bold">
-                        Devocional de Hoje
-                      </p>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">
-                        {todayDev.day} · {todayDev.period}
-                      </p>
-                    </div>
+              <div>
+                {/* Header */}
+                <div className="flex items-center gap-2 mb-5">
+                  <span className="text-2xl">🔥</span>
+                  <div>
+                    <p className="font-display text-[9px] tracking-[3px] uppercase text-fire font-bold">
+                      Devocional de Hoje — {todayDev.day}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">{todayDev.period}</p>
+                  </div>
+                </div>
+
+                {/* Reference title */}
+                <h2 className="font-display text-[26px] font-semibold text-foreground leading-tight mb-1">
+                  {todayDev.ref}
+                </h2>
+
+                {renderDevDetail(todayDev, "hsl(var(--fire))")}
+
+                {/* ── REFLECTION SECTION ── */}
+                <div className="rounded-2xl border border-border bg-card p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <p className="font-display text-[10px] tracking-[3px] uppercase text-muted-foreground font-semibold flex items-center gap-2">
+                      ✍️ Minha Reflexão de Hoje
+                    </p>
                   </div>
 
-                  <h3 className="font-display text-2xl font-semibold text-foreground mb-3 leading-tight">
-                    {todayDev.ref}
-                  </h3>
+                  {/* Prompt pills */}
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {["O que Deus está me dizendo?", "Como isso se aplica hoje?", "Pelo que sou grato?"].map(prompt => (
+                      <button key={prompt} onClick={() => {
+                        setDevReflection(prev => prev + (prev ? '\n' : '') + `<p>${prompt}</p>`);
+                      }}
+                        className="px-3 py-1.5 rounded-lg border border-border bg-background text-[12px] text-text-secondary
+                          hover:border-primary/30 hover:text-foreground cursor-pointer transition-all duration-150 font-body">
+                        {prompt}
+                      </button>
+                    ))}
+                  </div>
 
-                  {todayDev.verseText && (
-                    <blockquote className="text-[17px] leading-relaxed text-foreground/90 italic font-body
-                      px-5 py-4 mb-4 bg-fire/5 border-l-[3px] border-l-fire rounded-r-xl">
-                      "{todayDev.verseText}"
-                    </blockquote>
-                  )}
+                  {/* Rich text editor */}
+                  <RichTextEditor
+                    content={devReflection}
+                    onChange={setDevReflection}
+                    placeholder="Escreva sua reflexão sobre o devocional de hoje..."
+                  />
 
-                  <p className="text-[15px] leading-relaxed text-text-secondary mb-1">
-                    {todayDev.summary}
-                  </p>
-
-                  {todayDev.exegese && (
-                    <details className="mt-4 group">
-                      <summary className="font-display text-[9px] tracking-[3px] uppercase text-fire font-bold cursor-pointer
-                        flex items-center gap-2 select-none hover:text-fire/80 transition-colors">
-                        <span>📜 Exegese — Palavra por Palavra</span>
-                        <span className="text-[14px] text-muted-foreground group-open:rotate-180 transition-transform duration-200">▾</span>
-                      </summary>
-                      <div className="mt-3 bg-fire/5 border border-fire/10 border-l-[3px] border-l-fire rounded-r-xl p-4">
-                        <div className="exegese-html text-[13px] leading-[1.85] text-text-secondary"
-                          dangerouslySetInnerHTML={{ __html: renderExegese(todayDev.exegese) }} />
-                      </div>
-                    </details>
-                  )}
+                  {/* Save button */}
+                  <div className="flex justify-end mt-4">
+                    <button
+                      onClick={() => {
+                        if (!devReflection.trim()) return;
+                        const noteText = `# Reflexão: ${todayDev?.ref}\n\n${devReflection}`;
+                        const notes = JSON.parse(localStorage.getItem("bible-notes-2026") || "[]");
+                        const now2 = new Date().toISOString();
+                        notes.unshift({ id: Date.now(), categoria: "devocionais", semana: "", texto: noteText, criadoEm: now2, atualizadoEm: now2 });
+                        localStorage.setItem("bible-notes-2026", JSON.stringify(notes));
+                        setDevReflection("");
+                        setSaved(true); setTimeout(() => setSaved(false), 2000);
+                      }}
+                      className="px-6 py-2.5 rounded-xl bg-primary text-primary-foreground font-display text-[10px] tracking-wider uppercase
+                        cursor-pointer hover:bg-primary-hover active:scale-[0.97] transition-all duration-200 shadow-elegant"
+                    >
+                      Salvar reflexão
+                    </button>
+                  </div>
                 </div>
               </div>
             ) : (
@@ -809,14 +931,11 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
             </div>
 
             {/* ── EXEGESIS STUDY ── */}
-            <div className="rounded-2xl border border-primary/15 bg-card/50 overflow-hidden">
+            <div className="rounded-2xl border border-border bg-card overflow-hidden">
               <div className="p-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-base">📜</span>
-                  <p className="font-display text-[10px] tracking-[3px] uppercase text-primary font-semibold">
-                    Estudo Exegético
-                  </p>
-                </div>
+                <p className="font-display text-[10px] tracking-[3px] uppercase text-muted-foreground font-semibold mb-3 flex items-center gap-2">
+                  📜 Estudo Exegético
+                </p>
                 <p className="text-[13px] text-muted-foreground mb-4 leading-relaxed">
                   Envie um versículo e receba uma análise palavra por palavra com o significado original em grego/hebraico.
                 </p>
@@ -828,7 +947,7 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
                     onChange={e => setExegeseVerse(e.target.value)}
                     onKeyDown={e => { if (e.key === "Enter") handleExegese(); }}
                     placeholder="Ex: João 3:16, Rm 8:28"
-                    className="flex-1 px-4 py-3 rounded-xl border border-border bg-input
+                    className="flex-1 px-4 py-3 rounded-xl border border-border bg-background
                       text-foreground font-body text-[16px] outline-none
                       focus:border-primary focus:ring-1 focus:ring-primary/30
                       placeholder:text-muted-foreground placeholder:italic
@@ -851,7 +970,7 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
                 )}
 
                 {exegeseResult && (
-                  <div className="mt-3 rounded-xl bg-primary/5 border border-primary/10 border-l-[3px] border-l-primary p-4">
+                  <div className="mt-3 rounded-xl border border-border bg-background/50 p-4">
                     <p className="font-display text-[9px] tracking-[2px] uppercase text-primary font-bold mb-3">
                       Resultado: {exegeseResult.verse}
                     </p>
@@ -891,25 +1010,22 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
             </div>
 
             {/* ── RECORD DEVOTIONAL ── */}
-            <div className="rounded-2xl border border-primary/15 bg-card/50 overflow-hidden">
+            <div className="rounded-2xl border border-border bg-card overflow-hidden">
               <div className="p-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-base">🎙️</span>
-                  <p className="font-display text-[10px] tracking-[3px] uppercase text-primary font-semibold">
-                    Gravar Devocional
-                  </p>
-                </div>
+                <p className="font-display text-[10px] tracking-[3px] uppercase text-muted-foreground font-semibold mb-3 flex items-center gap-2">
+                  🎙️ Gravar Devocional
+                </p>
                 <p className="text-[13px] text-muted-foreground mb-4 leading-relaxed">
                   Grave sua reflexão em áudio e ela será transcrita automaticamente.
                 </p>
 
                 <button
                   onClick={toggleDevRecording}
-                  className={`w-full py-3.5 rounded-xl border-2 font-display text-[11px] tracking-[2px] uppercase cursor-pointer
+                  className={`w-full py-3.5 rounded-xl border font-display text-[11px] tracking-[2px] uppercase cursor-pointer
                     flex items-center justify-center gap-2.5 transition-all duration-200
                     ${devRecording
-                      ? "bg-destructive/10 border-destructive text-destructive animate-pulse shadow-[0_0_20px_rgba(220,60,60,0.15)]"
-                      : "bg-primary/5 border-primary/30 text-primary hover:bg-primary/10 hover:border-primary/50 active:scale-[0.98]"}`}
+                      ? "bg-destructive/10 border-destructive text-destructive animate-pulse"
+                      : "bg-background border-border text-primary hover:border-primary/40 active:scale-[0.98]"}`}
                 >
                   {devRecording ? "⏹ Parar Gravação" : "🎙️ Iniciar Gravação"}
                 </button>
@@ -982,14 +1098,14 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
                       const isOpen = expandedDev === key;
                       const c = DEV_DAY_COLORS[d.day] ?? "#C8A55C";
                       return (
-                        <div key={di} onClick={() => setExpandedDev(isOpen ? null : key)}
-                          className={`rounded-xl cursor-pointer relative overflow-hidden border transition-all duration-300
+                        <div key={di}
+                          className={`rounded-xl relative overflow-hidden border transition-all duration-300
                             ${isOpen
                               ? "border-primary/30 bg-card shadow-elegant-lg"
                               : "border-border hover:border-primary/20 bg-card/50 hover:bg-card/80"}`}>
                           <div className="absolute top-0 left-0 right-0 h-[2px] opacity-60"
                             style={{ background: `linear-gradient(90deg,${c},transparent)` }} />
-                          <div className="p-4">
+                          <div className="p-4 cursor-pointer" onClick={() => setExpandedDev(isOpen ? null : key)}>
                             <div className="flex items-start justify-between gap-2">
                               <div>
                                 <div className="text-[10px] font-display font-bold tracking-wider uppercase mb-1" style={{ color: c }}>
@@ -1006,33 +1122,8 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
                             </div>
                           </div>
                           {isOpen && (
-                            <div className="px-4 pb-4 pt-0 border-t border-border-subtle animate-fade-in">
-                              <div className="pt-3">
-                                {d.verseText && (
-                                  <blockquote className="text-[15px] leading-relaxed text-foreground/90 italic font-body
-                                    px-4 py-3 mb-3 rounded-r-xl bg-card-hover"
-                                    style={{ borderLeft: `3px solid ${c}` }}>
-                                    "{d.verseText}"
-                                  </blockquote>
-                                )}
-                                <p className="text-[13.5px] text-text-secondary leading-relaxed mb-3">
-                                  {d.summary}
-                                </p>
-                                {d.exegese && (
-                                  <details className="group">
-                                    <summary className="font-display text-[9px] tracking-[2px] uppercase font-bold cursor-pointer
-                                      flex items-center gap-1.5 select-none transition-colors" style={{ color: c }}>
-                                      <span>📜 Exegese</span>
-                                      <span className="text-[12px] text-muted-foreground group-open:rotate-180 transition-transform duration-200">▾</span>
-                                    </summary>
-                                    <div className="mt-2 rounded-r-xl p-4 bg-primary/5 border border-primary/10"
-                                      style={{ borderLeft: `3px solid ${c}` }}>
-                                      <div className="exegese-html text-[13px] leading-[1.85] text-text-secondary"
-                                        dangerouslySetInnerHTML={{ __html: renderExegese(d.exegese) }} />
-                                    </div>
-                                  </details>
-                                )}
-                              </div>
+                            <div className="px-4 pb-5 pt-0 border-t border-border-subtle animate-fade-in">
+                              {renderDevDetail(d, c)}
                             </div>
                           )}
                         </div>
