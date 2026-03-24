@@ -159,7 +159,7 @@ export default function CodeLogin({ onLogin }: CodeLoginProps) {
       <style>{LOGIN_CSS}</style>
       <div className="login-card">
         <div className="login-icon">📖</div>
-        <div className="login-title">LEITURA BÍBLICA</div>
+        <div className="login-title">ESTUDO TUDO EM UM</div>
         <div className="login-subtitle">Digite seu código de acesso</div>
         <input
           className="login-input"
