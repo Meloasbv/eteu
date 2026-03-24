@@ -235,7 +235,7 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
     try { return (localStorage.getItem(THEME_KEY) as "light" | "dark") || "dark"; } catch { return "dark"; }
   });
   const [titleFading, setTitleFading] = useState(false);
-  const [displayTitle, setDisplayTitle] = useState("Leitura Bíblica Cronológica");
+  const [displayTitle, setDisplayTitle] = useState("Estudo Tudo Em Um");
   const playerRef = useRef<HTMLIFrameElement>(null);
 
   // Apply theme to html element
@@ -248,7 +248,7 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
   const prevTab = useRef(tab);
   const prevNotesTitle = useRef(notesTitle);
   useEffect(() => {
-    const newTitle = tab === "home" ? "Leitura Bíblica Cronológica"
+    const newTitle = tab === "home" ? "Estudo Tudo Em Um"
       : tab === "leitura" ? "📖 Plano de Leitura"
       : tab === "devocional" ? "🔥 Devocionais"
       : tab === "agenda" ? "📅 Agenda"
