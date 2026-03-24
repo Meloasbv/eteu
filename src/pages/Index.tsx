@@ -1273,17 +1273,15 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
       {tab === "anotacoes" && <BibleNotes onTitleChange={setNotesTitle} userCodeId={userCodeId} />}
 
       {/* Footer */}
-      <div style={{ textAlign: "center", padding: "8px 24px 28px", fontSize: 11, color: "#5a4a38", letterSpacing: 2, textTransform: "uppercase" }}>
+      <div className="text-center py-6 px-6 text-[11px] text-muted-foreground tracking-[2px] uppercase font-display">
         18 Semanas • Toda a Bíblia
       </div>
 
       {/* Save toast */}
       {saved && (
-        <div style={{
-          position: "fixed", bottom: 20, right: 20,
-          background: "rgba(107,142,107,.9)", color: "#fff",
-          padding: "10px 18px", borderRadius: 10, fontSize: 13, zIndex: 99,
-        }}>✓ Progresso salvo</div>
+        <div className="fixed bottom-5 right-5 bg-success text-white py-2.5 px-4 rounded-lg text-[13px] z-50 shadow-elegant animate-fade-in">
+          ✓ Progresso salvo
+        </div>
       )}
     </div>
   );
