@@ -159,9 +159,46 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Load notes from Supabase
+  // Load notes from Supabase + migrate localStorage notes once
   useEffect(() => {
     const loadNotes = async () => {
+      // 1) Migrate localStorage notes if they exist
+      const LOCAL_KEY = "bible-notes-2026";
+      const MIGRATED_KEY = "bible-notes-migrated-" + userCodeId;
+      const alreadyMigrated = localStorage.getItem(MIGRATED_KEY);
+      const localRaw = localStorage.getItem(LOCAL_KEY);
+
+      if (!alreadyMigrated && localRaw) {
+        try {
+          const localNotes = JSON.parse(localRaw);
+          if (Array.isArray(localNotes) && localNotes.length > 0) {
+            const rows = localNotes
+              .filter((n: any) => n.texto && n.texto.trim())
+              .map((n: any) => ({
+                user_code_id: userCodeId,
+                categoria: n.categoria || "aulas",
+                semana: n.semana || "",
+                texto: n.texto || "",
+              }));
+
+            if (rows.length > 0) {
+              const { error: migErr } = await (supabase as any)
+                .from("notes")
+                .insert(rows);
+              if (migErr) {
+                console.error("Migration error:", migErr);
+              } else {
+                console.log(`Migrated ${rows.length} notes from localStorage`);
+              }
+            }
+            localStorage.setItem(MIGRATED_KEY, "true");
+          }
+        } catch (e) {
+          console.error("Error parsing localStorage notes:", e);
+        }
+      }
+
+      // 2) Load all notes from DB
       const { data, error } = await (supabase as any)
         .from("notes")
         .select("*")
