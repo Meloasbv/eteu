@@ -213,7 +213,7 @@ export default function BiblePlan() {
 }
 
 function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string; accessCode: string | null; onLogout: () => void }) {
-  const [tab, setTab] = useState<"home" | "leitura" | "devocional" | "agenda" | "anotacoes">("home");
+  const [tab, setTab] = useState<"home" | "leitura" | "devocional" | "agenda" | "anotacoes">("leitura");
   const [activeWeek, setActiveWeek] = useState(0);
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [saved, setSaved] = useState(false);
