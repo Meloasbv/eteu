@@ -1334,7 +1334,7 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
       {tab === "agenda" && <WeekSchedule />}
 
       {/* ── ANOTAÇÕES TAB ── */}
-      {tab === "anotacoes" && <BibleNotes onTitleChange={setNotesTitle} />}
+      {tab === "anotacoes" && <BibleNotes onTitleChange={setNotesTitle} userCodeId={userCodeId} />}
 
       {/* Footer */}
       <div style={{ textAlign: "center", padding: "8px 24px 28px", fontSize: 11, color: "#5a4a38", letterSpacing: 2, textTransform: "uppercase" }}>
