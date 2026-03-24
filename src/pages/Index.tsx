@@ -388,6 +388,7 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
 
   const [devSummarizing, setDevSummarizing] = useState(false);
   const [devSummary, setDevSummary] = useState("");
+  const [devReflection, setDevReflection] = useState("");
 
   const summarizeTranscript = useCallback(async () => {
     if (!devTranscript.trim()) return;
