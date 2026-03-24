@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import jsPDF from "jspdf";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type Section = "proclamadores" | "aulas" | "pensamentos" | "devocionais";
@@ -402,11 +403,95 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
     };
   }, []);
 
-  // ── Print ───────────────────────────────────────────────────────────────────
-  const handlePrint = useCallback(() => {
+  // ── PDF Generation ──────────────────────────────────────────────────────────
+  const handleGeneratePDF = useCallback(() => {
+    if (!editingNote) return;
     setMenuOpen(false);
-    setTimeout(() => window.print(), 100);
-  }, []);
+
+    const doc = new jsPDF({ unit: "mm", format: "a4" });
+    const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
+    const marginL = 20;
+    const marginR = 20;
+    const marginTop = 25;
+    const marginBottom = 20;
+    const usableW = pageW - marginL - marginR;
+    let y = marginTop;
+
+    const addPage = () => { doc.addPage(); y = marginTop; };
+    const checkPage = (needed: number) => { if (y + needed > pageH - marginBottom) addPage(); };
+
+    // Title
+    const title = noteTitle(editingNote.texto);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18);
+    const titleLines = doc.splitTextToSize(title, usableW);
+    checkPage(titleLines.length * 8);
+    doc.text(titleLines, marginL, y);
+    y += titleLines.length * 8 + 2;
+
+    // Date
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(120, 120, 120);
+    doc.text(formatDateFull(editingNote.atualizadoEm), marginL, y);
+    y += 8;
+    doc.setTextColor(0, 0, 0);
+
+    // Separator
+    doc.setDrawColor(200, 200, 200);
+    doc.line(marginL, y, pageW - marginR, y);
+    y += 8;
+
+    // Body
+    const plainText = editingNote.texto
+      .split("\n")
+      .map(line => line.replace(/^#{1,3}\s*/, "").replace(/\*\*/g, "").replace(/_/g, ""))
+      .join("\n");
+
+    const lines = plainText.split("\n");
+    for (const line of lines) {
+      if (!line.trim()) { y += 4; continue; }
+      if (/^-{3,}$/.test(line.trim())) {
+        checkPage(6);
+        doc.setDrawColor(200, 200, 200);
+        doc.line(marginL, y, pageW - marginR, y);
+        y += 6;
+        continue;
+      }
+
+      const isHeading = line.startsWith("# ") || line.startsWith("## ") || line.startsWith("### ");
+      if (isHeading) {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(13);
+        y += 3;
+      } else {
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(11);
+      }
+
+      const wrapped = doc.splitTextToSize(line, usableW);
+      const lineH = isHeading ? 6 : 5.5;
+      checkPage(wrapped.length * lineH);
+      doc.text(wrapped, marginL, y);
+      y += wrapped.length * lineH + 1.5;
+    }
+
+    // Footer on each page
+    const totalPages = doc.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(160, 160, 160);
+      doc.text(`Página ${i} de ${totalPages}`, pageW / 2, pageH - 10, { align: "center" });
+      doc.setTextColor(0, 0, 0);
+    }
+
+    const fileName = title.replace(/[^a-zA-Z0-9À-ÿ\s]/g, "").trim().replace(/\s+/g, "_").slice(0, 40) || "nota";
+    doc.save(`${fileName}.pdf`);
+    showToast("PDF gerado!");
+  }, [editingNote, showToast]);
 
   // ── RENDER ──────────────────────────────────────────────────────────────────
 
@@ -534,8 +619,8 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
               {aiLoading === "resumir" ? "⏳ Resumindo..." : "📋 Resumir em Tópicos"}
             </button>
             <div className="notes-overflow-sep" />
-            <button className="notes-overflow-item" onClick={handlePrint}>
-              🖨️ Imprimir
+            <button className="notes-overflow-item" onClick={handleGeneratePDF}>
+              📄 Gerar PDF
             </button>
             <div className="notes-overflow-sep" />
             <button className="notes-overflow-item danger" onClick={() => deleteNote(editingNote.id)}>
@@ -720,35 +805,7 @@ const notesCSS = `
   50% { opacity: .4; }
 }
 
-/* ── Print ── */
-@media print {
-  body * { visibility: hidden !important; }
-  #notes-print-meta, #notes-print-meta *,
-  #notes-print-content, #notes-print-content * {
-    visibility: visible !important;
-  }
-  #notes-print-meta {
-    position: absolute; top: 0; left: 0;
-    padding: 20px 24px 10px !important;
-  }
-  #notes-print-content {
-    position: absolute; top: 60px; left: 0; right: 0;
-    padding: 10px 24px !important;
-  }
-  .no-print, .notes-editor-bar, .notes-bottom-bar,
-  .notes-sheet-overlay, .notes-overflow-menu,
-  .notes-menu-backdrop, .notes-toast,
-  .notes-pill-select { display: none !important; }
-  .notes-editor-date {
-    font-size: 13px !important;
-    color: #666 !important;
-  }
-  .notes-editor-field {
-    font-size: 14pt !important;
-    line-height: 1.7 !important;
-    color: #000 !important;
-  }
-}
+/* ── Print (removed — using PDF now) ── */
 
 /* ── List head ── */
 .notes-list-head { padding: 2px 8px 0; }
