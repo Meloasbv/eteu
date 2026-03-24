@@ -1,37 +1,35 @@
 
 
-## Plano: Campo de Anotações para Estudo Bíblico
+## Plan: Redesign Notes to iPhone-Style with Print Support
 
-### O que será criado
+### What changes
 
-Uma nova aba **"✍️ Anotações"** no app, onde o usuário pode criar, visualizar e remover anotações de estudo bíblico. Cada anotação terá:
+Redesign the BibleNotes component to closely mimic the Apple Notes app aesthetic, making it cleaner, more intuitive on mobile, and printable.
 
-- **Nome da aula** (obrigatório)
-- **Referência bíblica** (opcional)
-- **Resumo / conteúdo** (textarea)
-- **Data** (automática)
+### Key Design Changes
 
-As anotações serão persistidas em `localStorage` (chave `bible-notes-2026`), seguindo o padrão já usado no projeto.
+1. **Note list (Screen 2)**: Each note card shows the **title in bold**, a **date line** (e.g., "24 mar 2026, 14:30") formatted like iPhone Notes, and a subtle preview line below. Clean white/cream cards with minimal borders.
 
-### Estrutura
+2. **Editor (Screen 3)**: 
+   - Show the **date prominently** at the top below the back button (formatted: "24 de março de 2026 às 14:30"), just like iPhone Notes
+   - Remove the cluttered meta selectors row (category/week dropdowns) from the top area -- move category to a subtle pill, remove week selector from editor view
+   - Move AI buttons (Resumir/Organizar) into a collapsible "..." menu to reduce visual noise
+   - Move delete button into that same overflow menu
+   - Keep bottom toolbar clean: mic, bold, italic, preview, verse
 
-1. **Novo componente** `src/components/BibleNotes.tsx`
-   - Estado `notes` (array de anotações) carregado/salvo via localStorage
-   - Modal bottom-sheet para criar nova anotação (mesmo estilo do modal de eventos da Agenda)
-   - Lista de cards com as anotações salvas, ordenadas por data (mais recente primeiro)
-   - Botão de remover em cada card com confirmação
-   - Estado vazio com call-to-action para adicionar primeira anotação
+3. **Print support**: Add a "🖨️ Imprimir" button (in the overflow menu) that opens `window.print()` with a `@media print` stylesheet that:
+   - Hides navigation, bottom bar, buttons
+   - Shows note content with clean typography
+   - Includes the date and title at the top
 
-2. **Integração em `src/pages/Index.tsx`**
-   - Adicionar `"anotacoes"` ao tipo do estado `tab`
-   - Adicionar botão "✍️ Anotações" na barra de abas
-   - Renderizar `<BibleNotes />` quando a aba estiver ativa
+### Technical Details
 
-### Detalhes Técnicos
+**File**: `src/components/BibleNotes.tsx`
 
-- Tipo `Note`: `{ id: string; title: string; reference: string; summary: string; createdAt: string }`
-- localStorage key: `bible-notes-2026`
-- Estilo visual: mesmo padrão dark/gold do app (cores `#e8d8b8`, `#8a7a60`, `#C8A55C`, bordas `rgba(200,180,140,..)`)
-- Modal com campos: input para título, input para referência bíblica, textarea para resumo
-- Cards com accent line colorida, título, referência em badge, resumo truncado que expande ao clicar
+- Reformat `noteDate()` helper to display dates in Brazilian Portuguese format (e.g., "24 de mar. de 2026 às 14:30")
+- Add date display in both the note list rows and editor header
+- Add an overflow/actions menu (simple toggle state, no new dependencies) for AI, delete, and print actions
+- Add `@media print` CSS block to `notesCSS` string hiding UI chrome and styling content for print
+- Simplify editor header: `‹ voltar` | date | `···` menu button
+- In list view, show date under title like: **Title** / `24 mar 2026` / preview text
 
