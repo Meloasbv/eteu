@@ -619,8 +619,8 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
               {aiLoading === "resumir" ? "⏳ Resumindo..." : "📋 Resumir em Tópicos"}
             </button>
             <div className="notes-overflow-sep" />
-            <button className="notes-overflow-item" onClick={handlePrint}>
-              🖨️ Imprimir
+            <button className="notes-overflow-item" onClick={handleGeneratePDF}>
+              📄 Gerar PDF
             </button>
             <div className="notes-overflow-sep" />
             <button className="notes-overflow-item danger" onClick={() => deleteNote(editingNote.id)}>
