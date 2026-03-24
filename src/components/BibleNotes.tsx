@@ -805,35 +805,7 @@ const notesCSS = `
   50% { opacity: .4; }
 }
 
-/* ── Print ── */
-@media print {
-  body * { visibility: hidden !important; }
-  #notes-print-meta, #notes-print-meta *,
-  #notes-print-content, #notes-print-content * {
-    visibility: visible !important;
-  }
-  #notes-print-meta {
-    position: absolute; top: 0; left: 0;
-    padding: 20px 24px 10px !important;
-  }
-  #notes-print-content {
-    position: absolute; top: 60px; left: 0; right: 0;
-    padding: 10px 24px !important;
-  }
-  .no-print, .notes-editor-bar, .notes-bottom-bar,
-  .notes-sheet-overlay, .notes-overflow-menu,
-  .notes-menu-backdrop, .notes-toast,
-  .notes-pill-select { display: none !important; }
-  .notes-editor-date {
-    font-size: 13px !important;
-    color: #666 !important;
-  }
-  .notes-editor-field {
-    font-size: 14pt !important;
-    line-height: 1.7 !important;
-    color: #000 !important;
-  }
-}
+/* ── Print (removed — using PDF now) ── */
 
 /* ── List head ── */
 .notes-list-head { padding: 2px 8px 0; }
