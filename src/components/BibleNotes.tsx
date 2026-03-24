@@ -6,7 +6,7 @@ import jsPDF from "jspdf";
 type Section = "proclamadores" | "aulas" | "pensamentos" | "devocionais";
 
 type Note = {
-  id: number;
+  id: string;
   categoria: Section;
   semana: string;
   texto: string;
@@ -14,7 +14,7 @@ type Note = {
   atualizadoEm: string;
 };
 
-const STORAGE_KEY = "bible-notes-2026";
+
 const WEEKS_LIST = [
   "Sem. 1 — 24/01–30/01", "Sem. 2 — 31/01–06/02", "Sem. 3 — 07/02–13/02",
   "Sem. 4 — 14/02–20/02", "Sem. 5 — 21/02–27/02", "Sem. 6 — 28/02–06/03",
@@ -130,7 +130,7 @@ const v = (name: string) => `var(--notes-${name})`;
 const transition = "0.3s cubic-bezier(.4,0,.2,1)";
 
 // ── Component ─────────────────────────────────────────────────────────────────
-export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: string) => void }) {
+export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChange?: (title: string) => void; userCodeId: string }) {
   const [notes, setNotes] = useState<Note[]>([]);
   const [activeSection, setActiveSection] = useState<Section | null>(null);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
@@ -159,31 +159,34 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Load notes
+  // Load notes from Supabase
   useEffect(() => {
-    try {
-      const d = localStorage.getItem(STORAGE_KEY);
-      if (d) {
-        const parsed = JSON.parse(d);
-        if (Array.isArray(parsed)) {
-          const migrated: Note[] = parsed.map((n: any) => ({
-            id: n.id ? (typeof n.id === "number" ? n.id : Date.now() + Math.random()) : Date.now() + Math.random(),
-            categoria: n.categoria || n.section || "aulas",
-            semana: n.semana || `Sem. ${n.week || 1} — ${n.week ? "" : ""}`,
-            texto: n.texto || n.body?.replace(/<[^>]*>/g, "") || `${n.title || ""}\n${n.summary || n.body?.replace(/<[^>]*>/g, "") || ""}`.trim(),
-            criadoEm: n.criadoEm || n.createdAt || new Date().toISOString(),
-            atualizadoEm: n.atualizadoEm || n.updatedAt || new Date().toISOString(),
-          }));
-          setNotes(migrated);
-        }
-      }
-    } catch {}
-  }, []);
+    const loadNotes = async () => {
+      const { data, error } = await supabase
+        .from("notes")
+        .select("*")
+        .eq("user_code_id", userCodeId)
+        .order("updated_at", { ascending: false });
 
-  const persist = useCallback((updated: Note[]) => {
-    setNotes(updated);
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(updated)); } catch {}
-  }, []);
+      if (error) {
+        console.error("Error loading notes:", error);
+        return;
+      }
+
+      if (data) {
+        const mapped: Note[] = data.map((n: any) => ({
+          id: n.id,
+          categoria: n.categoria as Section,
+          semana: n.semana || "",
+          texto: n.texto || "",
+          criadoEm: n.created_at,
+          atualizadoEm: n.updated_at,
+        }));
+        setNotes(mapped);
+      }
+    };
+    loadNotes();
+  }, [userCodeId]);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -213,35 +216,65 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
   }, [notes, activeSection]);
 
   // ── Note operations ────────────────────────────────────────────────────────
-  const createNote = useCallback(() => {
+  const createNote = useCallback(async () => {
     const now = new Date().toISOString();
+    const categoria = activeSection || "aulas";
+    
+    const { data, error } = await supabase
+      .from("notes")
+      .insert({
+        user_code_id: userCodeId,
+        categoria,
+        semana: WEEKS_LIST[0],
+        texto: "",
+      })
+      .select()
+      .single();
+
+    if (error || !data) {
+      showToast("Erro ao criar nota");
+      return;
+    }
+
     const note: Note = {
-      id: Date.now(),
-      categoria: activeSection || "aulas",
-      semana: WEEKS_LIST[0],
-      texto: "",
-      criadoEm: now,
-      atualizadoEm: now,
+      id: data.id,
+      categoria: data.categoria as Section,
+      semana: data.semana || "",
+      texto: data.texto || "",
+      criadoEm: data.created_at,
+      atualizadoEm: data.updated_at,
     };
-    const updated = [note, ...notes];
-    persist(updated);
+    setNotes(prev => [note, ...prev]);
     setEditingNote(note);
     setTimeout(() => textareaRef.current?.focus(), 100);
-  }, [notes, activeSection, persist]);
+  }, [activeSection, userCodeId, showToast]);
 
-  const saveNote = useCallback((note: Note) => {
-    const updated = notes.map(n => n.id === note.id ? { ...note, atualizadoEm: new Date().toISOString() } : n);
-    persist(updated);
+  const saveNote = useCallback(async (note: Note) => {
+    const now = new Date().toISOString();
+    const updatedNote = { ...note, atualizadoEm: now };
+    setNotes(prev => prev.map(n => n.id === note.id ? updatedNote : n));
     setSaveStatus("saved");
     setTimeout(() => setSaveStatus("idle"), 1500);
-  }, [notes, persist]);
 
-  const deleteNote = useCallback((id: number) => {
-    persist(notes.filter(n => n.id !== id));
+    await supabase
+      .from("notes")
+      .update({
+        texto: note.texto,
+        categoria: note.categoria,
+        semana: note.semana,
+        updated_at: now,
+      })
+      .eq("id", note.id);
+  }, []);
+
+  const deleteNote = useCallback(async (id: string) => {
+    setNotes(prev => prev.filter(n => n.id !== id));
     if (editingNote?.id === id) setEditingNote(null);
     showToast("Nota removida");
     setMenuOpen(false);
-  }, [notes, editingNote, persist, showToast]);
+
+    await supabase.from("notes").delete().eq("id", id);
+  }, [editingNote, showToast]);
 
   const handleTextChange = useCallback((text: string) => {
     if (!editingNote) return;

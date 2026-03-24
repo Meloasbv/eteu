@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import WeekSchedule from "@/components/WeekSchedule";
 import BibleNotes from "@/components/BibleNotes";
+import CodeLogin from "@/components/CodeLogin";
 
 // ── DATA ──────────────────────────────────────────────────────────────────────
 
@@ -177,6 +178,41 @@ const THEME_KEY = "theme_preference";
 // ── COMPONENT ─────────────────────────────────────────────────────────────────
 
 export default function BiblePlan() {
+  // ── Auth state ──
+  const [userCodeId, setUserCodeId] = useState<string | null>(() => {
+    try { return localStorage.getItem("bible-user-code-id"); } catch { return null; }
+  });
+  const [accessCode, setAccessCode] = useState<string | null>(() => {
+    try { return localStorage.getItem("bible-access-code"); } catch { return null; }
+  });
+
+  const handleLogin = useCallback((id: string, code: string) => {
+    setUserCodeId(id);
+    setAccessCode(code);
+    try {
+      localStorage.setItem("bible-user-code-id", id);
+      localStorage.setItem("bible-access-code", code);
+    } catch {}
+  }, []);
+
+  const handleLogout = useCallback(() => {
+    setUserCodeId(null);
+    setAccessCode(null);
+    try {
+      localStorage.removeItem("bible-user-code-id");
+      localStorage.removeItem("bible-access-code");
+    } catch {}
+  }, []);
+
+  // Show login if not authenticated
+  if (!userCodeId) {
+    return <CodeLogin onLogin={handleLogin} />;
+  }
+
+  return <BiblePlanApp userCodeId={userCodeId} accessCode={accessCode} onLogout={handleLogout} />;
+}
+
+function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string; accessCode: string | null; onLogout: () => void }) {
   const [tab, setTab] = useState<"home" | "leitura" | "devocional" | "agenda" | "anotacoes">("home");
   const [activeWeek, setActiveWeek] = useState(0);
   const [checked, setChecked] = useState<Record<string, boolean>>({});
@@ -441,6 +477,19 @@ export default function BiblePlan() {
         style={{ position: "absolute", width: 0, height: 0, border: "none", opacity: 0, pointerEvents: "none" }}
         title="Background music"
       />
+      {/* ── LOGOUT BUTTON ── */}
+      <button onClick={onLogout} style={{
+        position: "fixed", top: 16, left: 16, zIndex: 100,
+        background: "none", border: "none",
+        color: theme === "light" ? "#aba59e" : "#6a5a48",
+        fontFamily: "'Cinzel', serif",
+        fontSize: 8, letterSpacing: 2, textTransform: "uppercase",
+        cursor: "pointer", padding: "4px 8px",
+        transition: "color .2s",
+      }}>
+        Sair
+      </button>
+
       {/* ── THEME TOGGLE ── */}
       <label style={{
         position: "fixed", top: 16, right: 16, width: 38, height: 22, zIndex: 100,
@@ -1298,7 +1347,7 @@ export default function BiblePlan() {
       {tab === "agenda" && <WeekSchedule />}
 
       {/* ── ANOTAÇÕES TAB ── */}
-      {tab === "anotacoes" && <BibleNotes onTitleChange={setNotesTitle} />}
+      {tab === "anotacoes" && <BibleNotes onTitleChange={setNotesTitle} userCodeId={userCodeId} />}
 
       {/* Footer */}
       <div style={{ textAlign: "center", padding: "8px 24px 28px", fontSize: 11, color: "#5a4a38", letterSpacing: 2, textTransform: "uppercase" }}>
