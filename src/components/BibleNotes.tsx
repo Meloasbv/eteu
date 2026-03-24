@@ -723,7 +723,6 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
               <div className="notes-trans-row">
                 {[
                   { key: "almeida", label: "ARC" },
-                  { key: "nvi", label: "NVI" },
                   { key: "kjv", label: "KJV" },
                 ].map(t => (
                   <button
