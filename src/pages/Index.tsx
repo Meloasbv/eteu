@@ -459,154 +459,77 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
   };
 
   return (
-    <div style={{
-      minHeight: "100vh",
-      background: theme === "light"
-        ? "linear-gradient(160deg,#faf9f7 0%,#f5f3ef 40%,#faf9f7 100%)"
-        : "linear-gradient(160deg,#1a1510 0%,#2a2218 40%,#1e1a14 100%)",
-      fontFamily: "'Cormorant Garamond', 'Georgia', serif",
-      color: theme === "light" ? "#1a1714" : "#e8dcc8",
-      transition: "background .3s cubic-bezier(.4,0,.2,1), color .3s cubic-bezier(.4,0,.2,1)",
-      ...themeVars as any,
-    }}>
+    <div className="min-h-screen bg-background text-foreground font-body transition-colors duration-300" style={themeVars as any}>
       {/* Hidden YouTube player */}
       <iframe
         ref={playerRef}
         src="https://www.youtube.com/embed/juWsw7-IuaE?enablejsapi=1&autoplay=0&loop=1&playlist=juWsw7-IuaE"
         allow="autoplay"
-        style={{ position: "absolute", width: 0, height: 0, border: "none", opacity: 0, pointerEvents: "none" }}
+        className="absolute w-0 h-0 border-none opacity-0 pointer-events-none"
         title="Background music"
       />
-      {/* ── LOGOUT BUTTON ── */}
-      <button onClick={onLogout} style={{
-        position: "fixed", top: 16, left: 16, zIndex: 100,
-        background: "none", border: "none",
-        color: theme === "light" ? "#aba59e" : "#6a5a48",
-        fontFamily: "'Cinzel', serif",
-        fontSize: 8, letterSpacing: 2, textTransform: "uppercase",
-        cursor: "pointer", padding: "4px 8px",
-        transition: "color .2s",
-      }}>
-        Sair
-      </button>
 
-      {/* ── THEME TOGGLE ── */}
-      <label style={{
-        position: "fixed", top: 16, right: 16, width: 38, height: 22, zIndex: 100,
-        display: "block", cursor: "pointer",
-      }}>
-        <input
-          type="checkbox"
-          checked={theme === "dark"}
-          onChange={() => setTheme(t => t === "light" ? "dark" : "light")}
-          style={{ display: "none" }}
-        />
-        <div style={{
-          width: 38, height: 22, borderRadius: 99,
-          background: theme === "light" ? "#f0ede8" : "#261f13",
-          border: `1px solid ${theme === "light" ? "rgba(0,0,0,.08)" : "rgba(201,160,82,.1)"}`,
-          position: "relative", transition: "background .3s, border-color .3s",
-        }}>
-          <div style={{
-            position: "absolute", top: 2, left: theme === "dark" ? 18 : 2,
-            width: 16, height: 16, borderRadius: "50%",
-            background: theme === "light" ? "#8b6f4e" : "#c9a052",
-            transition: "left .25s cubic-bezier(.34,1.56,.64,1), background .3s",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 9,
-          }}>
-            {theme === "light" ? "☀" : "☾"}
-          </div>
-        </div>
-      </label>
-
-      {/* ── HEADER ── */}
-      <div style={{
-        padding: "44px 20px 0", textAlign: "center",
-        transition: "border-color .3s",
-      }}>
-        <p style={{
-          fontFamily: "'Cinzel', serif",
-          fontSize: 8, letterSpacing: 4, textTransform: "uppercase",
-          color: theme === "light" ? "#aba59e" : "#8a7a60",
-          marginBottom: 4, fontWeight: 400,
-          transition: "color .3s",
-        }}>
-          Fascinação · 2026A
-        </p>
-        <h1 style={{
-          fontFamily: "'Cinzel', serif",
-          fontSize: 17, fontWeight: 400,
-          color: theme === "light" ? "#8b6f4e" : "#e8c97a",
-          letterSpacing: 0.5, lineHeight: 1.25, marginBottom: 8,
-          transition: "color .3s, opacity .28s, transform .28s",
-          opacity: titleFading ? 0 : 1,
-          transform: titleFading ? "translateY(-6px)" : "translateY(0)",
-        }}>
-          {displayTitle}
-        </h1>
-        {/* Overall progress */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 10 }}>
-          <div style={{ width: 26, height: 26, position: "relative", flexShrink: 0 }}>
-            <svg width="26" height="26" viewBox="0 0 26 26" style={{ transform: "rotate(-90deg)" }}>
-              <circle cx="13" cy="13" r="10" fill="none"
-                stroke={theme === "light" ? "rgba(0,0,0,.06)" : "rgba(200,180,140,0.1)"}
-                strokeWidth="2.5" style={{ transition: "stroke .3s" }} />
-              <circle cx="13" cy="13" r="10" fill="none"
-                stroke={theme === "light" ? "#8b6f4e" : "#c9a052"}
-                strokeWidth="2.5" strokeLinecap="round"
-                strokeDasharray={`${prog * 62.83} 62.83`}
-                style={{ transition: "stroke-dasharray .6s ease, stroke .3s" }} />
-            </svg>
-          </div>
-          <span style={{
-            fontFamily: "'Cinzel', serif",
-            fontSize: 9, letterSpacing: 1,
-            color: theme === "light" ? "#6b6560" : "#8a7a60",
-            transition: "color .3s",
-          }}>
-            {Math.round(prog * 100)}% · Progresso total
-          </span>
-        </div>
-      </div>
-      {/* Tabs - bottom tab bar style */}
-      <div style={{
-        display: "flex", justifyContent: "space-around", alignItems: "center",
-        padding: "6px 8px 8px",
-        borderBottom: `1px solid ${theme === "light" ? "rgba(0,0,0,.06)" : "rgba(200,180,140,.08)"}`,
-        transition: "border-color .3s",
-      }}>
-        {([
-          { key: "leitura" as const, icon: "📖", label: "Leitura" },
-          { key: "devocional" as const, icon: "🔥", label: "Devocional" },
-          { key: "agenda" as const, icon: "📅", label: "Agenda" },
-          { key: "anotacoes" as const, icon: "📝", label: "Notas" },
-        ]).map(t => (
-          <button key={t.key} onClick={() => setTab(t.key)} style={{
-            display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
-            padding: "6px 10px", borderRadius: 12, flex: 1,
-            border: "none",
-            background: tab === t.key
-              ? (theme === "light" ? "rgba(139,111,78,.08)" : "rgba(200,170,100,.12)")
-              : "transparent",
-            cursor: "pointer",
-            transition: "all .2s",
-          }}>
-            <span style={{ fontSize: 18, lineHeight: 1 }}>{t.icon}</span>
-            <span style={{
-              fontFamily: "'Cinzel', serif",
-              fontSize: 9, letterSpacing: 0.5,
-              fontWeight: tab === t.key ? 600 : 400,
-              color: tab === t.key
-                ? (theme === "light" ? "#8b6f4e" : "#e8c97a")
-                : (theme === "light" ? "#aba59e" : "#6a5a48"),
-              transition: "color .2s",
-            }}>
-              {t.label}
-            </span>
+      {/* ── FIXED HEADER ── */}
+      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border transition-colors duration-300">
+        {/* Top bar: Sair | Brand | Theme toggle */}
+        <div className="flex items-center justify-between px-4 pt-3 pb-1">
+          <button onClick={onLogout} className="font-display text-[8px] tracking-[2px] uppercase text-muted-foreground hover:text-primary transition-colors border-none bg-transparent cursor-pointer px-1 py-1">
+            Sair
           </button>
-        ))}
-      </div>
+          <div className="text-center flex-1">
+            <p className="font-display text-[8px] tracking-[4px] uppercase text-muted-foreground font-normal mb-0.5">
+              Fascinação · 2026A
+            </p>
+            <h1 className="font-display text-[17px] font-normal text-primary tracking-wide leading-tight transition-all duration-300"
+              style={{ opacity: titleFading ? 0 : 1, transform: titleFading ? "translateY(-6px)" : "translateY(0)" }}>
+              {displayTitle}
+            </h1>
+          </div>
+          <div className="flex items-center gap-2">
+            {/* Progress circle */}
+            <div className="w-[26px] h-[26px] relative shrink-0">
+              <svg width="26" height="26" viewBox="0 0 26 26" style={{ transform: "rotate(-90deg)" }}>
+                <circle cx="13" cy="13" r="10" fill="none" className="stroke-border" strokeWidth="2.5" />
+                <circle cx="13" cy="13" r="10" fill="none" className="stroke-primary" strokeWidth="2.5" strokeLinecap="round"
+                  strokeDasharray={`${prog * 62.83} 62.83`} style={{ transition: "stroke-dasharray .6s ease" }} />
+              </svg>
+            </div>
+            {/* Theme toggle */}
+            <label className="w-[38px] h-[22px] block cursor-pointer shrink-0">
+              <input type="checkbox" checked={theme === "dark"} onChange={() => setTheme(t => t === "light" ? "dark" : "light")} className="hidden" />
+              <div className="w-[38px] h-[22px] rounded-full border border-border bg-muted relative transition-all duration-300">
+                <div className="absolute top-[2px] w-4 h-4 rounded-full bg-primary transition-all duration-300 flex items-center justify-center text-[9px]"
+                  style={{ left: theme === "dark" ? 18 : 2 }}>
+                  {theme === "light" ? "☀" : "☾"}
+                </div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        {/* ── TAB BAR ── */}
+        <nav className="flex justify-around items-center px-2 pb-1.5">
+          {([
+            { key: "leitura" as const, icon: "📖", label: "Leitura" },
+            { key: "devocional" as const, icon: "🔥", label: "Devocional" },
+            { key: "agenda" as const, icon: "📅", label: "Agenda" },
+            { key: "anotacoes" as const, icon: "📝", label: "Notas" },
+          ]).map(t => {
+            const isActive = tab === t.key;
+            return (
+              <button key={t.key} onClick={() => setTab(t.key)}
+                className={`flex flex-col items-center gap-0.5 py-1.5 px-2.5 rounded-lg flex-1 border-none cursor-pointer transition-all duration-200
+                  ${isActive ? "bg-primary/10" : "bg-transparent hover:bg-primary/5"}`}>
+                <span className="text-lg leading-none">{t.icon}</span>
+                <span className={`font-display text-[9px] tracking-wide transition-colors duration-200
+                  ${isActive ? "font-semibold text-primary" : "font-normal text-muted-foreground"}`}>
+                  {t.label}
+                </span>
+              </button>
+            );
+          })}
+        </nav>
+      </header>
 
       {/* ── HOME DASHBOARD ── */}
       {tab === "home" && (
