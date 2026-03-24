@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import jsPDF from "jspdf";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type Section = "proclamadores" | "aulas" | "pensamentos" | "devocionais";
