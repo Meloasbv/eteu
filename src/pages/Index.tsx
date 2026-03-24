@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import WeekSchedule from "@/components/WeekSchedule";
 import BibleNotes from "@/components/BibleNotes";
 import CodeLogin from "@/components/CodeLogin";
+import RichTextEditor from "@/components/RichTextEditor";
 
 // ── DATA ──────────────────────────────────────────────────────────────────────
 
