@@ -14,7 +14,62 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      access_codes: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      notes: {
+        Row: {
+          categoria: string
+          created_at: string
+          id: string
+          semana: string
+          texto: string
+          updated_at: string
+          user_code_id: string
+        }
+        Insert: {
+          categoria?: string
+          created_at?: string
+          id?: string
+          semana?: string
+          texto?: string
+          updated_at?: string
+          user_code_id: string
+        }
+        Update: {
+          categoria?: string
+          created_at?: string
+          id?: string
+          semana?: string
+          texto?: string
+          updated_at?: string
+          user_code_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notes_user_code_id_fkey"
+            columns: ["user_code_id"]
+            isOneToOne: false
+            referencedRelation: "access_codes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
