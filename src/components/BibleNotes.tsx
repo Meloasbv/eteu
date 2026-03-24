@@ -433,94 +433,123 @@ export default function BibleNotes({ onTitleChange }: { onTitleChange?: (title: 
     };
   }, []);
 
-  // ── PDF Generation ──────────────────────────────────────────────────────────
-  const handleGeneratePDF = useCallback(() => {
+  // ── PDF Generation (screenshot-style) ───────────────────────────────────────
+  const handleGeneratePDF = useCallback(async () => {
     if (!editingNote) return;
     setMenuOpen(false);
+    showToast("Gerando PDF...");
 
-    const doc = new jsPDF({ unit: "mm", format: "a4" });
-    const pageW = doc.internal.pageSize.getWidth();
-    const pageH = doc.internal.pageSize.getHeight();
-    const marginL = 20;
-    const marginR = 20;
-    const marginTop = 25;
-    const marginBottom = 20;
-    const usableW = pageW - marginL - marginR;
-    let y = marginTop;
-
-    const addPage = () => { doc.addPage(); y = marginTop; };
-    const checkPage = (needed: number) => { if (y + needed > pageH - marginBottom) addPage(); };
-
-    // Title
-    const title = noteTitle(editingNote.texto);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(18);
-    const titleLines = doc.splitTextToSize(title, usableW);
-    checkPage(titleLines.length * 8);
-    doc.text(titleLines, marginL, y);
-    y += titleLines.length * 8 + 2;
+    // Build an off-screen clone with the note rendered in preview mode
+    const container = document.createElement("div");
+    container.style.cssText = `
+      position: fixed; left: -9999px; top: 0;
+      width: 420px; padding: 32px 28px 40px;
+      background: var(--notes-bg, #faf8f4);
+      color: var(--notes-text, #2c2420);
+      font-family: 'Cormorant Garamond', serif;
+    `;
 
     // Date
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.setTextColor(120, 120, 120);
-    doc.text(formatDateFull(editingNote.atualizadoEm), marginL, y);
-    y += 8;
-    doc.setTextColor(0, 0, 0);
+    const dateEl = document.createElement("div");
+    dateEl.style.cssText = `
+      font-size: 13px; color: var(--notes-text3, #b0a89c);
+      margin-bottom: 16px; font-family: 'Cormorant Garamond', serif;
+    `;
+    dateEl.textContent = formatDateFull(editingNote.atualizadoEm);
+    container.appendChild(dateEl);
 
-    // Separator
-    doc.setDrawColor(200, 200, 200);
-    doc.line(marginL, y, pageW - marginR, y);
-    y += 8;
+    // Category pill
+    const sec = SECTIONS.find(s => s.key === editingNote.categoria);
+    if (sec) {
+      const pill = document.createElement("div");
+      pill.style.cssText = `
+        display: inline-block; font-size: 11px; padding: 3px 12px;
+        border-radius: 99px; margin-bottom: 20px;
+        background: var(--notes-accent-faint, rgba(139,115,85,.08));
+        color: var(--notes-accent, #8b7355);
+        font-family: 'Cormorant Garamond', serif;
+      `;
+      pill.textContent = `${sec.icon} ${sec.label}`;
+      container.appendChild(pill);
+    }
 
-    // Body
-    const plainText = editingNote.texto
-      .split("\n")
-      .map(line => line.replace(/^#{1,3}\s*/, "").replace(/\*\*/g, "").replace(/_/g, ""))
-      .join("\n");
+    // Note content (rendered markdown)
+    const content = document.createElement("div");
+    content.style.cssText = `
+      font-size: 18px; line-height: 1.9;
+      color: var(--notes-text, #2c2420);
+      font-family: 'Cormorant Garamond', serif;
+    `;
+    content.innerHTML = renderMarkdown(editingNote.texto) || "<em>Sem conteúdo</em>";
+    container.appendChild(content);
 
-    const lines = plainText.split("\n");
-    for (const line of lines) {
-      if (!line.trim()) { y += 4; continue; }
-      if (/^-{3,}$/.test(line.trim())) {
-        checkPage(6);
-        doc.setDrawColor(200, 200, 200);
-        doc.line(marginL, y, pageW - marginR, y);
-        y += 6;
-        continue;
-      }
+    document.body.appendChild(container);
 
-      const isHeading = line.startsWith("# ") || line.startsWith("## ") || line.startsWith("### ");
-      if (isHeading) {
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(13);
-        y += 3;
+    try {
+      // Wait for fonts
+      await document.fonts.ready;
+
+      const canvas = await html2canvas(container, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: null,
+        logging: false,
+      });
+
+      const imgData = canvas.toDataURL("image/png");
+      const imgW = canvas.width;
+      const imgH = canvas.height;
+
+      const pdfW = 210; // A4 mm
+      const pdfH = 297;
+      const margin = 10;
+      const usableW = pdfW - margin * 2;
+      const usableH = pdfH - margin * 2;
+
+      const scale = usableW / imgW;
+      const scaledH = imgH * scale;
+
+      const doc = new jsPDF({ unit: "mm", format: "a4" });
+
+      if (scaledH <= usableH) {
+        // Fits on one page
+        doc.addImage(imgData, "PNG", margin, margin, usableW, scaledH);
       } else {
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(11);
+        // Split across pages
+        const pageImgH = usableH / scale; // px per page
+        let srcY = 0;
+        let pageNum = 0;
+
+        while (srcY < imgH) {
+          if (pageNum > 0) doc.addPage();
+          const sliceH = Math.min(pageImgH, imgH - srcY);
+
+          // Create a slice canvas
+          const sliceCanvas = document.createElement("canvas");
+          sliceCanvas.width = imgW;
+          sliceCanvas.height = sliceH;
+          const ctx = sliceCanvas.getContext("2d")!;
+          ctx.drawImage(canvas, 0, srcY, imgW, sliceH, 0, 0, imgW, sliceH);
+
+          const sliceData = sliceCanvas.toDataURL("image/png");
+          const sliceScaledH = sliceH * scale;
+          doc.addImage(sliceData, "PNG", margin, margin, usableW, sliceScaledH);
+
+          srcY += sliceH;
+          pageNum++;
+        }
       }
 
-      const wrapped = doc.splitTextToSize(line, usableW);
-      const lineH = isHeading ? 6 : 5.5;
-      checkPage(wrapped.length * lineH);
-      doc.text(wrapped, marginL, y);
-      y += wrapped.length * lineH + 1.5;
+      const title = noteTitle(editingNote.texto);
+      const fileName = title.replace(/[^a-zA-Z0-9À-ÿ\s]/g, "").trim().replace(/\s+/g, "_").slice(0, 40) || "nota";
+      doc.save(`${fileName}.pdf`);
+      showToast("PDF gerado!");
+    } catch (err) {
+      console.error("PDF generation error:", err);
+      showToast("Erro ao gerar PDF");
+    } finally {
+      document.body.removeChild(container);
     }
-
-    // Footer on each page
-    const totalPages = doc.getNumberOfPages();
-    for (let i = 1; i <= totalPages; i++) {
-      doc.setPage(i);
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(8);
-      doc.setTextColor(160, 160, 160);
-      doc.text(`Página ${i} de ${totalPages}`, pageW / 2, pageH - 10, { align: "center" });
-      doc.setTextColor(0, 0, 0);
-    }
-
-    const fileName = title.replace(/[^a-zA-Z0-9À-ÿ\s]/g, "").trim().replace(/\s+/g, "_").slice(0, 40) || "nota";
-    doc.save(`${fileName}.pdf`);
-    showToast("PDF gerado!");
   }, [editingNote, showToast]);
 
   // ── RENDER ──────────────────────────────────────────────────────────────────
