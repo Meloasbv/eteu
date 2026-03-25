@@ -19,13 +19,17 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    const plainBody = (noteBody || "")
-      .replace(/<[^>]*>/g, " ")
-      .replace(/&nbsp;/g, " ")
-      .replace(/\s+/g, " ")
+    const sourceBody = String(noteBody || "")
+      .replace(/\r\n/g, "\n")
+      .replace(/\u00a0/g, " ")
       .trim();
 
-    if (!plainBody) {
+    const hasText = sourceBody
+      .replace(/[#>*_`~\-\d\[\]().,!:;|]/g, "")
+      .replace(/\s+/g, "")
+      .length > 0;
+
+    if (!hasText) {
       return new Response(
         JSON.stringify({ error: "Nota vazia. Escreva algo antes." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -47,7 +51,7 @@ Regras RÍGIDAS:
 - Mantenha a formatação original (títulos, parágrafos, listas)
 - Comece direto com o conteúdo corrigido, sem explicações
 - Se não houver erros, retorne o texto exatamente como está`;
-      userPrompt = `Corrija os erros de gramática desta anotação:\n\nTítulo: ${noteTitle}\n\nConteúdo:\n${plainBody}`;
+      userPrompt = `Corrija os erros de gramática desta anotação:\n\nTítulo: ${noteTitle}\n\nConteúdo:\n${sourceBody}`;
     } else {
       systemPrompt = `Você é um assistente que organiza a estrutura de anotações de estudo bíblico usando Markdown.
 
@@ -66,10 +70,11 @@ Regras RÍGIDAS:
 - NÃO junte parágrafos — cada ideia deve ficar em seu próprio parágrafo
 - Cada bullet point (•) do original deve virar um item de lista separado (- item)
 - Se houver versículos bíblicos, mantenha-os exatamente como escritos
+- Preserve integralmente subtítulos (##/###), negrito (**texto**) e itálico (*texto*) já existentes
 - Comece direto com o conteúdo, sem frases como "Aqui está..."
 - Escreva em português brasileiro
 - O resultado DEVE ser Markdown bem formatado com quebras de linha entre seções`;
-      userPrompt = `Organize esta anotação de estudo bíblico:\n\nTítulo original: ${noteTitle}\n\nConteúdo:\n${plainBody}`;
+      userPrompt = `Organize esta anotação de estudo bíblico:\n\nTítulo original: ${noteTitle}\n\nConteúdo:\n${sourceBody}`;
     }
 
     const response = await fetch(
