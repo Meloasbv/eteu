@@ -32,6 +32,42 @@ export type Database = {
         }
         Relationships: []
       }
+      flashcards: {
+        Row: {
+          answer: string
+          created_at: string
+          ease_factor: number
+          id: string
+          interval: number
+          next_review: string
+          note_id: string | null
+          question: string
+          user_code_id: string
+        }
+        Insert: {
+          answer: string
+          created_at?: string
+          ease_factor?: number
+          id?: string
+          interval?: number
+          next_review?: string
+          note_id?: string | null
+          question: string
+          user_code_id: string
+        }
+        Update: {
+          answer?: string
+          created_at?: string
+          ease_factor?: number
+          id?: string
+          interval?: number
+          next_review?: string
+          note_id?: string | null
+          question?: string
+          user_code_id?: string
+        }
+        Relationships: []
+      }
       notes: {
         Row: {
           categoria: string
