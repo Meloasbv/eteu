@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import jsPDF from "jspdf";
 import RichTextEditor from "@/components/RichTextEditor";
 import NoteSearchOverlay from "@/components/NoteSearchOverlay";
+import BibleContextPanel from "@/components/BibleContextPanel";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type Section = "proclamadores" | "aulas" | "pensamentos" | "devocionais";
