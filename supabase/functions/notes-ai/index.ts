@@ -49,23 +49,26 @@ Regras RÍGIDAS:
 - Se não houver erros, retorne o texto exatamente como está`;
       userPrompt = `Corrija os erros de gramática desta anotação:\n\nTítulo: ${noteTitle}\n\nConteúdo:\n${plainBody}`;
     } else {
-      systemPrompt = `Você é um assistente que APENAS organiza a estrutura de anotações. Você NÃO escreve, NÃO adiciona, NÃO parafraseia e NÃO resume.
+      systemPrompt = `Você é um assistente que organiza a estrutura de anotações de estudo bíblico usando Markdown.
 
-Sua ÚNICA tarefa é:
-1. Corrigir títulos (# e ##) para ficarem claros
-2. Organizar subtítulos e separar seções logicamente
-3. Manter EXATAMENTE as mesmas palavras e frases do texto original
+Sua tarefa:
+1. Adicionar títulos (## e ###) para separar seções logicamente
+2. Separar parágrafos corretamente (duas quebras de linha entre blocos)
+3. Converter itens que parecem listas em bullet points (- item)
+4. Usar > para citações bíblicas
+5. Usar --- para separar grandes seções
+6. Manter **negrito** e *itálico* para ênfases existentes
 
 Regras RÍGIDAS:
 - NÃO adicione nenhuma palavra, frase ou explicação que não exista no original
 - NÃO reescreva ou parafraseie — copie o texto EXATAMENTE como está
-- NÃO adicione bullet points ou listas se não existiam no original
 - NÃO adicione introduções, conclusões ou comentários
-- Apenas reorganize a ORDEM e corrija os marcadores de título (# ## ###)
-- Use --- para separar seções quando fizer sentido
-- Se houver versículos, mantenha-os exatamente como escritos
+- NÃO junte parágrafos — cada ideia deve ficar em seu próprio parágrafo
+- Cada bullet point (•) do original deve virar um item de lista separado (- item)
+- Se houver versículos bíblicos, mantenha-os exatamente como escritos
 - Comece direto com o conteúdo, sem frases como "Aqui está..."
-- Escreva em português brasileiro`;
+- Escreva em português brasileiro
+- O resultado DEVE ser Markdown bem formatado com quebras de linha entre seções`;
       userPrompt = `Organize esta anotação de estudo bíblico:\n\nTítulo original: ${noteTitle}\n\nConteúdo:\n${plainBody}`;
     }
 
