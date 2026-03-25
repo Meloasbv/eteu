@@ -232,6 +232,9 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
   const devRecognitionRef = useRef<any>(null);
   const devTranscriptRef = useRef("");
   const [notesTitle, setNotesTitle] = useState("📝 Anotações");
+  // Reading context AI
+  const [readingContext, setReadingContext] = useState<Record<string, string>>({});
+  const [contextLoading, setContextLoading] = useState<string | null>(null);
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     try { return (localStorage.getItem(THEME_KEY) as "light" | "dark") || "dark"; } catch { return "dark"; }
   });
@@ -277,6 +280,25 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
     setChecked(prev => ({ ...prev, [`${wi}-${di}`]: !prev[`${wi}-${di}`] }));
     setSaved(true); setTimeout(() => setSaved(false), 2000);
   }, []);
+
+  const fetchReadingContext = useCallback(async (wi: number, di: number, readings: string[]) => {
+    const key = `${wi}-${di}`;
+    if (readingContext[key] || contextLoading === key) return;
+    setContextLoading(key);
+    try {
+      const { data, error } = await supabase.functions.invoke("reading-context", {
+        body: { readings },
+      });
+      if (error || data?.error) {
+        console.error("Context error:", data?.error || error);
+      } else if (data?.result) {
+        setReadingContext(prev => ({ ...prev, [key]: data.result }));
+      }
+    } catch (e) {
+      console.error("Context fetch error:", e);
+    }
+    setContextLoading(null);
+  }, [readingContext, contextLoading]);
 
   const weekProg = useCallback((wi: number) => {
     let t = 0, d = 0;
@@ -619,8 +641,8 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
             </div>
           </div>
 
-          {/* Nav arrows */}
-          <div className="px-6 pt-1 pb-3 flex gap-2">
+          {/* Nav arrows + Mark all week */}
+          <div className="px-6 pt-1 pb-3 flex gap-2 items-center">
             {([-1, 1] as const).map(delta => (
               <button key={delta} onClick={() => setActiveWeek(w => Math.max(0, Math.min(WEEKS.length - 1, w + delta)))}
                 disabled={(delta === -1 && activeWeek === 0) || (delta === 1 && activeWeek === WEEKS.length - 1)}
@@ -629,6 +651,26 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
                 {delta === -1 ? "‹" : "›"}
               </button>
             ))}
+            <div className="flex-1" />
+            <button
+              onClick={() => {
+                const allDone = cw.days.every((day, di) => !day.r.length || checked[`${activeWeek}-${di}`]);
+                setChecked(prev => {
+                  const next = { ...prev };
+                  cw.days.forEach((day, di) => {
+                    if (day.r.length) next[`${activeWeek}-${di}`] = !allDone;
+                  });
+                  return next;
+                });
+                setSaved(true); setTimeout(() => setSaved(false), 2000);
+              }}
+              className={`px-4 py-2 rounded-xl text-[12px] font-semibold cursor-pointer border transition-all duration-200 font-display tracking-wide
+                ${wp >= 1
+                  ? "border-success/40 bg-success/10 text-success hover:bg-success/20"
+                  : "border-primary/40 bg-primary/10 text-primary hover:bg-primary/20"}`}
+            >
+              {wp >= 1 ? "✓ Desmarcar semana" : "☑ Marcar semana inteira"}
+            </button>
           </div>
 
           {/* Days grid */}
@@ -637,41 +679,91 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
               if (!day.r.length) return null;
               const isDone = !!checked[`${activeWeek}-${di}`];
               const c = COLORS[di];
+              const ctxKey = `${activeWeek}-${di}`;
+              const hasContext = !!readingContext[ctxKey];
+              const isLoadingCtx = contextLoading === ctxKey;
               return (
-                <div key={di} onClick={() => toggle(activeWeek, di)}
-                  className={`rounded-xl p-5 cursor-pointer relative overflow-hidden border transition-all duration-300
+                <div key={di}
+                  className={`rounded-xl relative overflow-hidden border transition-all duration-300
                     ${isDone ? "bg-success/5 border-success/20" : "bg-card/50 border-border hover:border-primary/20"}`}>
                   <div className="absolute top-0 left-0 right-0 h-[3px] rounded-t-xl"
                     style={{
                       background: isDone ? "linear-gradient(90deg,hsl(var(--success)),transparent)" : `linear-gradient(90deg,${c},transparent)`,
                       opacity: isDone ? 0.7 : 0.5
                     }} />
-                  <div className="flex items-center justify-between mb-3.5">
-                    <div className="flex items-center gap-2.5">
-                      <span className="text-[17px] font-semibold" style={{ color: isDone ? "hsl(var(--success))" : c }}>
-                        {ABBREVS[di]}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {day.r.length} {day.r.length === 1 ? "leitura" : "leituras"}
-                      </span>
+                  <div className="p-5 cursor-pointer" onClick={() => toggle(activeWeek, di)}>
+                    <div className="flex items-center justify-between mb-3.5">
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-[17px] font-semibold" style={{ color: isDone ? "hsl(var(--success))" : c }}>
+                          {ABBREVS[di]}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {day.r.length} {day.r.length === 1 ? "leitura" : "leituras"}
+                        </span>
+                      </div>
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center
+                        ${isDone ? "bg-success" : "border-2 border-border"}`}>
+                        {isDone && <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                          <path d="M3 7l3 3 5-6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>}
+                      </div>
                     </div>
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center
-                      ${isDone ? "bg-success" : "border-2 border-border"}`}>
-                      {isDone && <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                        <path d="M3 7l3 3 5-6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>}
+                    <div className="flex flex-wrap">
+                      {day.r.map((r, ri) => (
+                        <span key={ri} className={`inline-block px-3 py-1 rounded-lg text-[13.5px] m-1 border
+                          ${isDone
+                            ? "bg-success/10 text-success/70 border-success/15 line-through opacity-70"
+                            : "text-foreground/75 border-border-subtle"}`}
+                          style={!isDone ? { background: `${c}18`, borderColor: `${c}25` } : {}}>
+                          {r}
+                        </span>
+                      ))}
                     </div>
                   </div>
-                  <div className="flex flex-wrap">
-                    {day.r.map((r, ri) => (
-                      <span key={ri} className={`inline-block px-3 py-1 rounded-lg text-[13.5px] m-1 border
-                        ${isDone
-                          ? "bg-success/10 text-success/70 border-success/15 line-through opacity-70"
-                          : "text-foreground/75 border-border-subtle"}`}
-                        style={!isDone ? { background: `${c}18`, borderColor: `${c}25` } : {}}>
-                        {r}
-                      </span>
-                    ))}
+
+                  {/* AI Context button */}
+                  <div className="px-5 pb-4 pt-0">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (hasContext) {
+                          // Toggle: remove context
+                          setReadingContext(prev => {
+                            const next = { ...prev };
+                            delete next[ctxKey];
+                            return next;
+                          });
+                        } else {
+                          fetchReadingContext(activeWeek, di, day.r);
+                        }
+                      }}
+                      disabled={isLoadingCtx}
+                      className={`w-full py-2 rounded-lg text-[12px] font-medium cursor-pointer border transition-all duration-200
+                        ${hasContext
+                          ? "border-primary/30 bg-primary/10 text-primary"
+                          : "border-border-subtle bg-card/30 text-muted-foreground hover:border-primary/20 hover:text-primary"
+                        } disabled:opacity-50`}
+                    >
+                      {isLoadingCtx ? "✨ Gerando contexto..." : hasContext ? "📖 Ocultar contexto" : "✨ Contexto da Leitura (IA)"}
+                    </button>
+
+                    {/* Context display */}
+                    {hasContext && (
+                      <div className="mt-3 p-4 rounded-xl border border-border-subtle bg-card/50 animate-fade-in">
+                        <p className="font-display text-[10px] tracking-[2px] uppercase text-primary font-semibold mb-3 flex items-center gap-1.5">
+                          📖 Contexto da Leitura
+                        </p>
+                        <div className="text-[13.5px] leading-relaxed text-foreground/80 space-y-2">
+                          {readingContext[ctxKey].split('\n').filter(l => l.trim()).map((line, li) => {
+                            // Bold titles like **Gênesis 1-7**
+                            const formatted = line
+                              .replace(/\*\*(.+?)\*\*/g, '<strong class="text-foreground">$1</strong>')
+                              .replace(/\*(.+?)\*/g, '<em>$1</em>');
+                            return <p key={li} dangerouslySetInnerHTML={{ __html: formatted }} />;
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               );
