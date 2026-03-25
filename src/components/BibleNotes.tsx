@@ -709,7 +709,7 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
             return (
               <button
                 key={s.key}
-                onClick={() => { setActiveSection(s.key); setEditingNote(null); }}
+                onClick={() => { setActiveSection(s.key); setEditingNote(null); forceHideTooltip(); }}
                 className="flex items-center gap-3.5 p-4 rounded-xl cursor-pointer
                   bg-card border border-border shadow-elegant
                   hover:border-primary/40 hover:bg-card-hover
