@@ -265,3 +265,18 @@ mark.note-search-match-active {
   background: rgba(201, 168, 76, 0.6);
   box-shadow: 0 0 0 2px rgba(201, 168, 76, 0.3);
 }
+
+/* ── Bible reference detection ── */
+.bible-ref-detected {
+  color: hsl(var(--primary));
+  text-decoration: underline dotted hsl(var(--primary) / 0.5);
+  text-underline-offset: 3px;
+  cursor: pointer;
+  transition: color 200ms ease, background 200ms ease;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+.bible-ref-detected:hover {
+  background: hsl(var(--primary) / 0.1);
+  color: hsl(var(--primary));
+}

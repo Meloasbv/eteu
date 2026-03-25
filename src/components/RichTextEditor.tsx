@@ -5,6 +5,7 @@ import Highlight from "@tiptap/extension-highlight";
 import Placeholder from "@tiptap/extension-placeholder";
 import CharacterCount from "@tiptap/extension-character-count";
 import { useEffect, useCallback, useRef } from "react";
+import { BibleRefHighlight, setupBibleRefListeners } from "@/lib/bibleRefExtension";
 
 // ── Highlight colors config ──
 const HIGHLIGHT_COLORS = [
@@ -37,6 +38,8 @@ export default function RichTextEditor({
 }: RichTextEditorProps) {
   const isExternalUpdate = useRef(false);
 
+  const editorRef = useRef<HTMLDivElement>(null);
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -48,6 +51,7 @@ export default function RichTextEditor({
       Highlight.configure({ multicolor: true }),
       Placeholder.configure({ placeholder }),
       CharacterCount,
+      BibleRefHighlight,
     ],
     content,
     editable: !disabled,
@@ -72,6 +76,13 @@ export default function RichTextEditor({
       isExternalUpdate.current = false;
     }
   }, [content, editor]);
+
+  // Setup Bible reference hover listeners
+  useEffect(() => {
+    const container = editorRef.current;
+    if (!container) return;
+    return setupBibleRefListeners(container);
+  }, [editor]);
 
   const toggleBold = useCallback(() => editor?.chain().focus().toggleBold().run(), [editor]);
   const toggleItalic = useCallback(() => editor?.chain().focus().toggleItalic().run(), [editor]);
@@ -187,7 +198,7 @@ export default function RichTextEditor({
       </div>
 
       {/* ── Editor content ── */}
-      <div className="flex-1 overflow-y-auto px-5 py-4 pb-36">
+      <div className="flex-1 overflow-y-auto px-5 py-4 pb-36" ref={editorRef}>
         <EditorContent editor={editor} />
       </div>
     </div>
