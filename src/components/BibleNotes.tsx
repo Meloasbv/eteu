@@ -52,40 +52,154 @@ function notePreview(texto: string, len = 60) {
 const MONTHS_SHORT = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 const MONTHS_FULL = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 
-// Simple markdown → HTML converter for AI results
-function inlinemd(s: string): string {
+function escapeHtml(s: string): string {
   return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+// Markdown → HTML converter preserving headings, lists, blockquotes and inline emphasis
+function inlinemd(s: string): string {
+  return escapeHtml(s)
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-    .replace(/\*(.+?)\*/g, "<em>$1</em>")
     .replace(/__(.+?)__/g, "<strong>$1</strong>")
+    .replace(/\*(.+?)\*/g, "<em>$1</em>")
     .replace(/_(.+?)_/g, "<em>$1</em>");
 }
+
 function mdToHtml(md: string): string {
-  return md
-    .split(/\n{2,}/)
-    .map(block => {
-      block = block.trim();
-      if (!block) return "";
-      if (block.startsWith("### ")) return `<h3>${inlinemd(block.slice(4))}</h3>`;
-      if (block.startsWith("## ")) return `<h2>${inlinemd(block.slice(3))}</h2>`;
-      if (block.startsWith("# ")) return `<h2>${inlinemd(block.slice(2))}</h2>`;
-      if (/^[\-\*•]\s/.test(block)) {
-        const items = block.split(/\n/).filter(l => l.trim());
-        return "<ul>" + items.map(l => `<li>${inlinemd(l.replace(/^[\-\*•]\s*/, ""))}</li>`).join("") + "</ul>";
-      }
-      if (/^\d+[\.\)]\s/.test(block)) {
-        const items = block.split(/\n/).filter(l => l.trim());
-        return "<ol>" + items.map(l => `<li>${inlinemd(l.replace(/^\d+[\.\)]\s*/, ""))}</li>`).join("") + "</ol>";
-      }
-      if (block.startsWith(">")) {
-        const inner = block.split(/\n/).map(l => l.replace(/^>\s?/, "")).join("<br/>");
-        return `<blockquote><p>${inlinemd(inner)}</p></blockquote>`;
-      }
-      if (/^---+$/.test(block)) return "<hr/>";
-      return `<p>${inlinemd(block.replace(/\n/g, "<br/>"))}</p>`;
+  const lines = md.replace(/\r\n/g, "\n").split("\n");
+  const html: string[] = [];
+  let paragraphLines: string[] = [];
+  let ulItems: string[] = [];
+  let olItems: string[] = [];
+  let quoteLines: string[] = [];
+
+  const flushParagraph = () => {
+    if (!paragraphLines.length) return;
+    html.push(`<p>${paragraphLines.map((line) => inlinemd(line)).join("<br/>")}</p>`);
+    paragraphLines = [];
+  };
+
+  const flushUl = () => {
+    if (!ulItems.length) return;
+    html.push(`<ul>${ulItems.map((item) => `<li>${inlinemd(item)}</li>`).join("")}</ul>`);
+    ulItems = [];
+  };
+
+  const flushOl = () => {
+    if (!olItems.length) return;
+    html.push(`<ol>${olItems.map((item) => `<li>${inlinemd(item)}</li>`).join("")}</ol>`);
+    olItems = [];
+  };
+
+  const flushQuote = () => {
+    if (!quoteLines.length) return;
+    html.push(`<blockquote><p>${quoteLines.map((line) => inlinemd(line)).join("<br/>")}</p></blockquote>`);
+    quoteLines = [];
+  };
+
+  const flushAll = () => {
+    flushParagraph();
+    flushUl();
+    flushOl();
+    flushQuote();
+  };
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+
+    if (!line) {
+      flushAll();
+      continue;
+    }
+
+    if (/^---+$/.test(line)) {
+      flushAll();
+      html.push("<hr/>");
+      continue;
+    }
+
+    const heading = line.match(/^(#{1,3})\s+(.+)$/);
+    if (heading) {
+      flushAll();
+      const level = heading[1].length >= 3 ? "h3" : "h2";
+      html.push(`<${level}>${inlinemd(heading[2])}</${level}>`);
+      continue;
+    }
+
+    const ulItem = line.match(/^[\-*•]\s+(.+)$/);
+    if (ulItem) {
+      flushParagraph();
+      flushOl();
+      flushQuote();
+      ulItems.push(ulItem[1]);
+      continue;
+    }
+
+    const olItem = line.match(/^\d+[\.)]\s+(.+)$/);
+    if (olItem) {
+      flushParagraph();
+      flushUl();
+      flushQuote();
+      olItems.push(olItem[1]);
+      continue;
+    }
+
+    const quote = line.match(/^>\s?(.*)$/);
+    if (quote) {
+      flushParagraph();
+      flushUl();
+      flushOl();
+      quoteLines.push(quote[1]);
+      continue;
+    }
+
+    flushUl();
+    flushOl();
+    flushQuote();
+    paragraphLines.push(line);
+  }
+
+  flushAll();
+  return html.join("");
+}
+
+function htmlToMarkdown(html: string): string {
+  return html
+    .replace(/\r\n/g, "\n")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<(strong|b)[^>]*>([\s\S]*?)<\/(strong|b)>/gi, "**$2**")
+    .replace(/<(em|i)[^>]*>([\s\S]*?)<\/(em|i)>/gi, "*$2*")
+    .replace(/<h2[^>]*>([\s\S]*?)<\/h2>/gi, "\n## $1\n")
+    .replace(/<h3[^>]*>([\s\S]*?)<\/h3>/gi, "\n### $1\n")
+    .replace(/<hr[^>]*\/?\s*>/gi, "\n---\n")
+    .replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, "- $1\n")
+    .replace(/<\/?(ul|ol)[^>]*>/gi, "\n")
+    .replace(/<blockquote[^>]*>([\s\S]*?)<\/blockquote>/gi, (_, content) => {
+      const cleaned = content
+        .replace(/<p[^>]*>/gi, "")
+        .replace(/<\/p>/gi, "\n")
+        .replace(/<br\s*\/?>/gi, "\n")
+        .replace(/<[^>]*>/g, "")
+        .split("\n")
+        .map((line: string) => line.trim())
+        .filter(Boolean)
+        .map((line: string) => `> ${line}`)
+        .join("\n");
+      return cleaned ? `\n${cleaned}\n` : "\n";
     })
-    .filter(Boolean)
-    .join("");
+    .replace(/<p[^>]*>/gi, "")
+    .replace(/<\/p>/gi, "\n\n")
+    .replace(/<img[^>]*>/gi, "\n")
+    .replace(/<[^>]*>/g, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 function formatDateShort(iso: string) {
@@ -388,15 +502,17 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
     setAiResult(null);
     setMenuOpen(false);
     try {
+      const markdownBody = htmlToMarkdown(editingNote.texto);
+
       if (action === "organize") {
         const { data, error } = await supabase.functions.invoke("notes-ai", {
-          body: { action: "organize", noteTitle: noteTitle(editingNote.texto), noteBody: editingNote.texto },
+          body: { action: "organize", noteTitle: noteTitle(editingNote.texto), noteBody: markdownBody },
         });
         if (error || data?.error) { showToast(data?.error || "Erro ao chamar IA"); setAiLoading(null); return; }
         setAiResult({ title: "✨ Nota Organizada", content: data.result });
       } else if (action === "gramatica") {
         const { data, error } = await supabase.functions.invoke("notes-ai", {
-          body: { action: "gramatica", noteTitle: noteTitle(editingNote.texto), noteBody: editingNote.texto },
+          body: { action: "gramatica", noteTitle: noteTitle(editingNote.texto), noteBody: markdownBody },
         });
         if (error || data?.error) { showToast(data?.error || "Erro ao corrigir gramática"); setAiLoading(null); return; }
         setAiResult({ title: "📝 Gramática Corrigida", content: data.result });
