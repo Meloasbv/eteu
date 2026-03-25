@@ -2,6 +2,7 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import Highlight from "@tiptap/extension-highlight";
+import Image from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
 import CharacterCount from "@tiptap/extension-character-count";
 import { useEffect, useCallback, useRef } from "react";
@@ -53,6 +54,13 @@ export default function RichTextEditor({
       }),
       Underline,
       Highlight.configure({ multicolor: true }),
+      Image.configure({
+        allowBase64: true,
+        HTMLAttributes: {
+          class: "rounded-xl border border-border shadow-elegant max-w-full h-auto my-3",
+          loading: "lazy",
+        },
+      }),
       Placeholder.configure({ placeholder }),
       CharacterCount,
       BibleRefHighlight,
@@ -110,6 +118,41 @@ export default function RichTextEditor({
   }, [editor]);
 
   const wordCount = editor?.storage.characterCount?.words() ?? 0;
+
+  const handleImagePaste = useCallback((event: React.ClipboardEvent) => {
+    if (disabled || !editor) return;
+
+    const clipboard = event.clipboardData;
+    if (!clipboard) return;
+
+    const itemFiles = Array.from(clipboard.items || [])
+      .filter((item) => item.type.startsWith("image/"))
+      .map((item) => item.getAsFile())
+      .filter((file): file is File => !!file);
+
+    const directFiles = Array.from(clipboard.files || []).filter((file) =>
+      file.type.startsWith("image/")
+    );
+
+    const files = [...itemFiles, ...directFiles].filter(
+      (file, index, arr) =>
+        arr.findIndex((f) => f.name === file.name && f.size === file.size && f.type === file.type) === index
+    );
+
+    if (!files.length) return;
+
+    event.preventDefault();
+
+    files.forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const src = typeof reader.result === "string" ? reader.result : null;
+        if (!src) return;
+        editor.chain().focus().setImage({ src, alt: file.name || "Imagem colada" }).run();
+      };
+      reader.readAsDataURL(file);
+    });
+  }, [disabled, editor]);
 
   if (!editor) return null;
 
@@ -205,7 +248,7 @@ export default function RichTextEditor({
 
       {/* ── Editor content ── */}
       <div className="flex-1 overflow-y-auto px-5 py-4 pb-36" ref={editorRef}>
-        <EditorContent editor={editor} />
+        <EditorContent editor={editor} onPaste={handleImagePaste} />
       </div>
     </div>
   );
