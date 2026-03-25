@@ -4,6 +4,8 @@ import WeekSchedule from "@/components/WeekSchedule";
 import BibleNotes from "@/components/BibleNotes";
 import CodeLogin from "@/components/CodeLogin";
 import RichTextEditor from "@/components/RichTextEditor";
+import Library from "@/components/Library";
+import Flashcards from "@/components/Flashcards";
 
 // ── DATA ──────────────────────────────────────────────────────────────────────
 
@@ -214,7 +216,7 @@ export default function BiblePlan() {
 }
 
 function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string; accessCode: string | null; onLogout: () => void }) {
-  const [tab, setTab] = useState<"home" | "leitura" | "devocional" | "agenda" | "anotacoes">("leitura");
+  const [tab, setTab] = useState<"home" | "leitura" | "devocional" | "agenda" | "anotacoes" | "biblioteca">("leitura");
   const [activeWeek, setActiveWeek] = useState(0);
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [saved, setSaved] = useState(false);
@@ -256,6 +258,7 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
       : tab === "leitura" ? "📖 Plano de Leitura"
       : tab === "devocional" ? "🔥 Devocionais"
       : tab === "agenda" ? "📅 Agenda"
+      : tab === "biblioteca" ? "📚 Biblioteca"
       : notesTitle;
     if (newTitle !== displayTitle) {
       setTitleFading(true);
@@ -509,6 +512,7 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
             { key: "devocional" as const, icon: "🔥", label: "Devocional" },
             { key: "agenda" as const, icon: "📅", label: "Agenda" },
             { key: "anotacoes" as const, icon: "📝", label: "Notas" },
+            { key: "biblioteca" as const, icon: "📚", label: "Biblioteca" },
           ]).map(t => {
             const isActive = tab === t.key;
             return (
@@ -1236,6 +1240,18 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
 
       {/* ── ANOTAÇÕES TAB ── */}
       {tab === "anotacoes" && <BibleNotes onTitleChange={setNotesTitle} userCodeId={userCodeId} />}
+
+      {/* ── BIBLIOTECA TAB ── */}
+      {tab === "biblioteca" && (
+        <div>
+          <Library userCodeId={userCodeId} onOpenNote={(noteId) => {
+            setTab("anotacoes");
+          }} />
+          <div className="border-t border-border mt-4">
+            <Flashcards userCodeId={userCodeId} />
+          </div>
+        </div>
+      )}
 
       {/* Footer */}
       <div className="text-center py-6 px-6 text-[11px] text-muted-foreground tracking-[2px] uppercase font-display">
