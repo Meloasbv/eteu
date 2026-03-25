@@ -305,6 +305,7 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
     setEditingNote(null);
     setVerseOpen(false);
     setMenuOpen(false);
+    setNoteSearchOpen(false);
   }, [editingNote, saveNote]);
 
   // ── Verse lookup ───────────────────────────────────────────────────────────
@@ -426,6 +427,19 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
       if (recognitionRef.current) { try { recognitionRef.current.stop(); } catch {} recognitionRef.current = null; }
     };
   }, []);
+
+  // ── Ctrl+F handler ────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!editingNote) return;
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "f") {
+        e.preventDefault();
+        setNoteSearchOpen(true);
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [editingNote]);
 
   // ── PDF Generation ─────────────────────────────────────────────────────────
   const handleGeneratePDF = useCallback(async () => {
