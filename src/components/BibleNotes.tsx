@@ -882,6 +882,14 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
             {saveStatus === "typing" ? "..." : saveStatus === "saved" ? "Salvo ✓" : ""}
           </span>
           <button
+            onClick={() => setNoteSearchOpen(o => !o)}
+            className="bg-transparent border-none text-muted-foreground text-base cursor-pointer
+              px-1.5 py-1 rounded-lg hover:bg-card-hover active:bg-card-hover transition-colors duration-150"
+            title="Buscar na nota (Ctrl+F)"
+          >
+            🔍
+          </button>
+          <button
             onClick={() => setMenuOpen(o => !o)}
             className="bg-transparent border-none text-muted-foreground text-xl cursor-pointer
               px-2 py-1 rounded-lg tracking-[2px] hover:bg-card-hover active:bg-card-hover transition-colors duration-150"
