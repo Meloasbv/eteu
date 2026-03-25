@@ -56,6 +56,7 @@ async function fetchVerseText(normalized: string): Promise<string | null> {
         const res = await fetch(url);
         if (!res.ok) continue;
         const data = await res.json();
+        if (data.error) continue;
         if (data.text) {
           const text = data.text.trim();
           setCachedVerse(normalized, text);
