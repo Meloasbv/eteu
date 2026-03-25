@@ -336,6 +336,41 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
     setMusicPlaying(!musicPlaying);
   }, [musicPlaying]);
 
+  // ── Bible version fetch for devotionals ────────────────────────────────────
+  const BIBLE_VERSIONS = [
+    { key: "almeida", label: "Almeida (ARA)" },
+    { key: "nvi", label: "NVI" },
+    { key: "acf", label: "ACF" },
+    { key: "kjv", label: "KJV (Inglês)" },
+    { key: "bbe", label: "BBE (Inglês)" },
+  ];
+
+  const fetchDevVerse = useCallback(async (ref: string, version: string) => {
+    const cacheKey = `${ref}__${version}`;
+    if (devVerseOverrides[cacheKey]) return;
+    if (version === "almeida") {
+      // Remove override to show original
+      setDevVerseOverrides(prev => {
+        const next = { ...prev };
+        delete next[cacheKey];
+        return next;
+      });
+      return;
+    }
+    setDevVerseLoading(cacheKey);
+    try {
+      const url = `https://bible-api.com/${encodeURIComponent(ref)}?translation=${version}`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.text) {
+          setDevVerseOverrides(prev => ({ ...prev, [cacheKey]: data.text.trim() }));
+        }
+      }
+    } catch {}
+    setDevVerseLoading(null);
+  }, [devVerseOverrides]);
+
   // ── Exegesis AI call ──────────────────────────────────────────────────────
   const handleExegese = useCallback(async () => {
     if (!exegeseVerse.trim()) return;
