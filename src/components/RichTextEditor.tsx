@@ -77,6 +77,13 @@ export default function RichTextEditor({
     }
   }, [content, editor]);
 
+  // Setup Bible reference hover listeners
+  useEffect(() => {
+    const container = editorRef.current;
+    if (!container) return;
+    return setupBibleRefListeners(container);
+  }, [editor]);
+
   const toggleBold = useCallback(() => editor?.chain().focus().toggleBold().run(), [editor]);
   const toggleItalic = useCallback(() => editor?.chain().focus().toggleItalic().run(), [editor]);
   const toggleUnderline = useCallback(() => editor?.chain().focus().toggleUnderline().run(), [editor]);
