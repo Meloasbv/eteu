@@ -252,6 +252,9 @@ export default function WeekSchedule({ userCodeId }: { userCodeId: string }) {
             {dayEvents.length} {dayEvents.length === 1 ? "evento" : "eventos"} neste dia
           </div>
         )}
+
+        {/* ── REMINDERS SECTION ── */}
+        <Reminders userCodeId={userCodeId} />
       </div>
 
       {/* ── ADD MODAL ── */}
