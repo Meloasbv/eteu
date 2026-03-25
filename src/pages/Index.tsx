@@ -234,6 +234,10 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
   const devRecognitionRef = useRef<any>(null);
   const devTranscriptRef = useRef("");
   const [notesTitle, setNotesTitle] = useState("📝 Anotações");
+  // Bible version for devotionals
+  const [devBibleVersion, setDevBibleVersion] = useState("almeida");
+  const [devVerseOverrides, setDevVerseOverrides] = useState<Record<string, string>>({});
+  const [devVerseLoading, setDevVerseLoading] = useState<string | null>(null);
   // Reading context AI
   const [readingContext, setReadingContext] = useState<Record<string, string>>({});
   const [contextLoading, setContextLoading] = useState<string | null>(null);
@@ -331,6 +335,41 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
     }
     setMusicPlaying(!musicPlaying);
   }, [musicPlaying]);
+
+  // ── Bible version fetch for devotionals ────────────────────────────────────
+  const BIBLE_VERSIONS = [
+    { key: "almeida", label: "Almeida (ARA)" },
+    { key: "nvi", label: "NVI" },
+    { key: "acf", label: "ACF" },
+    { key: "kjv", label: "KJV (Inglês)" },
+    { key: "bbe", label: "BBE (Inglês)" },
+  ];
+
+  const fetchDevVerse = useCallback(async (ref: string, version: string) => {
+    const cacheKey = `${ref}__${version}`;
+    if (devVerseOverrides[cacheKey]) return;
+    if (version === "almeida") {
+      // Remove override to show original
+      setDevVerseOverrides(prev => {
+        const next = { ...prev };
+        delete next[cacheKey];
+        return next;
+      });
+      return;
+    }
+    setDevVerseLoading(cacheKey);
+    try {
+      const url = `https://bible-api.com/${encodeURIComponent(ref)}?translation=${version}`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.text) {
+          setDevVerseOverrides(prev => ({ ...prev, [cacheKey]: data.text.trim() }));
+        }
+      }
+    } catch {}
+    setDevVerseLoading(null);
+  }, [devVerseOverrides]);
 
   // ── Exegesis AI call ──────────────────────────────────────────────────────
   const handleExegese = useCallback(async () => {
@@ -858,15 +897,52 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
         const renderDevDetail = (d: { ref: string; summary: string; exegese?: string; verseText?: string }, accentColor: string) => {
           const entries = d.exegese ? parseExegeseEntries(d.exegese) : [];
           const theoNote = d.exegese ? getTheologicalNote(d.exegese) : null;
+          const cacheKey = `${d.ref}__${devBibleVersion}`;
+          const displayVerse = devBibleVersion === "almeida"
+            ? d.verseText
+            : devVerseOverrides[cacheKey] || d.verseText;
+          const isLoadingVerse = devVerseLoading === cacheKey;
 
           return (
             <>
+              {/* Bible version selector */}
+              {d.verseText && (
+                <div className="flex items-center gap-2 mb-2 overflow-x-auto no-scrollbar">
+                  <span className="text-[11px] text-muted-foreground shrink-0">Versão:</span>
+                  {BIBLE_VERSIONS.map(v => (
+                    <button
+                      key={v.key}
+                      onClick={() => {
+                        setDevBibleVersion(v.key);
+                        if (v.key !== "almeida") fetchDevVerse(d.ref, v.key);
+                      }}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] border cursor-pointer whitespace-nowrap transition-all duration-200
+                        ${devBibleVersion === v.key
+                          ? "border-primary/40 bg-primary/10 text-primary font-semibold"
+                          : "border-border bg-card/50 text-muted-foreground hover:border-primary/20"}`}
+                    >
+                      {v.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+
               {/* Verse */}
               {d.verseText && (
                 <blockquote className="text-[17px] leading-[1.7] text-foreground italic font-body
-                  px-5 py-4 my-5 rounded-xl bg-primary/5 border-l-[3px]"
+                  px-5 py-4 my-5 rounded-xl bg-primary/5 border-l-[3px] relative"
                   style={{ borderLeftColor: accentColor }}>
-                  "{d.verseText}"
+                  {isLoadingVerse && (
+                    <div className="absolute inset-0 bg-card/60 rounded-xl flex items-center justify-center">
+                      <span className="text-[13px] text-muted-foreground animate-pulse">Carregando versão...</span>
+                    </div>
+                  )}
+                  "{displayVerse}"
+                  {devBibleVersion !== "almeida" && devVerseOverrides[cacheKey] && (
+                    <span className="block text-[11px] text-muted-foreground mt-2 not-italic font-normal">
+                      — {BIBLE_VERSIONS.find(v => v.key === devBibleVersion)?.label}
+                    </span>
+                  )}
                 </blockquote>
               )}
 
