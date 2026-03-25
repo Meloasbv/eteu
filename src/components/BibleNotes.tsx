@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import jsPDF from "jspdf";
 import RichTextEditor from "@/components/RichTextEditor";
+import NoteSearchOverlay from "@/components/NoteSearchOverlay";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type Section = "proclamadores" | "aulas" | "pensamentos" | "devocionais";
@@ -128,6 +129,10 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
   const [isRecording, setIsRecording] = useState(false);
   const recognitionRef = useRef<any>(null);
   const editingNoteRef = useRef<Note | null>(null);
+
+  // Note search (Ctrl+F)
+  const [noteSearchOpen, setNoteSearchOpen] = useState(false);
+  const editorContainerRef = useRef<HTMLDivElement>(null);
 
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -300,6 +305,7 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
     setEditingNote(null);
     setVerseOpen(false);
     setMenuOpen(false);
+    setNoteSearchOpen(false);
   }, [editingNote, saveNote]);
 
   // ── Verse lookup ───────────────────────────────────────────────────────────
@@ -421,6 +427,19 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
       if (recognitionRef.current) { try { recognitionRef.current.stop(); } catch {} recognitionRef.current = null; }
     };
   }, []);
+
+  // ── Ctrl+F handler ────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!editingNote) return;
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "f") {
+        e.preventDefault();
+        setNoteSearchOpen(true);
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [editingNote]);
 
   // ── PDF Generation ─────────────────────────────────────────────────────────
   const handleGeneratePDF = useCallback(async () => {
@@ -863,6 +882,14 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
             {saveStatus === "typing" ? "..." : saveStatus === "saved" ? "Salvo ✓" : ""}
           </span>
           <button
+            onClick={() => setNoteSearchOpen(o => !o)}
+            className="bg-transparent border-none text-muted-foreground text-base cursor-pointer
+              px-1.5 py-1 rounded-lg hover:bg-card-hover active:bg-card-hover transition-colors duration-150"
+            title="Buscar na nota (Ctrl+F)"
+          >
+            🔍
+          </button>
+          <button
             onClick={() => setMenuOpen(o => !o)}
             className="bg-transparent border-none text-muted-foreground text-xl cursor-pointer
               px-2 py-1 rounded-lg tracking-[2px] hover:bg-card-hover active:bg-card-hover transition-colors duration-150"
@@ -946,15 +973,22 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
           </>
         )}
 
-        {/* TipTap Editor */}
-        <RichTextEditor
-          content={editingNote.texto}
-          onChange={handleTextChange}
-          placeholder="Comece a escrever..."
-          onVerseClick={() => setVerseOpen(true)}
-          onRecordClick={toggleRecording}
-          isRecording={isRecording}
-        />
+        {/* Note Search Overlay + TipTap Editor */}
+        <div className="relative flex flex-col flex-1 min-h-0" ref={editorContainerRef}>
+          <NoteSearchOverlay
+            open={noteSearchOpen}
+            onClose={() => setNoteSearchOpen(false)}
+            editorContainerRef={editorContainerRef}
+          />
+          <RichTextEditor
+            content={editingNote.texto}
+            onChange={handleTextChange}
+            placeholder="Comece a escrever..."
+            onVerseClick={() => setVerseOpen(true)}
+            onRecordClick={toggleRecording}
+            isRecording={isRecording}
+          />
+        </div>
 
         {/* ── VERSE BOTTOM SHEET ── */}
         <div className={`fixed inset-0 z-[200] transition-opacity duration-250
