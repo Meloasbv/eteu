@@ -435,35 +435,57 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
     const UW = W - ML - MR;
 
     // Colors
-    const BG_DARK = "#0f172a";    // slate-900
-    const BG_DARK2 = "#1e293b";   // slate-800
+    const BG_DARK = "#0f172a";
+    const BG_DARK2 = "#1e293b";
     const GOLD = "#c4a46a";
     const GOLD_DIM = "#94856a";
-    const TEXT_LIGHT = "#e2e8f0";
     const TEXT_BODY = "#333333";
     const TEXT_DIM = "#94a3b8";
     const CREAM = "#f5f0e8";
 
-    // Strip HTML for PDF, fix word joining
-    const plainText = editingNote.texto
-      .replace(/<\/p>\s*<p>/gi, "\n\n")
-      .replace(/<br\s*\/?>/gi, "\n")
-      .replace(/<[^>]*>/g, "")
-      .replace(/&nbsp;/g, " ")
-      .replace(/&amp;/g, "&")
-      .replace(/&lt;/g, "<")
-      .replace(/&gt;/g, ">")
-      .replace(/\.([A-ZÀ-Ú])/g, ". $1")
-      .replace(/,([A-Za-zÀ-ú])/g, ", $1")
-      .replace(/;([A-Za-zÀ-ú])/g, "; $1")
-      .replace(/\n{3,}/g, "\n\n")
-      .trim();
+    // ── SEPARATE title, body paragraphs, and verse ──
+    // Convert HTML to structured parts: split by </p>, <br>, etc.
+    const htmlText = editingNote.texto;
 
-    const title = noteTitle(editingNote.texto);
+    // Extract blockquote verse if present
+    let verseRef = "";
+    let verseText = "";
+    const verseMatch = htmlText.match(/<blockquote[^>]*>([\s\S]*?)<\/blockquote>/i);
+    if (verseMatch) {
+      const inner = verseMatch[1];
+      const refMatch = inner.match(/\[(.+?)\]/);
+      if (refMatch) verseRef = refMatch[1];
+      verseText = inner.replace(/<[^>]*>/g, "").replace(/\[.+?\]\s*/, "").trim();
+    }
+
+    // Remove blockquotes from main text before extracting paragraphs
+    const textWithoutVerse = htmlText.replace(/<blockquote[^>]*>[\s\S]*?<\/blockquote>/gi, "");
+
+    // Split into paragraphs by <p> tags, <br>, or newlines
+    const rawParagraphs = textWithoutVerse
+      .split(/<\/p>\s*<p>|<br\s*\/?>|<\/p>|<p>/gi)
+      .map(p => p
+        .replace(/<[^>]*>/g, "")
+        .replace(/&nbsp;/g, " ")
+        .replace(/&amp;/g, "&")
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">")
+        .replace(/\.([A-ZÀ-Ú])/g, ". $1")
+        .replace(/,([A-Za-zÀ-ú])/g, ", $1")
+        .replace(/;([A-Za-zÀ-ú])/g, "; $1")
+        .trim()
+      )
+      .filter(p => p.length > 0);
+
+    // First paragraph (or first heading) = title, rest = body
+    const titulo = rawParagraphs[0]?.replace(/^#{1,3}\s*/, "") || "Sem título";
+    const paragrafos = rawParagraphs.slice(1);
+
     const sec = SECTIONS.find(s => s.key === editingNote.categoria);
-    const catLabel = sec ? `${sec.icon} ${sec.label}` : "";
 
-    // ─── PAGE 1: COVER ───
+    // ════════════════════════════════════════════════════════════════
+    // PAGE 1: COVER — only decorative elements, NO body text
+    // ════════════════════════════════════════════════════════════════
     doc.setFillColor(BG_DARK);
     doc.rect(0, 0, W, H, "F");
 
@@ -472,43 +494,38 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
     doc.rect(0, H * 0.35, W, 1.5, "F");
     doc.rect(0, H * 0.65, W, 0.8, "F");
 
+    // "DEVOCIONAIS" label at top — small font, wide tracking
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(11);
+    doc.setTextColor(GOLD_DIM);
+    const devoLabel = "D  E  V  O  C  I  O  N  A  I  S";
+    doc.text(devoLabel, W / 2, 60, { align: "center" });
+
     // Cross symbol
     doc.setTextColor(GOLD);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(48);
-    doc.text("\u2720", W / 2, 80, { align: "center" });
+    doc.setFontSize(36);
+    doc.text("\u2720", W / 2, 82, { align: "center" });
 
-    // Category label
-    if (catLabel) {
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(10);
-      doc.setTextColor(GOLD_DIM);
-      doc.text(catLabel.toUpperCase(), W / 2, 100, { align: "center" });
-    }
-
-    // Title
+    // Main title — ONLY the title, centered in the middle
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(26);
+    doc.setFontSize(22);
     doc.setTextColor(255, 255, 255);
-    const titleWrapped = doc.splitTextToSize(title.toUpperCase(), UW);
-    doc.text(titleWrapped, W / 2, 118, { align: "center" });
+    const coverTitle = `REFLEXÃO: ${titulo.toUpperCase()}`;
+    const coverTitleWrapped = doc.splitTextToSize(coverTitle, UW - 10);
+    const coverTitleY = H / 2 - (coverTitleWrapped.length * 9) / 2;
+    doc.text(coverTitleWrapped, W / 2, coverTitleY, { align: "center" });
 
-    // Gold line
-    const afterTitle = 118 + titleWrapped.length * 11 + 8;
+    // Gold decorative line below title
+    const afterCoverTitle = coverTitleY + coverTitleWrapped.length * 9 + 6;
     doc.setDrawColor(GOLD);
     doc.setLineWidth(0.5);
-    doc.line(W / 2 - 30, afterTitle, W / 2 + 30, afterTitle);
+    doc.line(W / 2 - 25, afterCoverTitle, W / 2 + 25, afterCoverTitle);
 
-    // Subtitle with ref (if note has one in title)
+    // Date below line
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(12);
-    doc.setTextColor(GOLD);
-    doc.text(`Reflexão: ${title}`, W / 2, afterTitle + 14, { align: "center" });
-
-    // Date
-    doc.setFontSize(10);
+    doc.setFontSize(9);
     doc.setTextColor(TEXT_DIM);
-    doc.text(formatDateFull(editingNote.atualizadoEm), W / 2, afterTitle + 28, { align: "center" });
+    doc.text(formatDateFull(editingNote.atualizadoEm), W / 2, afterCoverTitle + 12, { align: "center" });
 
     // Footer
     doc.setFontSize(9);
@@ -518,7 +535,9 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
     doc.setLineWidth(0.3);
     doc.line(W / 2 - 20, H - 20, W / 2 + 20, H - 20);
 
-    // ─── PAGE 2+: CONTENT ───
+    // ════════════════════════════════════════════════════════════════
+    // PAGE 2+: CONTENT — title + paragraphs + verse
+    // ════════════════════════════════════════════════════════════════
     doc.addPage();
     let y = MT;
 
@@ -533,104 +552,44 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
     doc.setFont("helvetica", "bold");
     doc.setFontSize(16);
     doc.setTextColor(TEXT_BODY);
-    const contentTitle = doc.splitTextToSize(`REFLEXÃO: ${title.toUpperCase()}`, UW);
-    doc.text(contentTitle, ML, y);
-    y += contentTitle.length * 7 + 3;
+    doc.text(`REFLEXÃO: ${titulo.toUpperCase()}`, ML, y);
+    y += 8;
 
-    // Gold line
+    // Gold separator line
     doc.setDrawColor(GOLD);
     doc.setLineWidth(0.5);
-    doc.line(ML, y, ML + 40, y);
-    y += 10;
+    doc.line(ML, y, ML + 50, y);
+    y += 12;
 
-    // Parse sections from plain text
-    const rawLines = plainText.split("\n");
-    type PDFSection = { heading: string; lines: string[] };
-    const sections: PDFSection[] = [];
-    let current: PDFSection | null = null;
+    // Body paragraphs — each one separated with generous spacing
+    doc.setFont("times", "normal");
+    doc.setFontSize(12);
+    doc.setTextColor(TEXT_BODY);
 
-    for (const line of rawLines) {
-      if (/^#{1,3}\s/.test(line)) {
-        const heading = line.replace(/^#{1,3}\s*/, "").trim();
-        current = { heading, lines: [] };
-        sections.push(current);
-      } else {
-        if (!current) { current = { heading: "", lines: [] }; sections.push(current); }
-        current.lines.push(line);
-      }
-    }
-    if (sections.length === 0) sections.push({ heading: "", lines: rawLines });
-
-    // Render content with serif font (times)
-    for (let si = 0; si < sections.length; si++) {
-      const section = sections[si];
-
-      if (section.heading) {
-        ensureSpace(16);
-        if (si > 0) y += 6;
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(13);
-        doc.setTextColor(BG_DARK);
-        const headWrapped = doc.splitTextToSize(section.heading.toUpperCase(), UW);
-        doc.text(headWrapped, ML, y);
-        y += headWrapped.length * 6 + 2;
-        doc.setDrawColor(GOLD);
-        doc.setLineWidth(0.3);
-        doc.line(ML, y, ML + 40, y);
-        y += 8;
-      }
-
-      for (const line of section.lines) {
-        if (!line.trim()) { y += 4; continue; }
-
-        // Bullet points
-        const bulletMatch = line.match(/^\s*[\*\-•›]\s+(.*)$/);
-        if (bulletMatch) {
-          const bulletText = bulletMatch[1].replace(/\*\*(.+?)\*\*/g, "$1").replace(/_(.+?)_/g, "$1");
-          ensureSpace(8);
-          doc.setFont("times", "normal");
-          doc.setFontSize(12);
-          doc.setTextColor(GOLD);
-          doc.text("›", ML + 2, y);
-          doc.setTextColor(TEXT_BODY);
-          const wrapped = doc.splitTextToSize(bulletText, UW - 8);
-          for (const wl of wrapped) { ensureSpace(6); doc.text(wl, ML + 8, y); y += 6; }
-          y += 2;
-          continue;
-        }
-
-        // Regular paragraph
-        const cleanLine = line.replace(/\*\*(.+?)\*\*/g, "$1").replace(/_(.+?)_/g, "$1");
-        doc.setFont("times", "normal");
-        doc.setFontSize(12);
-        doc.setTextColor(TEXT_BODY);
-        const wrapped = doc.splitTextToSize(cleanLine, UW);
-        const lineH = 5.5;
-        ensureSpace(wrapped.length * lineH);
-        doc.text(wrapped, ML, y);
-        y += wrapped.length * lineH + 3; // generous paragraph spacing
-      }
+    for (const para of paragrafos) {
+      const cleanPara = para.replace(/\*\*(.+?)\*\*/g, "$1").replace(/_(.+?)_/g, "$1");
+      const wrapped = doc.splitTextToSize(cleanPara, UW);
+      const blockH = wrapped.length * 6;
+      ensureSpace(blockH + 4);
+      doc.text(wrapped, ML, y);
+      y += blockH + 6; // generous paragraph spacing
     }
 
-    // Check if there's a verse-like blockquote in the original HTML
-    const verseMatch = editingNote.texto.match(/<blockquote[^>]*>[\s\S]*?<strong>\[(.+?)\]<\/strong>[\s\S]*?<em>([\s\S]*?)<\/em>[\s\S]*?<\/blockquote>/i);
-    if (verseMatch) {
-      const verseRef = verseMatch[1];
-      const verseText = verseMatch[2].replace(/<[^>]*>/g, "").trim();
+    // Verse at the end — decorative box with gold accent
+    if (verseRef && verseText) {
+      y += 6;
+      const fullVerse = `"${verseText}"`;
+      const verseLines = doc.splitTextToSize(fullVerse, UW - 24);
+      const boxH = verseLines.length * 5.5 + 24;
+      ensureSpace(boxH + 10);
 
-      y += 8;
-      ensureSpace(40);
-
-      // Verse decorative box
-      const verseLines = doc.splitTextToSize(`"${verseText}"`, UW - 20);
-      const boxH = verseLines.length * 5.5 + 22;
-
+      // Cream box with gold border
       doc.setFillColor(CREAM);
       doc.setDrawColor(GOLD);
       doc.setLineWidth(0.4);
       doc.roundedRect(ML, y, UW, boxH, 3, 3, "FD");
 
-      // Gold left accent
+      // Gold left accent bar
       doc.setFillColor(GOLD);
       doc.rect(ML, y, 3, boxH, "F");
 
@@ -640,15 +599,14 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
       doc.setTextColor(80, 60, 40);
       for (const vl of verseLines) { doc.text(vl, ML + 14, y); y += 5.5; }
 
-      y += 3;
+      y += 4;
       doc.setFont("times", "bold");
       doc.setFontSize(10);
       doc.setTextColor(GOLD_DIM);
       doc.text(`— ${verseRef}`, ML + 14, y);
-      y += 10;
     }
 
-    // Page numbers on content pages
+    // Page numbers on all content pages
     const totalPages = doc.getNumberOfPages();
     for (let i = 2; i <= totalPages; i++) {
       doc.setPage(i);
@@ -658,7 +616,7 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
       doc.text(`${i - 1}`, W / 2, H - 12, { align: "center" });
     }
 
-    const fileName = title.replace(/[^a-zA-Z0-9À-ÿ\s]/g, "").trim().replace(/\s+/g, "_").slice(0, 40) || "nota";
+    const fileName = titulo.replace(/[^a-zA-Z0-9À-ÿ\s]/g, "").trim().replace(/\s+/g, "_").slice(0, 40) || "nota";
     doc.save(`${fileName}.pdf`);
     showToast("PDF gerado!");
   }, [editingNote, showToast]);
