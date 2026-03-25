@@ -431,20 +431,10 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
     const doc = new jsPDF({ unit: "mm", format: "a4" });
     const W = doc.internal.pageSize.getWidth();
     const H = doc.internal.pageSize.getHeight();
-    const ML = 20; const MR = 20; const MT = 25; const MB = 25;
-    const UW = W - ML - MR;
+    const M = 30; // 30mm margins all sides
+    const maxW = W - M - M;
 
-    // Colors
-    const BG_DARK = "#0f172a";
-    const BG_DARK2 = "#1e293b";
-    const GOLD = "#c4a46a";
-    const GOLD_DIM = "#94856a";
-    const TEXT_BODY = "#333333";
-    const TEXT_DIM = "#94a3b8";
-    const CREAM = "#f5f0e8";
-
-    // ── SEPARATE title, body paragraphs, and verse ──
-    // Convert HTML to structured parts: split by </p>, <br>, etc.
+    // ── Parse HTML content into structured data ──
     const htmlText = editingNote.texto;
 
     // Extract blockquote verse if present
@@ -458,162 +448,200 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
       verseText = inner.replace(/<[^>]*>/g, "").replace(/\[.+?\]\s*/, "").trim();
     }
 
-    // Remove blockquotes from main text before extracting paragraphs
+    // Remove blockquotes from main text
     const textWithoutVerse = htmlText.replace(/<blockquote[^>]*>[\s\S]*?<\/blockquote>/gi, "");
 
-    // Split into paragraphs by <p> tags, <br>, or newlines
+    // Split into paragraphs
     const rawParagraphs = textWithoutVerse
       .split(/<\/p>\s*<p>|<br\s*\/?>|<\/p>|<p>/gi)
-      .map(p => p
-        .replace(/<[^>]*>/g, "")
-        .replace(/&nbsp;/g, " ")
-        .replace(/&amp;/g, "&")
-        .replace(/&lt;/g, "<")
-        .replace(/&gt;/g, ">")
-        .replace(/\.([A-ZÀ-Ú])/g, ". $1")
-        .replace(/,([A-Za-zÀ-ú])/g, ", $1")
-        .replace(/;([A-Za-zÀ-ú])/g, "; $1")
-        .trim()
-      )
+      .map(p => {
+        let t = p
+          .replace(/<strong>(.*?)<\/strong>/g, "**$1**")
+          .replace(/<b>(.*?)<\/b>/g, "**$1**")
+          .replace(/<em>(.*?)<\/em>/g, "*$1*")
+          .replace(/<i>(.*?)<\/i>/g, "*$1*")
+          .replace(/<[^>]*>/g, "")
+          .replace(/&nbsp;/g, " ")
+          .replace(/&amp;/g, "&")
+          .replace(/&lt;/g, "<")
+          .replace(/&gt;/g, ">")
+          .replace(/\.([A-ZÀ-Ú])/g, ". $1")
+          .replace(/,([A-Za-zÀ-ú])/g, ", $1")
+          .trim();
+        return t;
+      })
       .filter(p => p.length > 0);
 
-    // First paragraph (or first heading) = title, rest = body
-    const titulo = rawParagraphs[0]?.replace(/^#{1,3}\s*/, "") || "Sem título";
-    const paragrafos = rawParagraphs.slice(1);
+    const titulo = (rawParagraphs[0] || "Sem título")
+      .replace(/^#{1,3}\s*/, "")
+      .replace(/\*\*/g, "")
+      .replace(/\*/g, "");
+    const bodyParagraphs = rawParagraphs.slice(1);
 
-    const sec = SECTIONS.find(s => s.key === editingNote.categoria);
+    // ── Helper: render a paragraph with inline bold/italic via segments ──
+    const renderParagraph = (text: string, startY: number, opts?: { indent?: number; isBullet?: boolean }) => {
+      const indent = opts?.indent || 0;
+      const lineW = maxW - indent;
+      
+      // Strip markdown for measurement, but track formatting
+      // For simplicity with jsPDF, render as plain text with font changes
+      const isHeading = /^#{2,3}\s/.test(text);
+      let cleanText = text
+        .replace(/^#{1,3}\s*/, "")
+        .replace(/^[-•]\s*/, "");
+      
+      // Determine if entire paragraph is bold or italic
+      const isAllBold = /^\*\*[^*]+\*\*$/.test(cleanText.trim());
+      const isAllItalic = /^\*[^*]+\*$/.test(cleanText.trim());
+      
+      // Remove markdown markers
+      cleanText = cleanText.replace(/\*\*(.+?)\*\*/g, "$1").replace(/\*(.+?)\*/g, "$1");
+      
+      if (opts?.isBullet) {
+        cleanText = "— " + cleanText;
+      }
+
+      let y = startY;
+      const ensureSpace = (needed: number) => {
+        if (y + needed > H - M) {
+          doc.addPage();
+          y = M;
+        }
+      };
+
+      if (isHeading) {
+        ensureSpace(12);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(13);
+        doc.setTextColor("#111111");
+        const lines = doc.splitTextToSize(cleanText, lineW);
+        doc.text(lines, M + indent, y);
+        y += lines.length * 6 + 4;
+      } else {
+        const fontSize = 11;
+        const lineH = fontSize * 0.3528 * 1.6; // pt to mm * line-height
+        doc.setFontSize(fontSize);
+        doc.setTextColor("#333333");
+        
+        if (isAllBold) {
+          doc.setFont("helvetica", "bold");
+        } else if (isAllItalic) {
+          doc.setFont("helvetica", "italic");
+        } else {
+          doc.setFont("helvetica", "normal");
+        }
+        
+        const lines = doc.splitTextToSize(cleanText, lineW);
+        ensureSpace(lines.length * lineH + 3);
+        for (const line of lines) {
+          ensureSpace(lineH);
+          doc.text(line, M + indent, y);
+          y += lineH;
+        }
+        y += 3; // paragraph spacing
+      }
+
+      return y;
+    };
 
     // ════════════════════════════════════════════════════════════════
-    // PAGE 1: COVER — only decorative elements, NO body text
+    // PAGE 1: COVER — white/off-white, minimal
     // ════════════════════════════════════════════════════════════════
-    doc.setFillColor(BG_DARK);
-    doc.rect(0, 0, W, H, "F");
+    // White background (default)
 
-    // Subtle accent stripes
-    doc.setFillColor(BG_DARK2);
-    doc.rect(0, H * 0.35, W, 1.5, "F");
-    doc.rect(0, H * 0.65, W, 0.8, "F");
-
-    // "DEVOCIONAIS" label at top — small font, wide tracking
+    // "DEVOCIONAIS" — small, tracked, gray, upper area
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(11);
-    doc.setTextColor(GOLD_DIM);
-    const devoLabel = "D  E  V  O  C  I  O  N  A  I  S";
-    doc.text(devoLabel, W / 2, 60, { align: "center" });
+    doc.setFontSize(10);
+    doc.setTextColor("#888888");
+    doc.text("D E V O C I O N A I S", W / 2, H * 0.4, { align: "center" });
 
-    // Cross symbol
-    doc.setTextColor(GOLD);
-    doc.setFontSize(36);
-    doc.text("\u2720", W / 2, 82, { align: "center" });
-
-    // Main title — ONLY the title, centered in the middle
+    // Title — centered in middle, bold, black, 22pt
     doc.setFont("helvetica", "bold");
     doc.setFontSize(22);
-    doc.setTextColor(255, 255, 255);
-    const coverTitle = `REFLEXÃO: ${titulo.toUpperCase()}`;
-    const coverTitleWrapped = doc.splitTextToSize(coverTitle, UW - 10);
-    const coverTitleY = H / 2 - (coverTitleWrapped.length * 9) / 2;
-    doc.text(coverTitleWrapped, W / 2, coverTitleY, { align: "center" });
+    doc.setTextColor("#111111");
+    const coverLines = doc.splitTextToSize(titulo, maxW);
+    const coverY = H * 0.48;
+    doc.text(coverLines, W / 2, coverY, { align: "center" });
 
-    // Gold decorative line below title
-    const afterCoverTitle = coverTitleY + coverTitleWrapped.length * 9 + 6;
-    doc.setDrawColor(GOLD);
-    doc.setLineWidth(0.5);
-    doc.line(W / 2 - 25, afterCoverTitle, W / 2 + 25, afterCoverTitle);
-
-    // Date below line
+    // Footer — "Material de Estudo Bíblico"
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.setTextColor(TEXT_DIM);
-    doc.text(formatDateFull(editingNote.atualizadoEm), W / 2, afterCoverTitle + 12, { align: "center" });
-
-    // Footer
-    doc.setFontSize(9);
-    doc.setTextColor(TEXT_DIM);
-    doc.text("Material de Estudo Bíblico", W / 2, H - 25, { align: "center" });
-    doc.setDrawColor(GOLD);
-    doc.setLineWidth(0.3);
-    doc.line(W / 2 - 20, H - 20, W / 2 + 20, H - 20);
+    doc.setFontSize(8);
+    doc.setTextColor("#cccccc");
+    doc.text("Material de Estudo Bíblico", W / 2, H - M, { align: "center" });
 
     // ════════════════════════════════════════════════════════════════
-    // PAGE 2+: CONTENT — title + paragraphs + verse
+    // PAGE 2+: CONTENT
     // ════════════════════════════════════════════════════════════════
     doc.addPage();
-    let y = MT;
-
-    const ensureSpace = (needed: number) => {
-      if (y + needed > H - MB) {
-        doc.addPage();
-        y = MT;
-      }
-    };
+    let y = M;
 
     // Content title
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(16);
-    doc.setTextColor(TEXT_BODY);
-    doc.text(`REFLEXÃO: ${titulo.toUpperCase()}`, ML, y);
-    y += 8;
+    doc.setFontSize(13);
+    doc.setTextColor("#111111");
+    doc.text(titulo, M, y);
+    y += 6;
 
-    // Gold separator line
-    doc.setDrawColor(GOLD);
-    doc.setLineWidth(0.5);
-    doc.line(ML, y, ML + 50, y);
-    y += 12;
+    // Thin gray separator
+    doc.setDrawColor("#dddddd");
+    doc.setLineWidth(0.3);
+    doc.line(M, y, W - M, y);
+    y += 10;
 
-    // Body paragraphs — each one separated with generous spacing
-    doc.setFont("times", "normal");
-    doc.setFontSize(12);
-    doc.setTextColor(TEXT_BODY);
+    // Body paragraphs
+    for (const para of bodyParagraphs) {
+      const isHeading = /^#{2,3}\s/.test(para);
+      const isBullet = /^[-•]\s/.test(para);
 
-    for (const para of paragrafos) {
-      const cleanPara = para.replace(/\*\*(.+?)\*\*/g, "$1").replace(/_(.+?)_/g, "$1");
-      const wrapped = doc.splitTextToSize(cleanPara, UW);
-      const blockH = wrapped.length * 6;
-      ensureSpace(blockH + 4);
-      doc.text(wrapped, ML, y);
-      y += blockH + 6; // generous paragraph spacing
+      if (isHeading) {
+        y += 4; // extra space before heading
+      }
+
+      y = renderParagraph(para, y, { isBullet });
     }
 
-    // Verse at the end — decorative box with gold accent
+    // Verse box at end
     if (verseRef && verseText) {
-      y += 6;
-      const fullVerse = `"${verseText}"`;
-      const verseLines = doc.splitTextToSize(fullVerse, UW - 24);
-      const boxH = verseLines.length * 5.5 + 24;
-      ensureSpace(boxH + 10);
-
-      // Cream box with gold border
-      doc.setFillColor(CREAM);
-      doc.setDrawColor(GOLD);
-      doc.setLineWidth(0.4);
-      doc.roundedRect(ML, y, UW, boxH, 3, 3, "FD");
-
-      // Gold left accent bar
-      doc.setFillColor(GOLD);
-      doc.rect(ML, y, 3, boxH, "F");
-
-      y += 10;
-      doc.setFont("times", "italic");
+      y += 8;
+      doc.setFont("helvetica", "italic");
       doc.setFontSize(11);
-      doc.setTextColor(80, 60, 40);
-      for (const vl of verseLines) { doc.text(vl, ML + 14, y); y += 5.5; }
+      const fullVerse = `"${verseText}"`;
+      const verseLines = doc.splitTextToSize(fullVerse, maxW - 16);
+      const boxH = verseLines.length * 5.5 + 18;
 
-      y += 4;
-      doc.setFont("times", "bold");
-      doc.setFontSize(10);
-      doc.setTextColor(GOLD_DIM);
-      doc.text(`— ${verseRef}`, ML + 14, y);
+      if (y + boxH > H - M) { doc.addPage(); y = M; }
+
+      // Light background box
+      doc.setFillColor("#f5f5f0");
+      doc.setDrawColor("#dddddd");
+      doc.setLineWidth(0.3);
+      doc.roundedRect(M, y, maxW, boxH, 2, 2, "FD");
+
+      // Gold left accent
+      doc.setFillColor("#c4a46a");
+      doc.rect(M, y, 2.5, boxH, "F");
+
+      y += 8;
+      doc.setFont("helvetica", "italic");
+      doc.setFontSize(11);
+      doc.setTextColor("#333333");
+      for (const vl of verseLines) { doc.text(vl, M + 10, y); y += 5.5; }
+
+      y += 3;
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor("#888888");
+      doc.text(`— ${verseRef}`, M + 10, y);
     }
 
-    // Page numbers on all content pages
+    // Page numbers on content pages
     const totalPages = doc.getNumberOfPages();
     for (let i = 2; i <= totalPages; i++) {
       doc.setPage(i);
       doc.setFont("helvetica", "normal");
-      doc.setFontSize(9);
-      doc.setTextColor(TEXT_DIM);
-      doc.text(`${i - 1}`, W / 2, H - 12, { align: "center" });
+      doc.setFontSize(8);
+      doc.setTextColor("#cccccc");
+      doc.text(`${i - 1}`, W / 2, H - 15, { align: "center" });
     }
 
     const fileName = titulo.replace(/[^a-zA-Z0-9À-ÿ\s]/g, "").trim().replace(/\s+/g, "_").slice(0, 40) || "nota";
