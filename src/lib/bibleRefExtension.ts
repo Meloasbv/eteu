@@ -205,14 +205,34 @@ export function setupBibleRefListeners(
   container: HTMLElement,
   onRefClick?: (ref: string) => void
 ) {
+  let hoveredEl: HTMLElement | null = null;
+  let hoverToken = 0;
+
+  const getRefTarget = (eventTarget: EventTarget | null) => {
+    if (!(eventTarget instanceof HTMLElement)) return null;
+    return eventTarget.closest(".bible-ref-detected") as HTMLElement | null;
+  };
+
+  const resetHoverState = (immediate = false) => {
+    hoveredEl = null;
+    hoverToken += 1;
+    if (immediate) forceHideTooltip();
+    else hideTooltip();
+  };
+
   const handleMouseEnter = async (e: Event) => {
-    const target = e.target as HTMLElement;
-    if (!target.classList?.contains("bible-ref-detected")) return;
+    const target = getRefTarget(e.target);
+    if (!target || hoveredEl === target) return;
+    hoveredEl = target;
+
     const ref = target.dataset.bibleRef;
     if (!ref) return;
 
+    const currentToken = ++hoverToken;
     showTooltip(target, "Carregando...", ref);
     const text = await fetchVerseText(ref);
+    if (currentToken !== hoverToken || hoveredEl !== target) return;
+
     if (text) {
       showTooltip(target, text, ref);
     } else {
@@ -221,30 +241,52 @@ export function setupBibleRefListeners(
   };
 
   const handleMouseLeave = (e: Event) => {
-    const target = e.target as HTMLElement;
-    if (!target.classList?.contains("bible-ref-detected")) return;
-    hideTooltip();
+    const from = getRefTarget(e.target);
+    if (!from) return;
+
+    const relatedTarget = (e as MouseEvent).relatedTarget;
+    const to = getRefTarget(relatedTarget);
+
+    if (to === from) return;
+    if (hoveredEl === from) resetHoverState();
+  };
+
+  const handleContainerLeave = () => {
+    resetHoverState(true);
+  };
+
+  const handleVisibilityChange = () => {
+    if (document.hidden) resetHoverState(true);
   };
 
   const handleClick = (e: Event) => {
-    const target = e.target as HTMLElement;
-    if (!target.classList?.contains("bible-ref-detected")) return;
+    const target = getRefTarget(e.target);
+    if (!target) return;
+
     const ref = target.dataset.bibleRef;
     if (ref && onRefClick) {
       e.preventDefault();
       e.stopPropagation();
-      hideTooltip();
+      resetHoverState(true);
       onRefClick(ref);
     }
   };
 
   container.addEventListener("mouseover", handleMouseEnter);
   container.addEventListener("mouseout", handleMouseLeave);
+  container.addEventListener("mouseleave", handleContainerLeave);
   container.addEventListener("click", handleClick, true);
+  window.addEventListener("blur", handleContainerLeave);
+  window.addEventListener("scroll", handleContainerLeave, true);
+  document.addEventListener("visibilitychange", handleVisibilityChange);
 
   return () => {
     container.removeEventListener("mouseover", handleMouseEnter);
     container.removeEventListener("mouseout", handleMouseLeave);
+    container.removeEventListener("mouseleave", handleContainerLeave);
     container.removeEventListener("click", handleClick, true);
+    window.removeEventListener("blur", handleContainerLeave);
+    window.removeEventListener("scroll", handleContainerLeave, true);
+    document.removeEventListener("visibilitychange", handleVisibilityChange);
   };
 }
