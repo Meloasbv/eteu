@@ -281,6 +281,25 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
     setSaved(true); setTimeout(() => setSaved(false), 2000);
   }, []);
 
+  const fetchReadingContext = useCallback(async (wi: number, di: number, readings: string[]) => {
+    const key = `${wi}-${di}`;
+    if (readingContext[key] || contextLoading === key) return;
+    setContextLoading(key);
+    try {
+      const { data, error } = await supabase.functions.invoke("reading-context", {
+        body: { readings },
+      });
+      if (error || data?.error) {
+        console.error("Context error:", data?.error || error);
+      } else if (data?.result) {
+        setReadingContext(prev => ({ ...prev, [key]: data.result }));
+      }
+    } catch (e) {
+      console.error("Context fetch error:", e);
+    }
+    setContextLoading(null);
+  }, [readingContext, contextLoading]);
+
   const weekProg = useCallback((wi: number) => {
     let t = 0, d = 0;
     WEEKS[wi].days.forEach((day, di) => { if (day.r.length) { t++; if (checked[`${wi}-${di}`]) d++; } });
