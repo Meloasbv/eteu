@@ -206,44 +206,98 @@ export default function WeekSchedule({ userCodeId }: { userCodeId: string }) {
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {dayEvents.map(ev => (
-              <div key={ev.id} style={{ display: "flex", alignItems: "stretch", borderRadius: 14, overflow: "hidden",
-                boxShadow: "0 4px 16px rgba(0,0,0,.25)", position: "relative" }}>
-                <div style={{ width: 5, background: ev.color, flexShrink: 0 }} />
-                <div style={{ flex: 1, padding: "14px 16px",
-                  background: "rgba(255,255,255,.03)", border: "1px solid rgba(200,180,140,.07)",
-                  borderLeft: "none", borderRadius: "0 14px 14px 0",
-                  display: "flex", alignItems: "center", gap: 14 }}>
-                  <div style={{ width: 42, height: 42, borderRadius: 10, flexShrink: 0,
-                    background: ev.color + "22", border: `1px solid ${ev.color}40`,
-                    display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>
-                    {ev.icon}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 15, fontWeight: 600, color: "#e8d8b8",
-                      whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {ev.name}
+            {(() => {
+              // Find the next upcoming event for today
+              const now = new Date();
+              const todayDate = now.getDate().toString();
+              const isToday = day.date === todayDate;
+              const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+              let nextEventId: string | null = null;
+              if (isToday) {
+                for (const ev of dayEvents) {
+                  const [h, m] = ev.start.split(":").map(Number);
+                  const evMinutes = h * 60 + m;
+                  if (evMinutes >= nowMinutes) {
+                    nextEventId = ev.id;
+                    break;
+                  }
+                }
+                // If all events passed, highlight none
+              }
+
+              return dayEvents.map(ev => {
+                const isNext = ev.id === nextEventId;
+                return (
+                  <div key={ev.id} style={{
+                    display: "flex", alignItems: "stretch", borderRadius: 14, overflow: "hidden",
+                    boxShadow: isNext ? `0 4px 20px ${ev.color}40, 0 0 0 2px ${ev.color}60` : "0 4px 16px rgba(0,0,0,.25)",
+                    position: "relative",
+                    transform: isNext ? "scale(1.02)" : "scale(1)",
+                    transition: "all .3s ease",
+                  }}>
+                    <div style={{ width: isNext ? 6 : 5, background: ev.color, flexShrink: 0 }} />
+                    <div style={{
+                      flex: 1, padding: "14px 16px",
+                      background: isNext ? `${ev.color}12` : "rgba(255,255,255,.03)",
+                      border: isNext ? `1px solid ${ev.color}40` : "1px solid rgba(200,180,140,.07)",
+                      borderLeft: "none", borderRadius: "0 14px 14px 0",
+                      display: "flex", alignItems: "center", gap: 14,
+                    }}>
+                      <div style={{
+                        width: 42, height: 42, borderRadius: 10, flexShrink: 0,
+                        background: ev.color + "22", border: `1px solid ${ev.color}40`,
+                        display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20,
+                      }}>
+                        {ev.icon}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{
+                          display: "flex", alignItems: "center", gap: 6,
+                        }}>
+                          <div style={{
+                            fontSize: 15, fontWeight: 600, color: isNext ? "#f0e8d4" : "#e8d8b8",
+                            whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", flex: 1,
+                          }}>
+                            {ev.name}
+                          </div>
+                          {isNext && (
+                            <span style={{
+                              fontSize: 9, fontWeight: 700, letterSpacing: 1.5,
+                              textTransform: "uppercase",
+                              color: ev.color, background: `${ev.color}18`,
+                              padding: "2px 8px", borderRadius: 6,
+                              border: `1px solid ${ev.color}30`,
+                              whiteSpace: "nowrap", animation: "pulse 2s ease-in-out infinite",
+                            }}>
+                              ▶ Próximo
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4, flexWrap: "wrap" }}>
+                          <span style={{
+                            fontSize: 12, fontWeight: 600, color: "#C8A55C",
+                            background: "rgba(200,165,92,.1)", padding: "2px 8px", borderRadius: 6,
+                            border: "1px solid rgba(200,165,92,.2)",
+                          }}>
+                            {ev.start} → {ev.end}
+                          </span>
+                          {ev.location && <span style={{ fontSize: 12, color: "#7a6a58" }}>📍 {ev.location}</span>}
+                        </div>
+                      </div>
+                      {ev.custom && (
+                        <button onClick={() => setDeleteId(ev.id)} style={{
+                          width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
+                          border: "1px solid rgba(200,80,60,.25)", background: "rgba(200,80,60,.08)",
+                          color: "#C8553D", cursor: "pointer", fontSize: 14,
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                        }}>×</button>
+                      )}
                     </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4, flexWrap: "wrap" }}>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: "#C8A55C",
-                        background: "rgba(200,165,92,.1)", padding: "2px 8px", borderRadius: 6,
-                        border: "1px solid rgba(200,165,92,.2)" }}>
-                        {ev.start} → {ev.end}
-                      </span>
-                      {ev.location && <span style={{ fontSize: 12, color: "#7a6a58" }}>📍 {ev.location}</span>}
-                    </div>
                   </div>
-                  {ev.custom && (
-                    <button onClick={() => setDeleteId(ev.id)} style={{
-                      width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
-                      border: "1px solid rgba(200,80,60,.25)", background: "rgba(200,80,60,.08)",
-                      color: "#C8553D", cursor: "pointer", fontSize: 14,
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                    }}>×</button>
-                  )}
-                </div>
-              </div>
-            ))}
+                );
+              });
+            })()}
           </div>
         )}
 
