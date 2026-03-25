@@ -973,15 +973,22 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
           </>
         )}
 
-        {/* TipTap Editor */}
-        <RichTextEditor
-          content={editingNote.texto}
-          onChange={handleTextChange}
-          placeholder="Comece a escrever..."
-          onVerseClick={() => setVerseOpen(true)}
-          onRecordClick={toggleRecording}
-          isRecording={isRecording}
-        />
+        {/* Note Search Overlay + TipTap Editor */}
+        <div className="relative flex flex-col flex-1 min-h-0" ref={editorContainerRef}>
+          <NoteSearchOverlay
+            open={noteSearchOpen}
+            onClose={() => setNoteSearchOpen(false)}
+            editorContainerRef={editorContainerRef}
+          />
+          <RichTextEditor
+            content={editingNote.texto}
+            onChange={handleTextChange}
+            placeholder="Comece a escrever..."
+            onVerseClick={() => setVerseOpen(true)}
+            onRecordClick={toggleRecording}
+            isRecording={isRecording}
+          />
+        </div>
 
         {/* ── VERSE BOTTOM SHEET ── */}
         <div className={`fixed inset-0 z-[200] transition-opacity duration-250
