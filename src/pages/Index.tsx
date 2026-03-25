@@ -551,7 +551,7 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
             { key: "devocional" as const, icon: "🔥", label: "Devocional" },
             { key: "agenda" as const, icon: "📅", label: "Agenda" },
             { key: "anotacoes" as const, icon: "📝", label: "Notas" },
-            { key: "biblioteca" as const, icon: "📚", label: "Biblioteca" },
+            
           ]).map(t => {
             const isActive = tab === t.key;
             return (
