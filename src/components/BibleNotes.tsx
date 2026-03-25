@@ -4,6 +4,7 @@ import jsPDF from "jspdf";
 import RichTextEditor from "@/components/RichTextEditor";
 import NoteSearchOverlay from "@/components/NoteSearchOverlay";
 import BibleContextPanel from "@/components/BibleContextPanel";
+import { forceHideTooltip } from "@/lib/bibleRefExtension";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type Section = "proclamadores" | "aulas" | "pensamentos" | "devocionais";
@@ -311,6 +312,7 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
     setVerseOpen(false);
     setMenuOpen(false);
     setNoteSearchOpen(false);
+    forceHideTooltip();
   }, [editingNote, saveNote]);
 
   // ── Verse lookup ───────────────────────────────────────────────────────────
@@ -341,9 +343,9 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
   }, [verseResult, showToast]);
 
   // ── AI actions ─────────────────────────────────────────────────────────────
-  const callAI = useCallback(async (action: "organize" | "resumir") => {
+  const callAI = useCallback(async (action: "organize" | "resumir" | "gramatica") => {
     if (!editingNote || !editingNote.texto.trim()) {
-      showToast(action === "organize" ? "Escreva algo antes de organizar" : "Escreva algo antes de resumir");
+      showToast(action === "organize" ? "Escreva algo antes de organizar" : action === "gramatica" ? "Escreva algo antes de corrigir" : "Escreva algo antes de resumir");
       return;
     }
     setAiLoading(action);
@@ -356,6 +358,12 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
         });
         if (error || data?.error) { showToast(data?.error || "Erro ao chamar IA"); setAiLoading(null); return; }
         setAiResult({ title: "✨ Nota Organizada", content: data.result });
+      } else if (action === "gramatica") {
+        const { data, error } = await supabase.functions.invoke("notes-ai", {
+          body: { action: "gramatica", noteTitle: noteTitle(editingNote.texto), noteBody: editingNote.texto },
+        });
+        if (error || data?.error) { showToast(data?.error || "Erro ao corrigir gramática"); setAiLoading(null); return; }
+        setAiResult({ title: "📝 Gramática Corrigida", content: data.result });
       } else {
         const plainText = editingNote.texto.replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
         const { data, error } = await supabase.functions.invoke("summarize-transcript", { body: { transcript: plainText } });
@@ -701,7 +709,7 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
             return (
               <button
                 key={s.key}
-                onClick={() => { setActiveSection(s.key); setEditingNote(null); }}
+                onClick={() => { setActiveSection(s.key); setEditingNote(null); forceHideTooltip(); }}
                 className="flex items-center gap-3.5 p-4 rounded-xl cursor-pointer
                   bg-card border border-border shadow-elegant
                   hover:border-primary/40 hover:bg-card-hover
@@ -951,6 +959,15 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
               >
                 {aiLoading === "resumir" ? "⏳ Resumindo..." : "📋 Resumir em Tópicos"}
               </button>
+              <button
+                onClick={() => callAI("gramatica")}
+                disabled={!!aiLoading}
+                className="block w-full px-4 py-3 bg-transparent border-none font-body text-[15px]
+                  text-foreground text-left cursor-pointer hover:bg-card-hover active:bg-card-hover
+                  disabled:opacity-50 disabled:cursor-default transition-colors duration-100"
+              >
+                {aiLoading === "gramatica" ? "⏳ Corrigindo..." : "📝 Corrigir Gramática"}
+              </button>
               <div className="h-px bg-border-subtle my-1" />
               <button
                 onClick={handleGeneratePDF}
@@ -1130,7 +1147,7 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
                         handleTextChange(aiResult.content);
                       }
                       setAiResult(null);
-                      showToast("Nota reorganizada!");
+                      showToast(aiResult.title.includes("Gramática") ? "Gramática corrigida!" : "Nota reorganizada!");
                     }}
                     className="w-full py-2.5 rounded-[10px] bg-primary/10 border border-primary
                       text-primary font-display text-[9px] tracking-wide uppercase text-center cursor-pointer

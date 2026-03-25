@@ -132,6 +132,15 @@ function hideTooltip() {
   }, 100);
 }
 
+/** Force-hide tooltip immediately (use on view/tab changes) */
+export function forceHideTooltip() {
+  if (tooltipTimeout) clearTimeout(tooltipTimeout);
+  if (tooltipEl) {
+    tooltipEl.style.opacity = "0";
+    tooltipEl.style.transform = "translateY(4px)";
+  }
+}
+
 const pluginKey = new PluginKey("bibleRefHighlight");
 
 export const BibleRefHighlight = Extension.create({

@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { noteTitle, noteBody } = await req.json();
+    const { noteTitle, noteBody, action } = await req.json();
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -27,12 +27,29 @@ serve(async (req) => {
 
     if (!plainBody) {
       return new Response(
-        JSON.stringify({ error: "Nota vazia. Escreva algo antes de organizar." }),
+        JSON.stringify({ error: "Nota vazia. Escreva algo antes." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const systemPrompt = `Você é um assistente que APENAS organiza a estrutura de anotações. Você NÃO escreve, NÃO adiciona, NÃO parafraseia e NÃO resume.
+    let systemPrompt: string;
+    let userPrompt: string;
+
+    if (action === "gramatica") {
+      systemPrompt = `Você é um corretor gramatical de português brasileiro. Sua ÚNICA tarefa é corrigir erros de gramática, ortografia, acentuação e pontuação.
+
+Regras RÍGIDAS:
+- Corrija APENAS erros gramaticais, ortográficos e de pontuação
+- NÃO mude o estilo, tom ou estrutura do texto
+- NÃO adicione, remova ou reorganize frases ou parágrafos
+- NÃO reescreva ou parafraseie — mantenha as mesmas palavras, apenas corrija os erros
+- Mantenha versículos bíblicos exatamente como escritos
+- Mantenha a formatação original (títulos, parágrafos, listas)
+- Comece direto com o conteúdo corrigido, sem explicações
+- Se não houver erros, retorne o texto exatamente como está`;
+      userPrompt = `Corrija os erros de gramática desta anotação:\n\nTítulo: ${noteTitle}\n\nConteúdo:\n${plainBody}`;
+    } else {
+      systemPrompt = `Você é um assistente que APENAS organiza a estrutura de anotações. Você NÃO escreve, NÃO adiciona, NÃO parafraseia e NÃO resume.
 
 Sua ÚNICA tarefa é:
 1. Corrigir títulos (# e ##) para ficarem claros
@@ -49,8 +66,8 @@ Regras RÍGIDAS:
 - Se houver versículos, mantenha-os exatamente como escritos
 - Comece direto com o conteúdo, sem frases como "Aqui está..."
 - Escreva em português brasileiro`;
-
-    const userPrompt = `Organize esta anotação de estudo bíblico:\n\nTítulo original: ${noteTitle}\n\nConteúdo:\n${plainBody}`;
+      userPrompt = `Organize esta anotação de estudo bíblico:\n\nTítulo original: ${noteTitle}\n\nConteúdo:\n${plainBody}`;
+    }
 
     const response = await fetch(
       "https://ai.gateway.lovable.dev/v1/chat/completions",
