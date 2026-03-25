@@ -234,6 +234,10 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
   const devRecognitionRef = useRef<any>(null);
   const devTranscriptRef = useRef("");
   const [notesTitle, setNotesTitle] = useState("📝 Anotações");
+  // Bible version for devotionals
+  const [devBibleVersion, setDevBibleVersion] = useState("almeida");
+  const [devVerseOverrides, setDevVerseOverrides] = useState<Record<string, string>>({});
+  const [devVerseLoading, setDevVerseLoading] = useState<string | null>(null);
   // Reading context AI
   const [readingContext, setReadingContext] = useState<Record<string, string>>({});
   const [contextLoading, setContextLoading] = useState<string | null>(null);
