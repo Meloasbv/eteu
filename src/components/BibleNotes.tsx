@@ -1144,7 +1144,7 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
                   <button
                     onClick={() => {
                       if (editingNote) {
-                        handleTextChange(aiResult.content);
+                        handleTextChange(mdToHtml(aiResult.content));
                       }
                       setAiResult(null);
                       showToast(aiResult.title.includes("Gramática") ? "Gramática corrigida!" : "Nota reorganizada!");
