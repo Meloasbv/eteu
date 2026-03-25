@@ -70,6 +70,39 @@ export type Database = {
           },
         ]
       }
+      reminders: {
+        Row: {
+          active: boolean
+          category: string
+          created_at: string
+          id: string
+          reminder_datetime: string
+          repeat: string
+          title: string
+          user_code_id: string
+        }
+        Insert: {
+          active?: boolean
+          category?: string
+          created_at?: string
+          id?: string
+          reminder_datetime: string
+          repeat?: string
+          title: string
+          user_code_id: string
+        }
+        Update: {
+          active?: boolean
+          category?: string
+          created_at?: string
+          id?: string
+          reminder_datetime?: string
+          repeat?: string
+          title?: string
+          user_code_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
