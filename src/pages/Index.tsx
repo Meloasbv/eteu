@@ -262,7 +262,7 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
       : tab === "leitura" ? "📖 Plano de Leitura"
       : tab === "devocional" ? "🔥 Devocionais"
       : tab === "agenda" ? "📅 Agenda"
-      : tab === "biblioteca" ? "📚 Biblioteca"
+      
       : notesTitle;
     if (newTitle !== displayTitle) {
       setTitleFading(true);
@@ -1316,18 +1316,6 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
 
       {/* ── ANOTAÇÕES TAB ── */}
       {tab === "anotacoes" && <BibleNotes onTitleChange={setNotesTitle} userCodeId={userCodeId} />}
-
-      {/* ── BIBLIOTECA TAB ── */}
-      {tab === "biblioteca" && (
-        <div>
-          <Library userCodeId={userCodeId} onOpenNote={(noteId) => {
-            setTab("anotacoes");
-          }} />
-          <div className="border-t border-border mt-4">
-            <Flashcards userCodeId={userCodeId} />
-          </div>
-        </div>
-      )}
 
       {/* Footer */}
       <div className="text-center py-6 px-6 text-[11px] text-muted-foreground tracking-[2px] uppercase font-display">
