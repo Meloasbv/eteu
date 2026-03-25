@@ -1140,7 +1140,7 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
       })()}
 
       {/* ── AGENDA TAB ── */}
-      {tab === "agenda" && <WeekSchedule />}
+      {tab === "agenda" && <WeekSchedule userCodeId={userCodeId} />}
 
       {/* ── ANOTAÇÕES TAB ── */}
       {tab === "anotacoes" && <BibleNotes onTitleChange={setNotesTitle} userCodeId={userCodeId} />}

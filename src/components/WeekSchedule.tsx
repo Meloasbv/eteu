@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import Reminders from "@/components/Reminders";
 
 type Evt = {
   id: string;
@@ -74,7 +75,7 @@ const emptyForm = () => ({
   color: COLOR_OPTIONS[0].bg, textColor: COLOR_OPTIONS[0].text,
 });
 
-export default function WeekSchedule() {
+export default function WeekSchedule({ userCodeId }: { userCodeId: string }) {
   const [selected, setSelected] = useState(1);
   const [events, setEvents] = useState<Record<number, Evt[]>>(DEFAULT_EVENTS);
   const [showModal, setShowModal] = useState(false);
@@ -251,6 +252,9 @@ export default function WeekSchedule() {
             {dayEvents.length} {dayEvents.length === 1 ? "evento" : "eventos"} neste dia
           </div>
         )}
+
+        {/* ── REMINDERS SECTION ── */}
+        <Reminders userCodeId={userCodeId} />
       </div>
 
       {/* ── ADD MODAL ── */}

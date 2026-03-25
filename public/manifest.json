@@ -1,0 +1,27 @@
+{
+  "name": "Estudo Tudo Em Um – Fascinação 2026A",
+  "short_name": "Estudo Bíblico",
+  "description": "Plano de leitura bíblica cronológica em 18 semanas",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#1a1510",
+  "background_color": "#1a1510",
+  "icons": [
+    {
+      "src": "/icon-72.png",
+      "sizes": "72x72",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
