@@ -5,6 +5,7 @@ import Highlight from "@tiptap/extension-highlight";
 import Placeholder from "@tiptap/extension-placeholder";
 import CharacterCount from "@tiptap/extension-character-count";
 import { useEffect, useCallback, useRef } from "react";
+import { BibleRefHighlight, setupBibleRefListeners } from "@/lib/bibleRefExtension";
 
 // ── Highlight colors config ──
 const HIGHLIGHT_COLORS = [
@@ -37,6 +38,8 @@ export default function RichTextEditor({
 }: RichTextEditorProps) {
   const isExternalUpdate = useRef(false);
 
+  const editorRef = useRef<HTMLDivElement>(null);
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -48,6 +51,7 @@ export default function RichTextEditor({
       Highlight.configure({ multicolor: true }),
       Placeholder.configure({ placeholder }),
       CharacterCount,
+      BibleRefHighlight,
     ],
     content,
     editable: !disabled,
