@@ -198,7 +198,7 @@ export default function RichTextEditor({
       </div>
 
       {/* ── Editor content ── */}
-      <div className="flex-1 overflow-y-auto px-5 py-4 pb-36">
+      <div className="flex-1 overflow-y-auto px-5 py-4 pb-36" ref={editorRef}>
         <EditorContent editor={editor} />
       </div>
     </div>
