@@ -830,7 +830,6 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
               )}
 
             </>
-            </>
           );
         };
 
