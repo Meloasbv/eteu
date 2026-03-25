@@ -1147,7 +1147,7 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
                         handleTextChange(aiResult.content);
                       }
                       setAiResult(null);
-                      showToast("Nota reorganizada!");
+                      showToast(aiResult.title.includes("Gramática") ? "Gramática corrigida!" : "Nota reorganizada!");
                     }}
                     className="w-full py-2.5 rounded-[10px] bg-primary/10 border border-primary
                       text-primary font-display text-[9px] tracking-wide uppercase text-center cursor-pointer
