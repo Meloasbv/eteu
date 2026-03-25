@@ -52,6 +52,42 @@ function notePreview(texto: string, len = 60) {
 const MONTHS_SHORT = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 const MONTHS_FULL = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 
+// Simple markdown → HTML converter for AI results
+function inlinemd(s: string): string {
+  return s
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*(.+?)\*/g, "<em>$1</em>")
+    .replace(/__(.+?)__/g, "<strong>$1</strong>")
+    .replace(/_(.+?)_/g, "<em>$1</em>");
+}
+function mdToHtml(md: string): string {
+  return md
+    .split(/\n{2,}/)
+    .map(block => {
+      block = block.trim();
+      if (!block) return "";
+      if (block.startsWith("### ")) return `<h3>${inlinemd(block.slice(4))}</h3>`;
+      if (block.startsWith("## ")) return `<h2>${inlinemd(block.slice(3))}</h2>`;
+      if (block.startsWith("# ")) return `<h2>${inlinemd(block.slice(2))}</h2>`;
+      if (/^[\-\*•]\s/.test(block)) {
+        const items = block.split(/\n/).filter(l => l.trim());
+        return "<ul>" + items.map(l => `<li>${inlinemd(l.replace(/^[\-\*•]\s*/, ""))}</li>`).join("") + "</ul>";
+      }
+      if (/^\d+[\.\)]\s/.test(block)) {
+        const items = block.split(/\n/).filter(l => l.trim());
+        return "<ol>" + items.map(l => `<li>${inlinemd(l.replace(/^\d+[\.\)]\s*/, ""))}</li>`).join("") + "</ol>";
+      }
+      if (block.startsWith(">")) {
+        const inner = block.split(/\n/).map(l => l.replace(/^>\s?/, "")).join("<br/>");
+        return `<blockquote><p>${inlinemd(inner)}</p></blockquote>`;
+      }
+      if (/^---+$/.test(block)) return "<hr/>";
+      return `<p>${inlinemd(block.replace(/\n/g, "<br/>"))}</p>`;
+    })
+    .filter(Boolean)
+    .join("");
+}
+
 function formatDateShort(iso: string) {
   const d = new Date(iso);
   return `${d.getDate()} de ${MONTHS_SHORT[d.getMonth()]}. de ${d.getFullYear()}`;
