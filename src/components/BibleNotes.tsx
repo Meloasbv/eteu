@@ -992,8 +992,24 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
             onVerseClick={() => setVerseOpen(true)}
             onRecordClick={toggleRecording}
             isRecording={isRecording}
+            onBibleRefClick={(ref) => {
+              setBibleContextRef(ref);
+              setBibleContextOpen(true);
+            }}
           />
         </div>
+
+        {/* ── BIBLE CONTEXT PANEL ── */}
+        <BibleContextPanel
+          open={bibleContextOpen}
+          reference={bibleContextRef}
+          onClose={() => setBibleContextOpen(false)}
+          onInsertVerse={(ref, text) => {
+            const verseHtml = `<blockquote><p><strong>[${ref}]</strong></p><p><em>${text}</em></p></blockquote>`;
+            handleTextChange(editingNote.texto + verseHtml);
+            showToast("Versículo inserido");
+          }}
+        />
 
         {/* ── VERSE BOTTOM SHEET ── */}
         <div className={`fixed inset-0 z-[200] transition-opacity duration-250
