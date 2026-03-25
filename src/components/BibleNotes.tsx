@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import jsPDF from "jspdf";
 import RichTextEditor from "@/components/RichTextEditor";
 import NoteSearchOverlay from "@/components/NoteSearchOverlay";
+import BibleContextPanel from "@/components/BibleContextPanel";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type Section = "proclamadores" | "aulas" | "pensamentos" | "devocionais";
@@ -133,6 +134,10 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
   // Note search (Ctrl+F)
   const [noteSearchOpen, setNoteSearchOpen] = useState(false);
   const editorContainerRef = useRef<HTMLDivElement>(null);
+
+  // Bible context panel
+  const [bibleContextOpen, setBibleContextOpen] = useState(false);
+  const [bibleContextRef, setBibleContextRef] = useState("");
 
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -987,8 +992,24 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
             onVerseClick={() => setVerseOpen(true)}
             onRecordClick={toggleRecording}
             isRecording={isRecording}
+            onBibleRefClick={(ref) => {
+              setBibleContextRef(ref);
+              setBibleContextOpen(true);
+            }}
           />
         </div>
+
+        {/* ── BIBLE CONTEXT PANEL ── */}
+        <BibleContextPanel
+          open={bibleContextOpen}
+          reference={bibleContextRef}
+          onClose={() => setBibleContextOpen(false)}
+          onInsertVerse={(ref, text) => {
+            const verseHtml = `<blockquote><p><strong>[${ref}]</strong></p><p><em>${text}</em></p></blockquote>`;
+            handleTextChange(editingNote.texto + verseHtml);
+            showToast("Versículo inserido");
+          }}
+        />
 
         {/* ── VERSE BOTTOM SHEET ── */}
         <div className={`fixed inset-0 z-[200] transition-opacity duration-250

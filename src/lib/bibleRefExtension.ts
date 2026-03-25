@@ -168,17 +168,18 @@ function buildDecorations(doc: any): DecorationSet {
   return DecorationSet.create(doc, decorations);
 }
 
-// Setup hover listeners on the editor container
-export function setupBibleRefListeners(container: HTMLElement) {
+// Setup hover + click listeners on the editor container
+export function setupBibleRefListeners(
+  container: HTMLElement,
+  onRefClick?: (ref: string) => void
+) {
   const handleMouseEnter = async (e: Event) => {
     const target = e.target as HTMLElement;
     if (!target.classList?.contains("bible-ref-detected")) return;
     const ref = target.dataset.bibleRef;
     if (!ref) return;
 
-    // Show loading state
     showTooltip(target, "Carregando...", ref);
-
     const text = await fetchVerseText(ref);
     if (text) {
       showTooltip(target, text, ref);
@@ -193,11 +194,25 @@ export function setupBibleRefListeners(container: HTMLElement) {
     hideTooltip();
   };
 
+  const handleClick = (e: Event) => {
+    const target = e.target as HTMLElement;
+    if (!target.classList?.contains("bible-ref-detected")) return;
+    const ref = target.dataset.bibleRef;
+    if (ref && onRefClick) {
+      e.preventDefault();
+      e.stopPropagation();
+      hideTooltip();
+      onRefClick(ref);
+    }
+  };
+
   container.addEventListener("mouseover", handleMouseEnter);
   container.addEventListener("mouseout", handleMouseLeave);
+  container.addEventListener("click", handleClick, true);
 
   return () => {
     container.removeEventListener("mouseover", handleMouseEnter);
     container.removeEventListener("mouseout", handleMouseLeave);
+    container.removeEventListener("click", handleClick, true);
   };
 }

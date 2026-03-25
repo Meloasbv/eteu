@@ -22,6 +22,7 @@ interface RichTextEditorProps {
   minHeight?: string;
   onVerseClick?: () => void;
   onRecordClick?: () => void;
+  onBibleRefClick?: (ref: string) => void;
   isRecording?: boolean;
   disabled?: boolean;
 }
@@ -33,10 +34,13 @@ export default function RichTextEditor({
   minHeight = "calc(100dvh - 300px)",
   onVerseClick,
   onRecordClick,
+  onBibleRefClick,
   isRecording = false,
   disabled = false,
 }: RichTextEditorProps) {
   const isExternalUpdate = useRef(false);
+  const onBibleRefClickRef = useRef(onBibleRefClick);
+  onBibleRefClickRef.current = onBibleRefClick;
 
   const editorRef = useRef<HTMLDivElement>(null);
 
@@ -77,11 +81,13 @@ export default function RichTextEditor({
     }
   }, [content, editor]);
 
-  // Setup Bible reference hover listeners
+  // Setup Bible reference hover + click listeners
   useEffect(() => {
     const container = editorRef.current;
     if (!container) return;
-    return setupBibleRefListeners(container);
+    return setupBibleRefListeners(container, (ref) => {
+      onBibleRefClickRef.current?.(ref);
+    });
   }, [editor]);
 
   const toggleBold = useCallback(() => editor?.chain().focus().toggleBold().run(), [editor]);
