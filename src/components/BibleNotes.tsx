@@ -135,6 +135,10 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
   const [noteSearchOpen, setNoteSearchOpen] = useState(false);
   const editorContainerRef = useRef<HTMLDivElement>(null);
 
+  // Bible context panel
+  const [bibleContextOpen, setBibleContextOpen] = useState(false);
+  const [bibleContextRef, setBibleContextRef] = useState("");
+
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Load notes from Supabase + migrate localStorage notes once
