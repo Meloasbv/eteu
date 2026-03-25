@@ -232,6 +232,9 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
   const devRecognitionRef = useRef<any>(null);
   const devTranscriptRef = useRef("");
   const [notesTitle, setNotesTitle] = useState("📝 Anotações");
+  // Reading context AI
+  const [readingContext, setReadingContext] = useState<Record<string, string>>({});
+  const [contextLoading, setContextLoading] = useState<string | null>(null);
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     try { return (localStorage.getItem(THEME_KEY) as "light" | "dark") || "dark"; } catch { return "dark"; }
   });
