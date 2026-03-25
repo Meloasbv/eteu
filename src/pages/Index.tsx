@@ -4,6 +4,7 @@ import WeekSchedule from "@/components/WeekSchedule";
 import BibleNotes from "@/components/BibleNotes";
 import CodeLogin from "@/components/CodeLogin";
 import RichTextEditor from "@/components/RichTextEditor";
+import { generateDevotionalPdf } from "@/components/DevotionalPdf";
 
 // ── DATA ──────────────────────────────────────────────────────────────────────
 
