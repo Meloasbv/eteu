@@ -48,13 +48,19 @@ async function fetchVerseText(normalized: string): Promise<string | null> {
   const apiRef = toApiRef(normalized);
   const promise = (async () => {
     try {
-      const res = await fetch(`https://bible-api.com/${encodeURIComponent(apiRef)}?translation=almeida`);
-      if (!res.ok) return null;
-      const data = await res.json();
-      if (data.text) {
-        const text = data.text.trim();
-        setCachedVerse(normalized, text);
-        return text;
+      // Try almeida first, then fallback without translation
+      for (const translation of ["almeida", ""]) {
+        const url = translation
+          ? `https://bible-api.com/${encodeURIComponent(apiRef)}?translation=${translation}`
+          : `https://bible-api.com/${encodeURIComponent(apiRef)}`;
+        const res = await fetch(url);
+        if (!res.ok) continue;
+        const data = await res.json();
+        if (data.text) {
+          const text = data.text.trim();
+          setCachedVerse(normalized, text);
+          return text;
+        }
       }
     } catch {}
     return null;
@@ -95,8 +101,24 @@ function showTooltip(el: HTMLElement, text: string, ref: string) {
     <div style="font-style:italic;color:hsl(var(--foreground));opacity:0.9;">${text}</div>
   `;
   const rect = el.getBoundingClientRect();
-  tip.style.left = `${Math.min(rect.left, window.innerWidth - 340)}px`;
-  tip.style.top = `${rect.bottom + 8}px`;
+  const tipWidth = 320;
+  const tipHeight = tip.offsetHeight || 80;
+  
+  // Horizontal: keep within viewport
+  let left = rect.left;
+  if (left + tipWidth > window.innerWidth - 16) {
+    left = window.innerWidth - tipWidth - 16;
+  }
+  if (left < 16) left = 16;
+  
+  // Vertical: prefer below, but flip above if no space
+  let top = rect.bottom + 8;
+  if (top + tipHeight > window.innerHeight - 16) {
+    top = rect.top - tipHeight - 8;
+  }
+  
+  tip.style.left = `${left}px`;
+  tip.style.top = `${top}px`;
   tip.style.opacity = "1";
   tip.style.transform = "translateY(0)";
 }
