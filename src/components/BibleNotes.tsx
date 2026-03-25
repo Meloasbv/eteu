@@ -4,6 +4,7 @@ import jsPDF from "jspdf";
 import RichTextEditor from "@/components/RichTextEditor";
 import NoteSearchOverlay from "@/components/NoteSearchOverlay";
 import BibleContextPanel from "@/components/BibleContextPanel";
+import { forceHideTooltip } from "@/lib/bibleRefExtension";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type Section = "proclamadores" | "aulas" | "pensamentos" | "devocionais";
@@ -311,6 +312,7 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
     setVerseOpen(false);
     setMenuOpen(false);
     setNoteSearchOpen(false);
+    forceHideTooltip();
   }, [editingNote, saveNote]);
 
   // ── Verse lookup ───────────────────────────────────────────────────────────
@@ -341,9 +343,9 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
   }, [verseResult, showToast]);
 
   // ── AI actions ─────────────────────────────────────────────────────────────
-  const callAI = useCallback(async (action: "organize" | "resumir") => {
+  const callAI = useCallback(async (action: "organize" | "resumir" | "gramatica") => {
     if (!editingNote || !editingNote.texto.trim()) {
-      showToast(action === "organize" ? "Escreva algo antes de organizar" : "Escreva algo antes de resumir");
+      showToast(action === "organize" ? "Escreva algo antes de organizar" : action === "gramatica" ? "Escreva algo antes de corrigir" : "Escreva algo antes de resumir");
       return;
     }
     setAiLoading(action);
@@ -356,6 +358,12 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
         });
         if (error || data?.error) { showToast(data?.error || "Erro ao chamar IA"); setAiLoading(null); return; }
         setAiResult({ title: "✨ Nota Organizada", content: data.result });
+      } else if (action === "gramatica") {
+        const { data, error } = await supabase.functions.invoke("notes-ai", {
+          body: { action: "gramatica", noteTitle: noteTitle(editingNote.texto), noteBody: editingNote.texto },
+        });
+        if (error || data?.error) { showToast(data?.error || "Erro ao corrigir gramática"); setAiLoading(null); return; }
+        setAiResult({ title: "📝 Gramática Corrigida", content: data.result });
       } else {
         const plainText = editingNote.texto.replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
         const { data, error } = await supabase.functions.invoke("summarize-transcript", { body: { transcript: plainText } });
