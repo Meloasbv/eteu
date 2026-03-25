@@ -829,21 +829,7 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
                 </div>
               )}
 
-              {/* PDF Download button */}
-              <button
-                onClick={() => generateDevotionalPdf({
-                  ref: d.ref,
-                  verseText: d.verseText || "",
-                  summary: d.summary,
-                  exegese: d.exegese,
-                })}
-                className="w-full mt-4 py-3 rounded-xl border border-border bg-card
-                  text-muted-foreground font-display text-[10px] tracking-[2px] uppercase
-                  cursor-pointer hover:border-primary/30 hover:text-primary hover:bg-primary/5
-                  active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2"
-              >
-                📄 Baixar PDF do Devocional
-              </button>
+            </>
             </>
           );
         };
