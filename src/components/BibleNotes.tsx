@@ -428,28 +428,123 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
     setMenuOpen(false);
     showToast("Gerando PDF...");
 
-    const BG = "#1a1a1a";
-    const GOLD = "#c9a84c";
-    const GOLD_DIM = "#a08638";
-    const TEXT = "#e8e0d4";
-    const TEXT_DIM = "#8a8278";
-    const LINE_COLOR = "#2e2e2e";
-
     const doc = new jsPDF({ unit: "mm", format: "a4" });
     const W = doc.internal.pageSize.getWidth();
     const H = doc.internal.pageSize.getHeight();
-    const ML = 24; const MR = 24; const MT = 28; const MB = 22;
+    const ML = 20; const MR = 20; const MT = 25; const MB = 25;
     const UW = W - ML - MR;
 
-    const fillBg = () => { doc.setFillColor(BG); doc.rect(0, 0, W, H, "F"); };
-    const hLine = (y: number, x1 = ML, x2 = W - MR) => {
-      doc.setDrawColor(LINE_COLOR); doc.setLineWidth(0.3); doc.line(x1, y, x2, y);
+    // Colors
+    const BG_DARK = "#0f172a";    // slate-900
+    const BG_DARK2 = "#1e293b";   // slate-800
+    const GOLD = "#c4a46a";
+    const GOLD_DIM = "#94856a";
+    const TEXT_LIGHT = "#e2e8f0";
+    const TEXT_BODY = "#333333";
+    const TEXT_DIM = "#94a3b8";
+    const CREAM = "#f5f0e8";
+
+    // Strip HTML for PDF, fix word joining
+    const plainText = editingNote.texto
+      .replace(/<\/p>\s*<p>/gi, "\n\n")
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<[^>]*>/g, "")
+      .replace(/&nbsp;/g, " ")
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/\.([A-ZÀ-Ú])/g, ". $1")
+      .replace(/,([A-Za-zÀ-ú])/g, ", $1")
+      .replace(/;([A-Za-zÀ-ú])/g, "; $1")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+
+    const title = noteTitle(editingNote.texto);
+    const sec = SECTIONS.find(s => s.key === editingNote.categoria);
+    const catLabel = sec ? `${sec.icon} ${sec.label}` : "";
+
+    // ─── PAGE 1: COVER ───
+    doc.setFillColor(BG_DARK);
+    doc.rect(0, 0, W, H, "F");
+
+    // Subtle accent stripes
+    doc.setFillColor(BG_DARK2);
+    doc.rect(0, H * 0.35, W, 1.5, "F");
+    doc.rect(0, H * 0.65, W, 0.8, "F");
+
+    // Cross symbol
+    doc.setTextColor(GOLD);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(48);
+    doc.text("\u2720", W / 2, 80, { align: "center" });
+
+    // Category label
+    if (catLabel) {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.setTextColor(GOLD_DIM);
+      doc.text(catLabel.toUpperCase(), W / 2, 100, { align: "center" });
+    }
+
+    // Title
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(26);
+    doc.setTextColor(255, 255, 255);
+    const titleWrapped = doc.splitTextToSize(title.toUpperCase(), UW);
+    doc.text(titleWrapped, W / 2, 118, { align: "center" });
+
+    // Gold line
+    const afterTitle = 118 + titleWrapped.length * 11 + 8;
+    doc.setDrawColor(GOLD);
+    doc.setLineWidth(0.5);
+    doc.line(W / 2 - 30, afterTitle, W / 2 + 30, afterTitle);
+
+    // Subtitle with ref (if note has one in title)
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(12);
+    doc.setTextColor(GOLD);
+    doc.text(`Reflexão: ${title}`, W / 2, afterTitle + 14, { align: "center" });
+
+    // Date
+    doc.setFontSize(10);
+    doc.setTextColor(TEXT_DIM);
+    doc.text(formatDateFull(editingNote.atualizadoEm), W / 2, afterTitle + 28, { align: "center" });
+
+    // Footer
+    doc.setFontSize(9);
+    doc.setTextColor(TEXT_DIM);
+    doc.text("Material de Estudo Bíblico", W / 2, H - 25, { align: "center" });
+    doc.setDrawColor(GOLD);
+    doc.setLineWidth(0.3);
+    doc.line(W / 2 - 20, H - 20, W / 2 + 20, H - 20);
+
+    // ─── PAGE 2+: CONTENT ───
+    doc.addPage();
+    let y = MT;
+
+    const ensureSpace = (needed: number) => {
+      if (y + needed > H - MB) {
+        doc.addPage();
+        y = MT;
+      }
     };
 
-    // Strip HTML for PDF
-    const plainText = editingNote.texto.replace(/<[^>]*>/g, "\n").replace(/&nbsp;/g, " ").replace(/\n{3,}/g, "\n\n").trim();
-    const rawLines = plainText.split("\n");
+    // Content title
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(16);
+    doc.setTextColor(TEXT_BODY);
+    const contentTitle = doc.splitTextToSize(`REFLEXÃO: ${title.toUpperCase()}`, UW);
+    doc.text(contentTitle, ML, y);
+    y += contentTitle.length * 7 + 3;
 
+    // Gold line
+    doc.setDrawColor(GOLD);
+    doc.setLineWidth(0.5);
+    doc.line(ML, y, ML + 40, y);
+    y += 10;
+
+    // Parse sections from plain text
+    const rawLines = plainText.split("\n");
     type PDFSection = { heading: string; lines: string[] };
     const sections: PDFSection[] = [];
     let current: PDFSection | null = null;
@@ -464,97 +559,103 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
         current.lines.push(line);
       }
     }
-
     if (sections.length === 0) sections.push({ heading: "", lines: rawLines });
 
-    const title = noteTitle(editingNote.texto);
-    const sec = SECTIONS.find(s => s.key === editingNote.categoria);
-    const catLabel = sec ? `${sec.icon} ${sec.label}` : "";
-
-    // Cover
-    fillBg();
-    doc.setDrawColor(GOLD); doc.setLineWidth(0.5);
-    doc.line(W / 2 - 30, 80, W / 2 + 30, 80);
-    if (catLabel) {
-      doc.setFont("helvetica", "normal"); doc.setFontSize(10);
-      doc.setTextColor(GOLD_DIM);
-      doc.text(catLabel.toUpperCase(), W / 2, 92, { align: "center" });
-    }
-    doc.setFont("helvetica", "bold"); doc.setFontSize(26);
-    doc.setTextColor(GOLD);
-    const titleWrapped = doc.splitTextToSize(title.toUpperCase(), UW);
-    const titleY = 110;
-    doc.text(titleWrapped, W / 2, titleY, { align: "center" });
-    const afterTitle = titleY + titleWrapped.length * 11 + 8;
-    doc.setDrawColor(GOLD); doc.setLineWidth(0.5);
-    doc.line(W / 2 - 30, afterTitle, W / 2 + 30, afterTitle);
-    doc.setFont("helvetica", "normal"); doc.setFontSize(11);
-    doc.setTextColor(TEXT_DIM);
-    doc.text(formatDateFull(editingNote.atualizadoEm), W / 2, afterTitle + 14, { align: "center" });
-    doc.setFontSize(8); doc.setTextColor(TEXT_DIM);
-    doc.text("Material de Estudo Bíblico", W / 2, H - 20, { align: "center" });
-
-    // Content pages
-    doc.addPage(); fillBg();
-    let y = MT;
-
-    const ensureSpace = (needed: number) => {
-      if (y + needed > H - MB) { doc.addPage(); fillBg(); y = MT; }
-    };
-
-    const writeText = (text: string, opts: { bold?: boolean; size?: number; color?: string; indent?: number } = {}) => {
-      const { bold = false, size = 10.5, color = TEXT, indent = 0 } = opts;
-      doc.setFont("helvetica", bold ? "bold" : "normal");
-      doc.setFontSize(size);
-      doc.setTextColor(color);
-      const maxW = UW - indent;
-      const wrapped = doc.splitTextToSize(text, maxW);
-      const lineH = size * 0.45;
-      ensureSpace(wrapped.length * lineH);
-      doc.text(wrapped, ML + indent, y);
-      y += wrapped.length * lineH + 1.5;
-    };
-
+    // Render content with serif font (times)
     for (let si = 0; si < sections.length; si++) {
       const section = sections[si];
+
       if (section.heading) {
-        ensureSpace(18);
-        if (si > 0) y += 4;
-        doc.setFont("helvetica", "bold"); doc.setFontSize(12);
-        doc.setTextColor(GOLD);
+        ensureSpace(16);
+        if (si > 0) y += 6;
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(13);
+        doc.setTextColor(BG_DARK);
         const headWrapped = doc.splitTextToSize(section.heading.toUpperCase(), UW);
         doc.text(headWrapped, ML, y);
-        y += headWrapped.length * 5.5 + 2;
-        hLine(y); y += 6;
+        y += headWrapped.length * 6 + 2;
+        doc.setDrawColor(GOLD);
+        doc.setLineWidth(0.3);
+        doc.line(ML, y, ML + 40, y);
+        y += 8;
       }
+
       for (const line of section.lines) {
-        if (!line.trim()) { y += 2.5; continue; }
+        if (!line.trim()) { y += 4; continue; }
+
+        // Bullet points
         const bulletMatch = line.match(/^\s*[\*\-•›]\s+(.*)$/);
         if (bulletMatch) {
           const bulletText = bulletMatch[1].replace(/\*\*(.+?)\*\*/g, "$1").replace(/_(.+?)_/g, "$1");
           ensureSpace(8);
-          doc.setFont("helvetica", "normal"); doc.setFontSize(10.5);
+          doc.setFont("times", "normal");
+          doc.setFontSize(12);
           doc.setTextColor(GOLD);
           doc.text("›", ML + 2, y);
-          doc.setTextColor(TEXT);
+          doc.setTextColor(TEXT_BODY);
           const wrapped = doc.splitTextToSize(bulletText, UW - 8);
-          for (const wl of wrapped) { ensureSpace(5.5); doc.text(wl, ML + 8, y); y += 5; }
-          y += 1;
+          for (const wl of wrapped) { ensureSpace(6); doc.text(wl, ML + 8, y); y += 6; }
+          y += 2;
           continue;
         }
+
+        // Regular paragraph
         const cleanLine = line.replace(/\*\*(.+?)\*\*/g, "$1").replace(/_(.+?)_/g, "$1");
-        writeText(cleanLine);
+        doc.setFont("times", "normal");
+        doc.setFontSize(12);
+        doc.setTextColor(TEXT_BODY);
+        const wrapped = doc.splitTextToSize(cleanLine, UW);
+        const lineH = 5.5;
+        ensureSpace(wrapped.length * lineH);
+        doc.text(wrapped, ML, y);
+        y += wrapped.length * lineH + 3; // generous paragraph spacing
       }
     }
 
+    // Check if there's a verse-like blockquote in the original HTML
+    const verseMatch = editingNote.texto.match(/<blockquote[^>]*>[\s\S]*?<strong>\[(.+?)\]<\/strong>[\s\S]*?<em>([\s\S]*?)<\/em>[\s\S]*?<\/blockquote>/i);
+    if (verseMatch) {
+      const verseRef = verseMatch[1];
+      const verseText = verseMatch[2].replace(/<[^>]*>/g, "").trim();
+
+      y += 8;
+      ensureSpace(40);
+
+      // Verse decorative box
+      const verseLines = doc.splitTextToSize(`"${verseText}"`, UW - 20);
+      const boxH = verseLines.length * 5.5 + 22;
+
+      doc.setFillColor(CREAM);
+      doc.setDrawColor(GOLD);
+      doc.setLineWidth(0.4);
+      doc.roundedRect(ML, y, UW, boxH, 3, 3, "FD");
+
+      // Gold left accent
+      doc.setFillColor(GOLD);
+      doc.rect(ML, y, 3, boxH, "F");
+
+      y += 10;
+      doc.setFont("times", "italic");
+      doc.setFontSize(11);
+      doc.setTextColor(80, 60, 40);
+      for (const vl of verseLines) { doc.text(vl, ML + 14, y); y += 5.5; }
+
+      y += 3;
+      doc.setFont("times", "bold");
+      doc.setFontSize(10);
+      doc.setTextColor(GOLD_DIM);
+      doc.text(`— ${verseRef}`, ML + 14, y);
+      y += 10;
+    }
+
+    // Page numbers on content pages
     const totalPages = doc.getNumberOfPages();
     for (let i = 2; i <= totalPages; i++) {
       doc.setPage(i);
-      doc.setFont("helvetica", "normal"); doc.setFontSize(8);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
       doc.setTextColor(TEXT_DIM);
       doc.text(`${i - 1}`, W / 2, H - 12, { align: "center" });
-      doc.setDrawColor(GOLD); doc.setLineWidth(0.2);
-      doc.line(ML, 18, W - MR, 18);
     }
 
     const fileName = title.replace(/[^a-zA-Z0-9À-ÿ\s]/g, "").trim().replace(/\s+/g, "_").slice(0, 40) || "nota";
