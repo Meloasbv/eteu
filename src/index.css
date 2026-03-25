@@ -232,6 +232,15 @@
   border-top: 1px solid hsl(var(--border));
   margin: 16px 0;
 }
+.tiptap-editor-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 12px;
+  border: 1px solid hsl(var(--border));
+  box-shadow: var(--shadow-elegant);
+  margin: 12px 0;
+  display: block;
+}
 
 /* Hide scrollbar utility */
 .no-scrollbar::-webkit-scrollbar { display: none; }
