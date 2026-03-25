@@ -22,6 +22,7 @@ interface RichTextEditorProps {
   minHeight?: string;
   onVerseClick?: () => void;
   onRecordClick?: () => void;
+  onBibleRefClick?: (ref: string) => void;
   isRecording?: boolean;
   disabled?: boolean;
 }
@@ -33,6 +34,7 @@ export default function RichTextEditor({
   minHeight = "calc(100dvh - 300px)",
   onVerseClick,
   onRecordClick,
+  onBibleRefClick,
   isRecording = false,
   disabled = false,
 }: RichTextEditorProps) {
