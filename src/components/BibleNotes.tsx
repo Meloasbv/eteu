@@ -130,6 +130,10 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
   const recognitionRef = useRef<any>(null);
   const editingNoteRef = useRef<Note | null>(null);
 
+  // Note search (Ctrl+F)
+  const [noteSearchOpen, setNoteSearchOpen] = useState(false);
+  const editorContainerRef = useRef<HTMLDivElement>(null);
+
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Load notes from Supabase + migrate localStorage notes once
