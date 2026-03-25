@@ -619,8 +619,8 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
             </div>
           </div>
 
-          {/* Nav arrows */}
-          <div className="px-6 pt-1 pb-3 flex gap-2">
+          {/* Nav arrows + Mark all week */}
+          <div className="px-6 pt-1 pb-3 flex gap-2 items-center">
             {([-1, 1] as const).map(delta => (
               <button key={delta} onClick={() => setActiveWeek(w => Math.max(0, Math.min(WEEKS.length - 1, w + delta)))}
                 disabled={(delta === -1 && activeWeek === 0) || (delta === 1 && activeWeek === WEEKS.length - 1)}
@@ -629,6 +629,26 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
                 {delta === -1 ? "‹" : "›"}
               </button>
             ))}
+            <div className="flex-1" />
+            <button
+              onClick={() => {
+                const allDone = cw.days.every((day, di) => !day.r.length || checked[`${activeWeek}-${di}`]);
+                setChecked(prev => {
+                  const next = { ...prev };
+                  cw.days.forEach((day, di) => {
+                    if (day.r.length) next[`${activeWeek}-${di}`] = !allDone;
+                  });
+                  return next;
+                });
+                setSaved(true); setTimeout(() => setSaved(false), 2000);
+              }}
+              className={`px-4 py-2 rounded-xl text-[12px] font-semibold cursor-pointer border transition-all duration-200 font-display tracking-wide
+                ${wp >= 1
+                  ? "border-success/40 bg-success/10 text-success hover:bg-success/20"
+                  : "border-primary/40 bg-primary/10 text-primary hover:bg-primary/20"}`}
+            >
+              {wp >= 1 ? "✓ Desmarcar semana" : "☑ Marcar semana inteira"}
+            </button>
           </div>
 
           {/* Days grid */}
