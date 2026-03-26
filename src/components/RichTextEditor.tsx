@@ -98,6 +98,8 @@ export default function RichTextEditor({
     });
   }, [editor]);
 
+  const handleUndo = useCallback(() => editor?.chain().focus().undo().run(), [editor]);
+  const handleRedo = useCallback(() => editor?.chain().focus().redo().run(), [editor]);
   const toggleBold = useCallback(() => editor?.chain().focus().toggleBold().run(), [editor]);
   const toggleItalic = useCallback(() => editor?.chain().focus().toggleItalic().run(), [editor]);
   const toggleUnderline = useCallback(() => editor?.chain().focus().toggleUnderline().run(), [editor]);

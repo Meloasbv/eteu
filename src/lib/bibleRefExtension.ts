@@ -48,8 +48,8 @@ async function fetchVerseText(normalized: string): Promise<string | null> {
   const apiRef = toApiRef(normalized);
   const promise = (async () => {
     try {
-      // Try almeida first, then fallback without translation
-      for (const translation of ["almeida", ""]) {
+      // Try Portuguese translations first, then fallback to default (KJV)
+      for (const translation of ["almeida", "arc", ""]) {
         const url = translation
           ? `https://bible-api.com/${encodeURIComponent(apiRef)}?translation=${translation}`
           : `https://bible-api.com/${encodeURIComponent(apiRef)}`;
