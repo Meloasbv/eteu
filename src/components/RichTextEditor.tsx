@@ -98,6 +98,8 @@ export default function RichTextEditor({
     });
   }, [editor]);
 
+  const handleUndo = useCallback(() => editor?.chain().focus().undo().run(), [editor]);
+  const handleRedo = useCallback(() => editor?.chain().focus().redo().run(), [editor]);
   const toggleBold = useCallback(() => editor?.chain().focus().toggleBold().run(), [editor]);
   const toggleItalic = useCallback(() => editor?.chain().focus().toggleItalic().run(), [editor]);
   const toggleUnderline = useCallback(() => editor?.chain().focus().toggleUnderline().run(), [editor]);
@@ -172,78 +174,84 @@ export default function RichTextEditor({
   );
 
   return (
-    <div className="flex flex-col flex-1 min-h-0">
-      {/* ── Toolbar Line 1: Text formatting ── */}
-      <div className="flex items-center gap-0.5 px-4 py-2 border-b border-border-subtle overflow-x-auto no-scrollbar">
-        <BtnTool active={editor.isActive("bold")} onClick={toggleBold} title="Negrito (Ctrl+B)">
-          <strong>B</strong>
-        </BtnTool>
-        <BtnTool active={editor.isActive("italic")} onClick={toggleItalic} title="Itálico (Ctrl+I)">
-          <em>I</em>
-        </BtnTool>
-        <BtnTool active={editor.isActive("underline")} onClick={toggleUnderline} title="Sublinhado (Ctrl+U)">
-          <span className="underline">U</span>
-        </BtnTool>
-        <BtnTool active={editor.isActive("strike")} onClick={toggleStrike} title="Tachado">
-          <span className="line-through">S</span>
-        </BtnTool>
-        <div className="w-px h-5 bg-border-subtle mx-1" />
-        <BtnTool active={editor.isActive("heading", { level: 2 })} onClick={toggleH2} title="Título">
-          H2
-        </BtnTool>
-        <BtnTool active={editor.isActive("heading", { level: 3 })} onClick={toggleH3} title="Subtítulo">
-          H3
-        </BtnTool>
-        <BtnTool active={editor.isActive("blockquote")} onClick={toggleBlockquote} title="Citação">
-          ❝
-        </BtnTool>
-        <div className="w-px h-5 bg-border-subtle mx-1" />
-        <BtnTool active={editor.isActive("bulletList")} onClick={toggleBulletList} title="Lista">
-          •≡
-        </BtnTool>
-        <BtnTool active={editor.isActive("orderedList")} onClick={toggleOrderedList} title="Lista numerada">
-          1.
-        </BtnTool>
-      </div>
+    <div className="flex flex-col flex-1 min-h-0 relative">
+      {/* ── Sticky Toolbars ── */}
+      <div className="sticky top-0 z-20 bg-background border-b border-border-subtle">
+        {/* ── Toolbar Line 1: Undo/Redo + Text formatting ── */}
+        <div className="flex items-center gap-0.5 px-4 py-2 overflow-x-auto no-scrollbar">
+          <BtnTool onClick={handleUndo} title="Desfazer (Ctrl+Z)">↩</BtnTool>
+          <BtnTool onClick={handleRedo} title="Refazer (Ctrl+Shift+Z)">↪</BtnTool>
+          <div className="w-px h-5 bg-border-subtle mx-1" />
+          <BtnTool active={editor.isActive("bold")} onClick={toggleBold} title="Negrito (Ctrl+B)">
+            <strong>B</strong>
+          </BtnTool>
+          <BtnTool active={editor.isActive("italic")} onClick={toggleItalic} title="Itálico (Ctrl+I)">
+            <em>I</em>
+          </BtnTool>
+          <BtnTool active={editor.isActive("underline")} onClick={toggleUnderline} title="Sublinhado (Ctrl+U)">
+            <span className="underline">U</span>
+          </BtnTool>
+          <BtnTool active={editor.isActive("strike")} onClick={toggleStrike} title="Tachado">
+            <span className="line-through">S</span>
+          </BtnTool>
+          <div className="w-px h-5 bg-border-subtle mx-1" />
+          <BtnTool active={editor.isActive("heading", { level: 2 })} onClick={toggleH2} title="Título">
+            H2
+          </BtnTool>
+          <BtnTool active={editor.isActive("heading", { level: 3 })} onClick={toggleH3} title="Subtítulo">
+            H3
+          </BtnTool>
+          <BtnTool active={editor.isActive("blockquote")} onClick={toggleBlockquote} title="Citação">
+            ❝
+          </BtnTool>
+          <div className="w-px h-5 bg-border-subtle mx-1" />
+          <BtnTool active={editor.isActive("bulletList")} onClick={toggleBulletList} title="Lista">
+            •≡
+          </BtnTool>
+          <BtnTool active={editor.isActive("orderedList")} onClick={toggleOrderedList} title="Lista numerada">
+            1.
+          </BtnTool>
+        </div>
 
-      {/* ── Toolbar Line 2: Highlights + tools ── */}
-      <div className="flex items-center gap-1 px-4 py-1.5 border-b border-border-subtle">
-        {HIGHLIGHT_COLORS.map(h => (
-          <button
-            key={h.name}
-            type="button"
-            onClick={() => setHighlight(h.color)}
-            title={`Destaque ${h.name}`}
-            className={`w-7 h-7 rounded-md border-none cursor-pointer text-base flex items-center justify-center transition-all duration-150
-              ${editor.isActive("highlight", { color: h.color }) ? "ring-2 ring-primary scale-110" : "hover:scale-110"}`}
-          >
-            {h.label}
-          </button>
-        ))}
-        <div className="w-px h-5 bg-border-subtle mx-1" />
-        {onRecordClick && (
-          <button
-            type="button"
-            onClick={onRecordClick}
-            title={isRecording ? "Parar gravação" : "Gravar áudio"}
-            className={`w-8 h-8 rounded-md border-none cursor-pointer flex items-center justify-center text-sm transition-all duration-150
-              ${isRecording ? "bg-destructive/15 text-destructive animate-pulse" : "bg-transparent text-muted-foreground hover:text-foreground"}`}
-          >
-            {isRecording ? "⏹" : "🎙️"}
-          </button>
-        )}
-        <div className="flex-1" />
-        {onVerseClick && (
-          <button
-            type="button"
-            onClick={onVerseClick}
-            className="px-3 py-1.5 rounded-full border border-border text-muted-foreground font-display text-[9px] tracking-[2px] uppercase cursor-pointer
-              hover:border-primary hover:text-primary hover:bg-primary/5 transition-all duration-200"
-          >
-            📖 Versículo
-          </button>
-        )}
-        <span className="text-[11px] text-muted-foreground font-mono ml-2">{wordCount}w</span>
+        {/* ── Toolbar Line 2: Highlights + tools ── */}
+        <div className="flex items-center gap-1 px-4 py-1.5 border-t border-border-subtle/50">
+          {HIGHLIGHT_COLORS.map(h => (
+            <button
+              key={h.name}
+              type="button"
+              onClick={() => setHighlight(h.color)}
+              title={`Destaque ${h.name}`}
+              className={`w-7 h-7 rounded-md border-none cursor-pointer text-base flex items-center justify-center transition-all duration-150
+                ${editor.isActive("highlight", { color: h.color }) ? "ring-2 ring-primary scale-110" : "hover:scale-110"}`}
+            >
+              {h.label}
+            </button>
+          ))}
+          <div className="w-px h-5 bg-border-subtle mx-1" />
+          {onRecordClick && (
+            <button
+              type="button"
+              onClick={onRecordClick}
+              title={isRecording ? "Parar gravação" : "Gravar áudio"}
+              className={`w-8 h-8 rounded-md border-none cursor-pointer flex items-center justify-center text-sm transition-all duration-150
+                ${isRecording ? "bg-destructive/15 text-destructive animate-pulse" : "bg-transparent text-muted-foreground hover:text-foreground"}`}
+            >
+              {isRecording ? "⏹" : "🎙️"}
+            </button>
+          )}
+          <div className="flex-1" />
+          {onVerseClick && (
+            <button
+              type="button"
+              onClick={onVerseClick}
+              className="px-3 py-1.5 rounded-full border border-border text-muted-foreground font-display text-[9px] tracking-[2px] uppercase cursor-pointer
+                hover:border-primary hover:text-primary hover:bg-primary/5 transition-all duration-200"
+            >
+              📖 Versículo
+            </button>
+          )}
+          <span className="text-[11px] text-muted-foreground font-mono ml-2">{wordCount}w</span>
+        </div>
       </div>
 
       {/* ── Editor content ── */}
