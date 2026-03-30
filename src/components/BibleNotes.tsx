@@ -513,19 +513,9 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
         if (error || data?.error) { showToast(data?.error || "Erro ao gerar comentários"); setAiLoading(null); return; }
         const comments = data.result?.comments || [];
         if (comments.length === 0) { showToast("Nenhum comentário gerado"); setAiLoading(null); return; }
-        // Apply comment highlights to editor HTML
-        let html = editingNote.texto;
-        for (const c of comments) {
-          const trecho = c.trecho?.trim();
-          const comentario = c.comentario?.trim();
-          if (!trecho || !comentario) continue;
-          // Find the text in the HTML content (strip tags to find, then wrap in mark)
-          const escapedTrecho = trecho.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          const regex = new RegExp(`(${escapedTrecho})`, 'i');
-          html = html.replace(regex, `<mark data-comment="${comentario.replace(/"/g, '&quot;')}" class="ai-comment-highlight">$1</mark>`);
-        }
-        handleTextChange(html);
-        showToast(`${comments.length} comentários adicionados!`);
+        setAiComments(comments);
+        setAiCommentsOpen(true);
+        showToast(`${comments.length} comentários gerados!`);
         setAiLoading(null);
         return;
       }
