@@ -1181,9 +1181,24 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
               >
                 {aiLoading === "gramatica" ? "⏳ Corrigindo..." : "📝 Corrigir Gramática"}
               </button>
+              <button
+                onClick={() => callAI("comentar")}
+                disabled={!!aiLoading}
+                className="block w-full px-4 py-3 bg-transparent border-none font-body text-[15px]
+                  text-foreground text-left cursor-pointer hover:bg-card-hover active:bg-card-hover
+                  disabled:opacity-50 disabled:cursor-default transition-colors duration-100"
+              >
+                {aiLoading === "comentar" ? "⏳ Comentando..." : "💬 Comentar com IA"}
+              </button>
               <div className="h-px bg-border-subtle my-1" />
               <button
-                onClick={handleGeneratePDF}
+                onClick={handleShareNote}
+                className="block w-full px-4 py-3 bg-transparent border-none font-body text-[15px]
+                  text-foreground text-left cursor-pointer hover:bg-card-hover active:bg-card-hover transition-colors duration-100"
+              >
+                🔗 Compartilhar Link
+              </button>
+              <div className="h-px bg-border-subtle my-1" />
                 className="block w-full px-4 py-3 bg-transparent border-none font-body text-[15px]
                   text-foreground text-left cursor-pointer hover:bg-card-hover active:bg-card-hover transition-colors duration-100"
               >
