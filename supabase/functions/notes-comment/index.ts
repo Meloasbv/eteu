@@ -46,6 +46,9 @@ Regras:
 - Inclua 3-6 comentários
 - O campo "trecho" DEVE ser uma cópia EXATA de um trecho que existe na nota original
 - Escolha trechos significativos, não palavras soltas
+- NUNCA repita o mesmo conteúdo do trecho no comentário — o comentário deve ACRESCENTAR informação nova
+- NUNCA faça comentários genéricos ou óbvios — seja específico e perspicaz
+- Cada comentário deve trazer uma perspectiva DIFERENTE (contexto histórico, conexão bíblica, aplicação, etc.)
 - Comentários devem ser concisos e relevantes
 - Responda APENAS o JSON, sem markdown, sem explicação
 - Em português brasileiro`;
