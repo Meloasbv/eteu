@@ -117,7 +117,9 @@ export default function SharedNote() {
         {/* Content — uses same styling as tiptap editor */}
         <div
           ref={contentRef}
-          className="tiptap-editor-content font-body text-base leading-relaxed text-foreground"
+          className="tiptap-editor-content font-body text-[15px] leading-[1.8] text-foreground
+            [&_p]:mb-2 [&_p]:text-[15px] [&_p]:leading-[1.8]
+            [&_strong]:font-semibold [&_em]:italic"
           dangerouslySetInnerHTML={{ __html: contentWithRefs }}
         />
 
