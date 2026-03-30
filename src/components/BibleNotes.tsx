@@ -276,6 +276,8 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
   // AI
   const [aiLoading, setAiLoading] = useState<string | null>(null);
   const [aiResult, setAiResult] = useState<{ title: string; content: string } | null>(null);
+  const [aiComments, setAiComments] = useState<{ trecho: string; comentario: string }[]>([]);
+  const [aiCommentsOpen, setAiCommentsOpen] = useState(false);
 
   // Audio recording
   const [isRecording, setIsRecording] = useState(false);
