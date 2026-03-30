@@ -1198,7 +1198,8 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
               >
                 🔗 Compartilhar Link
               </button>
-              <div className="h-px bg-border-subtle my-1" />
+              <button
+                onClick={handleGeneratePDF}
                 className="block w-full px-4 py-3 bg-transparent border-none font-body text-[15px]
                   text-foreground text-left cursor-pointer hover:bg-card-hover active:bg-card-hover transition-colors duration-100"
               >
