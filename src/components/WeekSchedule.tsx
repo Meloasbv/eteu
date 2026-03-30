@@ -152,7 +152,7 @@ export default function WeekSchedule({ userCodeId }: { userCodeId: string }) {
       <div style={{ padding: "0 20px 20px", display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
         <div>
           <h2 style={{ fontSize: 24, fontWeight: 300, color: "#e8d8b8", letterSpacing: 1 }}>📅 Agenda da Semana</h2>
-          <p style={{ fontSize: 13, color: "#6a5a48", marginTop: 4 }}>22 a 28 de março</p>
+          <p style={{ fontSize: 13, color: "#6a5a48", marginTop: 4 }}>29 de março a 4 de abril</p>
         </div>
         <button onClick={() => setShowModal(true)} style={{
           marginTop: 4, padding: "9px 16px", borderRadius: 12,
