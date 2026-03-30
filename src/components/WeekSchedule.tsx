@@ -27,44 +27,48 @@ const COLOR_OPTIONS = [
 const ICON_OPTIONS = ["📌","🙏","🎯","🌹","🥗","⛪","🔬","🕯️","📖","💪","🎵","☕","🏃","✍️","💼","🧘","🎉","📞"];
 
 const DAYS_BASE = [
-  { label: "DOM", date: "22", full: "Domingo, 22 de março" },
-  { label: "SEG", date: "23", full: "Segunda, 23 de março" },
-  { label: "TER", date: "24", full: "Terça, 24 de março" },
-  { label: "QUA", date: "25", full: "Quarta, 25 de março" },
-  { label: "QUI", date: "26", full: "Quinta, 26 de março" },
-  { label: "SEX", date: "27", full: "Sexta, 27 de março" },
-  { label: "SAB", date: "28", full: "Sábado, 28 de março" },
+  { label: "DOM", date: "29", full: "Domingo, 29 de março" },
+  { label: "SEG", date: "30", full: "Segunda, 30 de março" },
+  { label: "TER", date: "31", full: "Terça, 31 de março" },
+  { label: "QUA", date: "01", full: "Quarta, 1 de abril" },
+  { label: "QUI", date: "02", full: "Quinta, 2 de abril" },
+  { label: "SEX", date: "03", full: "Sexta, 3 de abril" },
+  { label: "SAB", date: "04", full: "Sábado, 4 de abril" },
 ];
 
 const DEFAULT_EVENTS: Record<number, Evt[]> = {
   0: [{ id:"d0-0", name:"Culto", start:"19:00", end:"21:00", location:"Igreja", color:"#1a1a1a", textColor:"#ffffff", icon:"🙏" }],
   1: [
-    { id:"d1-0", name:"Feriado", start:"09:00", end:"12:00", color:"#f0ece3", textColor:"#6a5a48", icon:"🏖️" },
-    { id:"d1-1", name:"Almoço", start:"12:00", end:"13:00", location:"Casa verde", color:"#c8dfc8", textColor:"#2a4a2a", icon:"🥗" },
-    { id:"d1-2", name:"Tracks", start:"15:30", end:"17:30", color:"#7ecfe0", textColor:"#1a4a55", icon:"🎯" },
+    { id:"d1-0", name:"Pneumatologia", start:"09:00", end:"12:00", color:"#a09090", textColor:"#ffffff", icon:"🏁" },
+    { id:"d1-1", name:"Almoço", start:"12:00", end:"13:00", location:"Casa Verde", color:"#c8dfc8", textColor:"#2a4a2a", icon:"🥗" },
+    { id:"d1-2", name:"Laboratório", start:"15:30", end:"17:30", location:"Igreja", color:"#C8553D", textColor:"#ffffff", icon:"🔬" },
+    { id:"d1-3", name:"Janta", start:"18:00", end:"19:00", location:"Casa verde", color:"#c8dfc8", textColor:"#2a4a2a", icon:"🥗" },
   ],
   2: [
-    { id:"d2-0", name:"Cantares: Jornada do amor", start:"09:00", end:"12:00", color:"#a855f7", textColor:"#ffffff", icon:"🌹" },
-    { id:"d2-1", name:"Almoço", start:"12:00", end:"13:00", location:"Casa verde", color:"#c8dfc8", textColor:"#2a4a2a", icon:"🥗" },
-    { id:"d2-2", name:"Tracks", start:"15:30", end:"17:30", color:"#7ecfe0", textColor:"#1a4a55", icon:"🎯" },
-    { id:"d2-3", name:"Turno", start:"18:00", end:"22:00", location:"Igreja", color:"#c8b820", textColor:"#2a2000", icon:"⛪" },
+    { id:"d2-0", name:"Pneumatologia", start:"09:00", end:"12:00", color:"#a09090", textColor:"#ffffff", icon:"🏁" },
+    { id:"d2-1", name:"Almoço", start:"12:00", end:"13:00", location:"Casa Verde", color:"#c8dfc8", textColor:"#2a4a2a", icon:"🥗" },
+    { id:"d2-2", name:"Laboratório", start:"15:30", end:"17:30", location:"Igreja", color:"#C8553D", textColor:"#ffffff", icon:"🔬" },
+    { id:"d2-3", name:"Turno", start:"18:00", end:"22:00", location:"Igreja", color:"#9090c8", textColor:"#ffffff", icon:"⛪" },
   ],
   3: [
-    { id:"d3-0", name:"Cantares: Jornada do amor", start:"09:00", end:"12:00", color:"#a855f7", textColor:"#ffffff", icon:"🌹" },
+    { id:"d3-0", name:"Pneumatologia", start:"09:00", end:"12:00", color:"#a09090", textColor:"#ffffff", icon:"🏁" },
     { id:"d3-1", name:"Laboratório", start:"17:00", end:"19:00", location:"Igreja", color:"#C8553D", textColor:"#ffffff", icon:"🔬" },
-    { id:"d3-2", name:"Turno", start:"20:00", end:"22:00", location:"Igreja", color:"#c8b820", textColor:"#2a2000", icon:"⛪" },
+    { id:"d3-2", name:"Turno", start:"20:00", end:"22:00", location:"Igreja", color:"#9090c8", textColor:"#ffffff", icon:"⛪" },
   ],
   4: [
-    { id:"d4-0", name:"Cantares: Jornada do amor", start:"09:00", end:"12:00", color:"#a855f7", textColor:"#ffffff", icon:"🌹" },
+    { id:"d4-0", name:"Pneumatologia", start:"09:00", end:"12:00", color:"#a09090", textColor:"#ffffff", icon:"🏁" },
     { id:"d4-1", name:"Almoço", start:"12:00", end:"13:00", location:"Casa verde", color:"#c8dfc8", textColor:"#2a4a2a", icon:"🥗" },
-    { id:"d4-2", name:"Turno", start:"18:00", end:"22:00", location:"Igreja", color:"#c8b820", textColor:"#2a2000", icon:"⛪" },
+    { id:"d4-2", name:"Turno", start:"18:00", end:"22:00", location:"Igreja", color:"#9090c8", textColor:"#ffffff", icon:"⛪" },
   ],
   5: [
-    { id:"d5-0", name:"Cantares: Jornada do amor", start:"09:00", end:"12:00", color:"#a855f7", textColor:"#ffffff", icon:"🌹" },
-    { id:"d5-1", name:"Almoço", start:"12:00", end:"13:00", location:"Casa verde", color:"#c8dfc8", textColor:"#2a4a2a", icon:"🥗" },
-    { id:"d5-2", name:"Vigília", start:"22:00", end:"23:59", location:"Igreja", color:"#f9a8c9", textColor:"#5a1a35", icon:"🕯️" },
+    { id:"d5-0", name:"Almoço", start:"12:00", end:"13:00", location:"Casa verde", color:"#c8dfc8", textColor:"#2a4a2a", icon:"🥗" },
+    { id:"d5-1", name:"Laboratório", start:"15:30", end:"17:30", location:"Igreja", color:"#C8553D", textColor:"#ffffff", icon:"🔬" },
+    { id:"d5-2", name:"Janta", start:"18:00", end:"19:00", location:"Casa verde", color:"#c8dfc8", textColor:"#2a4a2a", icon:"🥗" },
   ],
-  6: [],
+  6: [
+    { id:"d6-0", name:"Evangelismo", start:"14:30", end:"15:00", color:"#a855f7", textColor:"#ffffff", icon:"📢" },
+    { id:"d6-1", name:"Turno de Páscoa", start:"19:30", end:"23:00", location:"Igreja", color:"#a8f0a8", textColor:"#1a4a1a", icon:"⛪" },
+  ],
 };
 
 const STORAGE_KEY = "week-schedule-events";
@@ -148,7 +152,7 @@ export default function WeekSchedule({ userCodeId }: { userCodeId: string }) {
       <div style={{ padding: "0 20px 20px", display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
         <div>
           <h2 style={{ fontSize: 24, fontWeight: 300, color: "#e8d8b8", letterSpacing: 1 }}>📅 Agenda da Semana</h2>
-          <p style={{ fontSize: 13, color: "#6a5a48", marginTop: 4 }}>22 a 28 de março</p>
+          <p style={{ fontSize: 13, color: "#6a5a48", marginTop: 4 }}>29 de março a 4 de abril</p>
         </div>
         <button onClick={() => setShowModal(true)} style={{
           marginTop: 4, padding: "9px 16px", borderRadius: 12,
