@@ -260,7 +260,7 @@ export default function RichTextEditor({
         <EditorContent editor={editor} onPaste={handleImagePaste} />
 
         {/* ── Floating Bubble Menu on selection ── */}
-        <BubbleMenu editor={editor} tippyOptions={{ duration: 150, placement: "top" }}>
+        <BubbleMenu editor={editor}>
           <div className="flex items-center gap-0.5 bg-card border border-border rounded-xl shadow-elegant-lg px-1.5 py-1 animate-fade-in">
             <BtnTool active={editor.isActive("bold")} onClick={toggleBold} title="Negrito">
               <strong>B</strong>
