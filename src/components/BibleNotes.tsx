@@ -493,9 +493,9 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
   }, [verseResult, showToast]);
 
   // ── AI actions ─────────────────────────────────────────────────────────────
-  const callAI = useCallback(async (action: "organize" | "resumir" | "gramatica") => {
+  const callAI = useCallback(async (action: "organize" | "resumir" | "gramatica" | "comentar") => {
     if (!editingNote || !editingNote.texto.trim()) {
-      showToast(action === "organize" ? "Escreva algo antes de organizar" : action === "gramatica" ? "Escreva algo antes de corrigir" : "Escreva algo antes de resumir");
+      showToast("Escreva algo antes");
       return;
     }
     setAiLoading(action);
@@ -503,6 +503,30 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
     setMenuOpen(false);
     try {
       const markdownBody = htmlToMarkdown(editingNote.texto);
+
+      if (action === "comentar") {
+        const { data, error } = await supabase.functions.invoke("notes-comment", {
+          body: { noteTitle: noteTitle(editingNote.texto), noteBody: markdownBody },
+        });
+        if (error || data?.error) { showToast(data?.error || "Erro ao gerar comentários"); setAiLoading(null); return; }
+        const comments = data.result?.comments || [];
+        if (comments.length === 0) { showToast("Nenhum comentário gerado"); setAiLoading(null); return; }
+        // Apply comment highlights to editor HTML
+        let html = editingNote.texto;
+        for (const c of comments) {
+          const trecho = c.trecho?.trim();
+          const comentario = c.comentario?.trim();
+          if (!trecho || !comentario) continue;
+          // Find the text in the HTML content (strip tags to find, then wrap in mark)
+          const escapedTrecho = trecho.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const regex = new RegExp(`(${escapedTrecho})`, 'i');
+          html = html.replace(regex, `<mark data-comment="${comentario.replace(/"/g, '&quot;')}" class="ai-comment-highlight">$1</mark>`);
+        }
+        handleTextChange(html);
+        showToast(`${comments.length} comentários adicionados!`);
+        setAiLoading(null);
+        return;
+      }
 
       if (action === "organize") {
         const { data, error } = await supabase.functions.invoke("notes-ai", {
@@ -526,7 +550,7 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
       showToast("Erro de conexão");
     }
     setAiLoading(null);
-  }, [editingNote, showToast]);
+  }, [editingNote, showToast, handleTextChange]);
 
   // Keep ref in sync with editingNote
   useEffect(() => { editingNoteRef.current = editingNote; }, [editingNote]);
