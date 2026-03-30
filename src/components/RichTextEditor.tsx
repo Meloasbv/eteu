@@ -258,6 +258,47 @@ export default function RichTextEditor({
       {/* ── Editor content ── */}
       <div className="flex-1 overflow-y-auto px-5 py-4 pb-36" ref={editorRef}>
         <EditorContent editor={editor} onPaste={handleImagePaste} />
+
+        {/* ── Floating Bubble Menu on selection ── */}
+        <BubbleMenu editor={editor} tippyOptions={{ duration: 150, placement: "top" }}>
+          <div className="flex items-center gap-0.5 bg-card border border-border rounded-xl shadow-elegant-lg px-1.5 py-1 animate-fade-in">
+            <BtnTool active={editor.isActive("bold")} onClick={toggleBold} title="Negrito">
+              <strong>B</strong>
+            </BtnTool>
+            <BtnTool active={editor.isActive("italic")} onClick={toggleItalic} title="Itálico">
+              <em>I</em>
+            </BtnTool>
+            <BtnTool active={editor.isActive("underline")} onClick={toggleUnderline} title="Sublinhado">
+              <span className="underline">U</span>
+            </BtnTool>
+            <BtnTool active={editor.isActive("strike")} onClick={toggleStrike} title="Tachado">
+              <span className="line-through">S</span>
+            </BtnTool>
+            <div className="w-px h-5 bg-border-subtle mx-0.5" />
+            <BtnTool active={editor.isActive("heading", { level: 2 })} onClick={toggleH2} title="Título">
+              H2
+            </BtnTool>
+            <BtnTool active={editor.isActive("heading", { level: 3 })} onClick={toggleH3} title="Subtítulo">
+              H3
+            </BtnTool>
+            <BtnTool active={editor.isActive("blockquote")} onClick={toggleBlockquote} title="Citação">
+              ❝
+            </BtnTool>
+            <div className="w-px h-5 bg-border-subtle mx-0.5" />
+            {HIGHLIGHT_COLORS.map(h => (
+              <button
+                key={h.name}
+                type="button"
+                onClick={() => setHighlight(h.color)}
+                title={`Destaque ${h.name}`}
+                className={`w-7 h-7 rounded-md border-none cursor-pointer text-sm flex items-center justify-center transition-all duration-150
+                  ${editor.isActive("highlight", { color: h.color }) ? "ring-2 ring-primary scale-110" : "hover:scale-110"}`}
+              >
+                {h.label}
+              </button>
+            ))}
+          </div>
+        </BubbleMenu>
       </div>
     </div>
   );
