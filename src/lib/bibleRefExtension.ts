@@ -47,8 +47,8 @@ async function fetchVerseText(normalized: string): Promise<string | null> {
 
   const apiRef = toApiRef(normalized);
   const promise = (async () => {
+    // 1. Try bible-api.com with Portuguese translations
     try {
-      // Try Portuguese translations first, then fallback to default (KJV)
       for (const translation of ["almeida", "arc", ""]) {
         const url = translation
           ? `https://bible-api.com/${encodeURIComponent(apiRef)}?translation=${translation}`
@@ -64,6 +64,30 @@ async function fetchVerseText(normalized: string): Promise<string | null> {
         }
       }
     } catch {}
+
+    // 2. AI fallback — use edge function to get verse text
+    try {
+      const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL;
+      const supabaseKey = (import.meta as any).env?.VITE_SUPABASE_PUBLISHABLE_KEY;
+      if (supabaseUrl && supabaseKey) {
+        const res = await fetch(`${supabaseUrl}/functions/v1/verse-ai`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${supabaseKey}`,
+          },
+          body: JSON.stringify({ reference: normalized }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.text && !data.text.includes("não encontrado")) {
+            setCachedVerse(normalized, data.text);
+            return data.text;
+          }
+        }
+      }
+    } catch {}
+
     return null;
   })();
 

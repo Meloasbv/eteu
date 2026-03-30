@@ -493,9 +493,9 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
   }, [verseResult, showToast]);
 
   // ── AI actions ─────────────────────────────────────────────────────────────
-  const callAI = useCallback(async (action: "organize" | "resumir" | "gramatica") => {
+  const callAI = useCallback(async (action: "organize" | "resumir" | "gramatica" | "comentar") => {
     if (!editingNote || !editingNote.texto.trim()) {
-      showToast(action === "organize" ? "Escreva algo antes de organizar" : action === "gramatica" ? "Escreva algo antes de corrigir" : "Escreva algo antes de resumir");
+      showToast("Escreva algo antes");
       return;
     }
     setAiLoading(action);
@@ -503,6 +503,30 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
     setMenuOpen(false);
     try {
       const markdownBody = htmlToMarkdown(editingNote.texto);
+
+      if (action === "comentar") {
+        const { data, error } = await supabase.functions.invoke("notes-comment", {
+          body: { noteTitle: noteTitle(editingNote.texto), noteBody: markdownBody },
+        });
+        if (error || data?.error) { showToast(data?.error || "Erro ao gerar comentários"); setAiLoading(null); return; }
+        const comments = data.result?.comments || [];
+        if (comments.length === 0) { showToast("Nenhum comentário gerado"); setAiLoading(null); return; }
+        // Apply comment highlights to editor HTML
+        let html = editingNote.texto;
+        for (const c of comments) {
+          const trecho = c.trecho?.trim();
+          const comentario = c.comentario?.trim();
+          if (!trecho || !comentario) continue;
+          // Find the text in the HTML content (strip tags to find, then wrap in mark)
+          const escapedTrecho = trecho.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const regex = new RegExp(`(${escapedTrecho})`, 'i');
+          html = html.replace(regex, `<mark data-comment="${comentario.replace(/"/g, '&quot;')}" class="ai-comment-highlight">$1</mark>`);
+        }
+        handleTextChange(html);
+        showToast(`${comments.length} comentários adicionados!`);
+        setAiLoading(null);
+        return;
+      }
 
       if (action === "organize") {
         const { data, error } = await supabase.functions.invoke("notes-ai", {
@@ -526,7 +550,7 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
       showToast("Erro de conexão");
     }
     setAiLoading(null);
-  }, [editingNote, showToast]);
+  }, [editingNote, showToast, handleTextChange]);
 
   // Keep ref in sync with editingNote
   useEffect(() => { editingNoteRef.current = editingNote; }, [editingNote]);
@@ -606,7 +630,44 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
     return () => document.removeEventListener("keydown", handler);
   }, [editingNote]);
 
-  // ── PDF Generation ─────────────────────────────────────────────────────────
+  // ── Share link ─────────────────────────────────────────────────────────────
+  const handleShareNote = useCallback(async () => {
+    if (!editingNote) return;
+    setMenuOpen(false);
+
+    // Check if already shared
+    const { data: existing } = await (supabase as any)
+      .from("note_shares")
+      .select("slug")
+      .eq("note_id", editingNote.id)
+      .maybeSingle();
+
+    let slug: string;
+    if (existing?.slug) {
+      slug = existing.slug;
+    } else {
+      // Generate a slug from title + random
+      const titleSlug = noteTitle(editingNote.texto)
+        .toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "")
+        .slice(0, 30);
+      slug = `${titleSlug}-${Math.random().toString(36).slice(2, 8)}`;
+
+      const { error } = await (supabase as any)
+        .from("note_shares")
+        .insert({ note_id: editingNote.id, slug });
+
+      if (error) { showToast("Erro ao criar link"); return; }
+    }
+
+    const url = `${window.location.origin}/nota/${slug}`;
+    await navigator.clipboard.writeText(url);
+    showToast("Link copiado!");
+  }, [editingNote, showToast]);
+
+
   const handleGeneratePDF = useCallback(async () => {
     if (!editingNote) return;
     setMenuOpen(false);
@@ -1120,7 +1181,23 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
               >
                 {aiLoading === "gramatica" ? "⏳ Corrigindo..." : "📝 Corrigir Gramática"}
               </button>
+              <button
+                onClick={() => callAI("comentar")}
+                disabled={!!aiLoading}
+                className="block w-full px-4 py-3 bg-transparent border-none font-body text-[15px]
+                  text-foreground text-left cursor-pointer hover:bg-card-hover active:bg-card-hover
+                  disabled:opacity-50 disabled:cursor-default transition-colors duration-100"
+              >
+                {aiLoading === "comentar" ? "⏳ Comentando..." : "💬 Comentar com IA"}
+              </button>
               <div className="h-px bg-border-subtle my-1" />
+              <button
+                onClick={handleShareNote}
+                className="block w-full px-4 py-3 bg-transparent border-none font-body text-[15px]
+                  text-foreground text-left cursor-pointer hover:bg-card-hover active:bg-card-hover transition-colors duration-100"
+              >
+                🔗 Compartilhar Link
+              </button>
               <button
                 onClick={handleGeneratePDF}
                 className="block w-full px-4 py-3 bg-transparent border-none font-body text-[15px]
