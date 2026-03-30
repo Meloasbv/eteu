@@ -627,36 +627,45 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
     if (!editingNote) return;
     setMenuOpen(false);
 
-    // Check if already shared
-    const { data: existing } = await (supabase as any)
-      .from("note_shares")
-      .select("slug")
-      .eq("note_id", editingNote.id)
-      .maybeSingle();
-
-    let slug: string;
-    if (existing?.slug) {
-      slug = existing.slug;
-    } else {
-      // Generate a slug from title + random
-      const titleSlug = noteTitle(editingNote.texto)
-        .toLowerCase()
-        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-|-$/g, "")
-        .slice(0, 30);
-      slug = `${titleSlug}-${Math.random().toString(36).slice(2, 8)}`;
-
-      const { error } = await (supabase as any)
+    try {
+      // Check if already shared
+      const { data: existing } = await (supabase as any)
         .from("note_shares")
-        .insert({ note_id: editingNote.id, slug });
+        .select("slug")
+        .eq("note_id", editingNote.id)
+        .maybeSingle();
 
-      if (error) { showToast("Erro ao criar link"); return; }
+      let slug: string;
+      if (existing?.slug) {
+        slug = existing.slug;
+      } else {
+        // Generate a slug from title + random
+        const titleSlug = noteTitle(editingNote.texto)
+          .toLowerCase()
+          .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-|-$/g, "")
+          .slice(0, 30);
+        slug = `${titleSlug}-${Math.random().toString(36).slice(2, 8)}`;
+
+        const { error } = await (supabase as any)
+          .from("note_shares")
+          .insert({ note_id: editingNote.id, slug });
+
+        if (error) {
+          console.error("Share error:", error);
+          showToast("Erro ao criar link");
+          return;
+        }
+      }
+
+      const url = `${window.location.origin}/nota/${slug}`;
+      await navigator.clipboard.writeText(url);
+      showToast("Link copiado!");
+    } catch (e) {
+      console.error("Share error:", e);
+      showToast("Erro ao criar link");
     }
-
-    const url = `${window.location.origin}/nota/${slug}`;
-    await navigator.clipboard.writeText(url);
-    showToast("Link copiado!");
   }, [editingNote, showToast]);
 
 
