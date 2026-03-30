@@ -68,6 +68,35 @@ export type Database = {
         }
         Relationships: []
       }
+      note_shares: {
+        Row: {
+          created_at: string
+          id: string
+          note_id: string
+          slug: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          note_id: string
+          slug: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          note_id?: string
+          slug?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "note_shares_note_id_fkey"
+            columns: ["note_id"]
+            isOneToOne: false
+            referencedRelation: "notes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notes: {
         Row: {
           categoria: string
