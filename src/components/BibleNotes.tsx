@@ -276,6 +276,8 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
   // AI
   const [aiLoading, setAiLoading] = useState<string | null>(null);
   const [aiResult, setAiResult] = useState<{ title: string; content: string } | null>(null);
+  const [aiComments, setAiComments] = useState<{ trecho: string; comentario: string }[]>([]);
+  const [aiCommentsOpen, setAiCommentsOpen] = useState(false);
 
   // Audio recording
   const [isRecording, setIsRecording] = useState(false);
@@ -511,19 +513,9 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
         if (error || data?.error) { showToast(data?.error || "Erro ao gerar comentários"); setAiLoading(null); return; }
         const comments = data.result?.comments || [];
         if (comments.length === 0) { showToast("Nenhum comentário gerado"); setAiLoading(null); return; }
-        // Apply comment highlights to editor HTML
-        let html = editingNote.texto;
-        for (const c of comments) {
-          const trecho = c.trecho?.trim();
-          const comentario = c.comentario?.trim();
-          if (!trecho || !comentario) continue;
-          // Find the text in the HTML content (strip tags to find, then wrap in mark)
-          const escapedTrecho = trecho.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          const regex = new RegExp(`(${escapedTrecho})`, 'i');
-          html = html.replace(regex, `<mark data-comment="${comentario.replace(/"/g, '&quot;')}" class="ai-comment-highlight">$1</mark>`);
-        }
-        handleTextChange(html);
-        showToast(`${comments.length} comentários adicionados!`);
+        setAiComments(comments);
+        setAiCommentsOpen(true);
+        showToast(`${comments.length} comentários gerados!`);
         setAiLoading(null);
         return;
       }
@@ -635,36 +627,45 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
     if (!editingNote) return;
     setMenuOpen(false);
 
-    // Check if already shared
-    const { data: existing } = await (supabase as any)
-      .from("note_shares")
-      .select("slug")
-      .eq("note_id", editingNote.id)
-      .maybeSingle();
-
-    let slug: string;
-    if (existing?.slug) {
-      slug = existing.slug;
-    } else {
-      // Generate a slug from title + random
-      const titleSlug = noteTitle(editingNote.texto)
-        .toLowerCase()
-        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-|-$/g, "")
-        .slice(0, 30);
-      slug = `${titleSlug}-${Math.random().toString(36).slice(2, 8)}`;
-
-      const { error } = await (supabase as any)
+    try {
+      // Check if already shared
+      const { data: existing } = await (supabase as any)
         .from("note_shares")
-        .insert({ note_id: editingNote.id, slug });
+        .select("slug")
+        .eq("note_id", editingNote.id)
+        .maybeSingle();
 
-      if (error) { showToast("Erro ao criar link"); return; }
+      let slug: string;
+      if (existing?.slug) {
+        slug = existing.slug;
+      } else {
+        // Generate a slug from title + random
+        const titleSlug = noteTitle(editingNote.texto)
+          .toLowerCase()
+          .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-|-$/g, "")
+          .slice(0, 30);
+        slug = `${titleSlug}-${Math.random().toString(36).slice(2, 8)}`;
+
+        const { error } = await (supabase as any)
+          .from("note_shares")
+          .insert({ note_id: editingNote.id, slug });
+
+        if (error) {
+          console.error("Share error:", error);
+          showToast("Erro ao criar link");
+          return;
+        }
+      }
+
+      const url = `${window.location.origin}/nota/${slug}`;
+      await navigator.clipboard.writeText(url);
+      showToast("Link copiado!");
+    } catch (e) {
+      console.error("Share error:", e);
+      showToast("Erro ao criar link");
     }
-
-    const url = `${window.location.origin}/nota/${slug}`;
-    await navigator.clipboard.writeText(url);
-    showToast("Link copiado!");
   }, [editingNote, showToast]);
 
 
@@ -1256,6 +1257,46 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
             showToast("Versículo inserido");
           }}
         />
+
+        {/* ── AI COMMENTS PANEL ── */}
+        <div className={`fixed inset-0 z-[200] transition-opacity duration-250
+          ${aiCommentsOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}>
+          <div className="absolute inset-0 bg-black/35 backdrop-blur-[2px]" onClick={() => setAiCommentsOpen(false)} />
+          <div className={`absolute bottom-0 left-0 right-0 bg-card border-t border-border
+            rounded-t-[20px] pb-[calc(24px+env(safe-area-inset-bottom,0px))]
+            max-h-[85dvh] overflow-y-auto transition-transform duration-350
+            ${aiCommentsOpen ? "translate-y-0" : "translate-y-full"}`}
+            style={{ transitionTimingFunction: "cubic-bezier(.32,0,.15,1)" }}>
+            <div className="w-9 h-1 bg-border rounded-full mx-auto mt-3.5 mb-4" />
+            <p className="font-display text-[10px] tracking-[4px] uppercase text-muted-foreground text-center mb-4">
+              💬 Comentários da IA
+            </p>
+            <div className="px-5 pb-3 flex flex-col gap-3">
+              {aiComments.length === 0 ? (
+                <p className="text-center text-muted-foreground italic text-sm py-4">Nenhum comentário gerado.</p>
+              ) : (
+                aiComments.map((c, i) => (
+                  <div key={i} className="bg-background border border-border rounded-xl p-3.5">
+                    <p className="font-body text-[13px] text-muted-foreground italic mb-2 border-l-2 border-primary/40 pl-3">
+                      "{c.trecho}"
+                    </p>
+                    <p className="font-body text-[14px] text-foreground leading-relaxed">
+                      {c.comentario}
+                    </p>
+                  </div>
+                ))
+              )}
+              <button
+                onClick={() => setAiCommentsOpen(false)}
+                className="w-full py-2.5 rounded-[10px] bg-transparent border border-border
+                  text-muted-foreground font-display text-[9px] tracking-wide uppercase text-center cursor-pointer
+                  hover:border-primary/30 active:opacity-70 transition-all duration-150 mt-2"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
 
         {/* ── VERSE BOTTOM SHEET ── */}
         <div className={`fixed inset-0 z-[200] transition-opacity duration-250

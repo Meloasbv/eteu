@@ -53,28 +53,30 @@ Regras RÍGIDAS:
 - Se não houver erros, retorne o texto exatamente como está`;
       userPrompt = `Corrija os erros de gramática desta anotação:\n\nTítulo: ${noteTitle}\n\nConteúdo:\n${sourceBody}`;
     } else {
-      systemPrompt = `Você é um assistente que organiza a estrutura de anotações de estudo bíblico usando Markdown.
+      systemPrompt = `Você é um assistente que organiza a ESTRUTURA VISUAL de anotações de estudo bíblico usando Markdown.
 
-Sua tarefa:
-1. Adicionar títulos (## e ###) para separar seções logicamente
-2. Separar parágrafos corretamente (duas quebras de linha entre blocos)
-3. Converter itens que parecem listas em bullet points (- item)
-4. Usar > para citações bíblicas
-5. Usar --- para separar grandes seções
-6. Manter **negrito** e *itálico* para ênfases existentes
+Sua tarefa é APENAS reorganizar visualmente o texto, SEM alterar nenhuma palavra:
+1. Identifique frases que seriam bons títulos de seção e transforme-as em ## ou ###
+2. Use **negrito** para destacar termos-chave e frases importantes
+3. Use *itálico* para nomes próprios, termos teológicos ou ênfases naturais
+4. Separe parágrafos corretamente (duas quebras de linha entre blocos)
+5. Converta itens que parecem listas em bullet points (- item)
+6. Use > para citações bíblicas já existentes no texto
+7. Use --- para separar grandes seções temáticas
 
-Regras RÍGIDAS:
-- NÃO adicione nenhuma palavra, frase ou explicação que não exista no original
-- NÃO reescreva ou parafraseie — copie o texto EXATAMENTE como está
-- NÃO adicione introduções, conclusões ou comentários
+Regras ABSOLUTAS:
+- NÃO adicione NENHUMA palavra, frase ou explicação nova
+- NÃO remova NENHUMA palavra do texto original
+- NÃO reescreva, parafraseie ou resuma — copie CADA palavra EXATAMENTE como está
+- NÃO mude a ordem das frases ou parágrafos
 - NÃO junte parágrafos — cada ideia deve ficar em seu próprio parágrafo
-- Cada bullet point (•) do original deve virar um item de lista separado (- item)
+- Preserve TODOS os subtítulos (##/###), negrito (**texto**) e itálico (*texto*) já existentes
 - Se houver versículos bíblicos, mantenha-os exatamente como escritos
-- Preserve integralmente subtítulos (##/###), negrito (**texto**) e itálico (*texto*) já existentes
 - Comece direto com o conteúdo, sem frases como "Aqui está..."
-- Escreva em português brasileiro
-- O resultado DEVE ser Markdown bem formatado com quebras de linha entre seções`;
-      userPrompt = `Organize esta anotação de estudo bíblico:\n\nTítulo original: ${noteTitle}\n\nConteúdo:\n${sourceBody}`;
+- O resultado DEVE ser Markdown bem formatado com quebras de linha entre seções
+
+O objetivo é que o texto fique VISUALMENTE organizado e fácil de ler, com hierarquia clara de títulos e destaques, mas com EXATAMENTE as mesmas palavras do original.`;
+      userPrompt = `Organize visualmente esta anotação (NÃO mude nenhuma palavra, apenas adicione formatação Markdown):\n\nTítulo original: ${noteTitle}\n\nConteúdo:\n${sourceBody}`;
     }
 
     const response = await fetch(
