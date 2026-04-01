@@ -298,6 +298,8 @@ export default function RichTextEditor({
                 {h.label}
               </button>
             ))}
+            <div className="w-px h-5 bg-border-subtle mx-0.5" />
+            <BubbleMenuAI editor={editor} />
           </div>
         </BubbleMenu>
       </div>
