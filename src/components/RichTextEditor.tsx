@@ -8,6 +8,7 @@ import Placeholder from "@tiptap/extension-placeholder";
 import CharacterCount from "@tiptap/extension-character-count";
 import { useEffect, useCallback, useRef } from "react";
 import { BibleRefHighlight, setupBibleRefListeners } from "@/lib/bibleRefExtension";
+import BubbleMenuAI from "@/components/BubbleMenuAI";
 
 // ── Highlight colors config ──
 const HIGHLIGHT_COLORS = [
@@ -297,6 +298,8 @@ export default function RichTextEditor({
                 {h.label}
               </button>
             ))}
+            <div className="w-px h-5 bg-border-subtle mx-0.5" />
+            <BubbleMenuAI editor={editor} />
           </div>
         </BubbleMenu>
       </div>

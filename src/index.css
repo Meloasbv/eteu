@@ -223,6 +223,9 @@
 }
 .tiptap-editor-content ul li { list-style-type: disc; }
 .tiptap-editor-content ol li { list-style-type: decimal; }
+.tiptap-editor-content p {
+  margin-bottom: 0.75em;
+}
 .tiptap-editor-content mark {
   border-radius: 2px;
   padding: 1px 2px;

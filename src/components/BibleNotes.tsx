@@ -36,10 +36,15 @@ const SECTIONS: { key: Section; label: string; icon: string }[] = [
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function noteTitle(texto: string) {
-  // Strip HTML tags for title extraction
-  const stripped = texto.replace(/<[^>]*>/g, "").trim();
-  const first = stripped.split("\n")[0]?.trim().replace(/^#{1,3}\s*/, "");
-  return first || "Sem título";
+  // Replace block-level closing tags with newlines before stripping
+  const stripped = texto
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|h[1-6]|div|li|blockquote)>/gi, "\n")
+    .replace(/<[^>]*>/g, "")
+    .trim();
+  const lines = stripped.split("\n").map(l => l.trim()).filter(Boolean);
+  const first = lines[0]?.replace(/^#{1,3}\s*/, "") || "Sem título";
+  return first;
 }
 
 function notePreview(texto: string, len = 60) {
@@ -640,12 +645,20 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
         slug = existing.slug;
       } else {
         // Generate a slug from title + random
-        const titleSlug = noteTitle(editingNote.texto)
+        const rawTitle = noteTitle(editingNote.texto);
+        let titleSlug = rawTitle
           .toLowerCase()
           .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/[^a-z0-9\s]+/g, "")
+          .trim()
+          .replace(/\s+/g, "-")
           .replace(/^-|-$/g, "")
-          .slice(0, 30);
+          .slice(0, 50);
+        // Don't cut mid-word
+        if (titleSlug.length >= 50) {
+          const lastH = titleSlug.lastIndexOf("-");
+          if (lastH > 20) titleSlug = titleSlug.slice(0, lastH);
+        }
         slug = `${titleSlug}-${Math.random().toString(36).slice(2, 8)}`;
 
         const { error } = await (supabase as any)
