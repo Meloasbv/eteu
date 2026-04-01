@@ -36,10 +36,15 @@ const SECTIONS: { key: Section; label: string; icon: string }[] = [
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function noteTitle(texto: string) {
-  // Strip HTML tags for title extraction
-  const stripped = texto.replace(/<[^>]*>/g, "").trim();
-  const first = stripped.split("\n")[0]?.trim().replace(/^#{1,3}\s*/, "");
-  return first || "Sem título";
+  // Replace block-level closing tags with newlines before stripping
+  const stripped = texto
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|h[1-6]|div|li|blockquote)>/gi, "\n")
+    .replace(/<[^>]*>/g, "")
+    .trim();
+  const lines = stripped.split("\n").map(l => l.trim()).filter(Boolean);
+  const first = lines[0]?.replace(/^#{1,3}\s*/, "") || "Sem título";
+  return first;
 }
 
 function notePreview(texto: string, len = 60) {
