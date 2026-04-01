@@ -6,13 +6,11 @@ import { setupBibleRefListeners, forceHideTooltip } from "@/lib/bibleRefExtensio
 
 /** Inject bible-ref-detected spans into raw HTML */
 function injectBibleRefs(html: string): string {
-  // Work on text nodes only — split by HTML tags
   return html.replace(/([^<]+)(?=<|$)/g, (textSegment) => {
     const refs = detectBibleReferences(textSegment);
     if (!refs.length) return textSegment;
 
     let result = textSegment;
-    // Process from end to start to keep indices valid
     const sorted = [...refs].sort((a, b) => {
       const idxA = textSegment.indexOf(a.fullMatch);
       const idxB = textSegment.indexOf(b.fullMatch);
@@ -91,9 +89,14 @@ export default function SharedNote() {
     );
   }
 
-  // Extract title from content
-  const stripped = note.texto.replace(/<[^>]*>/g, "").trim();
-  const title = stripped.split("\n")[0]?.trim().replace(/^#{1,3}\s*/, "") || "Sem título";
+  // Extract title from content — same logic as BibleNotes noteTitle
+  const stripped = note.texto
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|h[1-6]|div|li|blockquote)>/gi, "\n")
+    .replace(/<[^>]*>/g, "")
+    .trim();
+  const lines = stripped.split("\n").map(l => l.trim()).filter(Boolean);
+  const title = lines[0]?.replace(/^#{1,3}\s*/, "") || "Sem título";
 
   const MONTHS_FULL = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
   const d = new Date(note.updated_at);
@@ -114,12 +117,15 @@ export default function SharedNote() {
 
         <hr className="border-border-subtle mb-8" />
 
-        {/* Content — uses same styling as tiptap editor */}
+        {/* Content — uses same tiptap CSS as the editor */}
         <div
           ref={contentRef}
-          className="tiptap-editor-content font-body text-[15px] leading-[1.8] text-foreground
-            [&_p]:mb-2 [&_p]:text-[15px] [&_p]:leading-[1.8]
-            [&_strong]:font-semibold [&_em]:italic"
+          className="tiptap-editor-content"
+          style={{
+            fontFamily: "Georgia, 'Crimson Text', serif",
+            fontSize: "15px",
+            lineHeight: 1.75,
+          }}
           dangerouslySetInnerHTML={{ __html: contentWithRefs }}
         />
 
