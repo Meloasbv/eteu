@@ -8,6 +8,7 @@ import Placeholder from "@tiptap/extension-placeholder";
 import CharacterCount from "@tiptap/extension-character-count";
 import { useEffect, useCallback, useRef } from "react";
 import { BibleRefHighlight, setupBibleRefListeners } from "@/lib/bibleRefExtension";
+import BubbleMenuAI from "@/components/BubbleMenuAI";
 
 // ── Highlight colors config ──
 const HIGHLIGHT_COLORS = [
