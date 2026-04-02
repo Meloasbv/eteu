@@ -135,6 +135,53 @@ export type Database = {
           },
         ]
       }
+      quiz_progress: {
+        Row: {
+          attempts: number | null
+          best_score: number | null
+          completed: boolean | null
+          created_at: string | null
+          id: string
+          last_attempt_at: string | null
+          stage_id: number
+          stars: number | null
+          total_questions: number | null
+          user_code_id: string
+        }
+        Insert: {
+          attempts?: number | null
+          best_score?: number | null
+          completed?: boolean | null
+          created_at?: string | null
+          id?: string
+          last_attempt_at?: string | null
+          stage_id: number
+          stars?: number | null
+          total_questions?: number | null
+          user_code_id: string
+        }
+        Update: {
+          attempts?: number | null
+          best_score?: number | null
+          completed?: boolean | null
+          created_at?: string | null
+          id?: string
+          last_attempt_at?: string | null
+          stage_id?: number
+          stars?: number | null
+          total_questions?: number | null
+          user_code_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_progress_user_code_id_fkey"
+            columns: ["user_code_id"]
+            isOneToOne: false
+            referencedRelation: "access_codes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reminders: {
         Row: {
           active: boolean
