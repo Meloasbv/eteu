@@ -6,6 +6,7 @@ import CodeLogin from "@/components/CodeLogin";
 import RichTextEditor from "@/components/RichTextEditor";
 import Library from "@/components/Library";
 import Flashcards from "@/components/Flashcards";
+import Quiz from "@/components/Quiz";
 
 // ── DATA ──────────────────────────────────────────────────────────────────────
 
