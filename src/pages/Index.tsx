@@ -6,6 +6,7 @@ import CodeLogin from "@/components/CodeLogin";
 import RichTextEditor from "@/components/RichTextEditor";
 import Library from "@/components/Library";
 import Flashcards from "@/components/Flashcards";
+import Quiz from "@/components/Quiz";
 
 // ── DATA ──────────────────────────────────────────────────────────────────────
 
@@ -216,7 +217,7 @@ export default function BiblePlan() {
 }
 
 function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string; accessCode: string | null; onLogout: () => void }) {
-  const [tab, setTab] = useState<"home" | "leitura" | "devocional" | "agenda" | "anotacoes" | "biblioteca">("leitura");
+  const [tab, setTab] = useState<"home" | "leitura" | "devocional" | "agenda" | "anotacoes" | "biblioteca" | "quiz">("leitura");
   const [activeWeek, setActiveWeek] = useState(0);
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [saved, setSaved] = useState(false);
@@ -262,7 +263,7 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
       : tab === "leitura" ? "📖 Plano de Leitura"
       : tab === "devocional" ? "🔥 Devocionais"
       : tab === "agenda" ? "📅 Agenda"
-      
+      : tab === "quiz" ? "🏆 Quiz"
       : notesTitle;
     if (newTitle !== displayTitle) {
       setTitleFading(true);
@@ -551,7 +552,7 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
             { key: "devocional" as const, icon: "🔥", label: "Devocional" },
             { key: "agenda" as const, icon: "📅", label: "Agenda" },
             { key: "anotacoes" as const, icon: "📝", label: "Notas" },
-            
+            { key: "quiz" as const, icon: "🏆", label: "Quiz" },
           ]).map(t => {
             const isActive = tab === t.key;
             return (
@@ -1316,6 +1317,9 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
 
       {/* ── ANOTAÇÕES TAB ── */}
       {tab === "anotacoes" && <BibleNotes onTitleChange={setNotesTitle} userCodeId={userCodeId} />}
+
+      {/* ── QUIZ TAB ── */}
+      {tab === "quiz" && <Quiz userCodeId={userCodeId} />}
 
       {/* Footer */}
       <div className="text-center py-6 px-6 text-[11px] text-muted-foreground tracking-[2px] uppercase font-display">
