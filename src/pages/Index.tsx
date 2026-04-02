@@ -263,7 +263,7 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
       : tab === "leitura" ? "📖 Plano de Leitura"
       : tab === "devocional" ? "🔥 Devocionais"
       : tab === "agenda" ? "📅 Agenda"
-      
+      : tab === "quiz" ? "🏆 Quiz"
       : notesTitle;
     if (newTitle !== displayTitle) {
       setTitleFading(true);
