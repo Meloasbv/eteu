@@ -1318,6 +1318,9 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
       {/* ── ANOTAÇÕES TAB ── */}
       {tab === "anotacoes" && <BibleNotes onTitleChange={setNotesTitle} userCodeId={userCodeId} />}
 
+      {/* ── QUIZ TAB ── */}
+      {tab === "quiz" && <Quiz userCodeId={userCodeId} />}
+
       {/* Footer */}
       <div className="text-center py-6 px-6 text-[11px] text-muted-foreground tracking-[2px] uppercase font-display">
         18 Semanas • Toda a Bíblia
