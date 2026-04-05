@@ -866,14 +866,14 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
       doc.text(`— ${verseRef}`, M + 10, y);
     }
 
-    // Page numbers on content pages
+    // Page numbers
     const totalPages = doc.getNumberOfPages();
-    for (let i = 2; i <= totalPages; i++) {
+    for (let i = 1; i <= totalPages; i++) {
       doc.setPage(i);
       doc.setFont("helvetica", "normal");
       doc.setFontSize(8);
       doc.setTextColor("#cccccc");
-      doc.text(`${i - 1}`, W / 2, H - 15, { align: "center" });
+      doc.text(`${i}`, W / 2, H - 15, { align: "center" });
     }
 
     const fileName = titulo.replace(/[^a-zA-Z0-9À-ÿ\s]/g, "").trim().replace(/\s+/g, "_").slice(0, 40) || "nota";
