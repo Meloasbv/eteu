@@ -803,43 +803,16 @@ export default function BibleNotes({ onTitleChange, userCodeId }: { onTitleChang
       return y;
     };
 
-    // ════════════════════════════════════════════════════════════════
-    // PAGE 1: COVER — white/off-white, minimal
-    // ════════════════════════════════════════════════════════════════
-    // White background (default)
-
-    // "DEVOCIONAIS" — small, tracked, gray, upper area
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.setTextColor("#888888");
-    doc.text("D E V O C I O N A I S", W / 2, H * 0.4, { align: "center" });
-
-    // Title — centered in middle, bold, black, 22pt
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(22);
-    doc.setTextColor("#111111");
-    const coverLines = doc.splitTextToSize(titulo, maxW);
-    const coverY = H * 0.48;
-    doc.text(coverLines, W / 2, coverY, { align: "center" });
-
-    // Footer — "Material de Estudo Bíblico"
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
-    doc.setTextColor("#cccccc");
-    doc.text("Material de Estudo Bíblico", W / 2, H - M, { align: "center" });
-
-    // ════════════════════════════════════════════════════════════════
-    // PAGE 2+: CONTENT
-    // ════════════════════════════════════════════════════════════════
-    doc.addPage();
+    // ── PAGE 1: Content starts directly ──
     let y = M;
 
     // Content title
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(13);
+    doc.setFontSize(16);
     doc.setTextColor("#111111");
-    doc.text(titulo, M, y);
-    y += 6;
+    const titleLines = doc.splitTextToSize(titulo, maxW);
+    doc.text(titleLines, M, y);
+    y += titleLines.length * 7 + 2;
 
     // Thin gray separator
     doc.setDrawColor("#dddddd");
