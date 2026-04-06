@@ -777,9 +777,9 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
                           {day.r.length} {day.r.length === 1 ? "leitura" : "leituras"}
                         </span>
                       </div>
-                      <div className={`w-6 h-6 rounded-full flex items-center justify-center
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-all duration-200
                         ${isDone ? "bg-success" : "border-2 border-border"}`}>
-                        {isDone && <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                        {isDone && <svg width="16" height="16" viewBox="0 0 14 14" fill="none">
                           <path d="M3 7l3 3 5-6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                         </svg>}
                       </div>
