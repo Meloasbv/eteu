@@ -687,10 +687,10 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
           )}
 
           {/* Week pills */}
-          <div className="px-4 pt-4 pb-3 overflow-x-auto flex gap-2 border-b border-border-subtle no-scrollbar">
+          <div className="px-4 pt-4 pb-3 overflow-x-auto flex gap-2 border-b border-border-subtle no-scrollbar scroll-smooth snap-x">
             {WEEKS.map((w, i) => (
-              <button key={i} onClick={() => setActiveWeek(i)}
-                className={`px-3.5 py-1.5 rounded-full border text-[13px] cursor-pointer whitespace-nowrap font-body transition-all duration-200
+              <button key={i} onClick={() => { haptic("light"); setActiveWeek(i); }}
+                className={`min-w-[44px] min-h-[44px] px-4 py-2.5 rounded-full border text-[13px] cursor-pointer whitespace-nowrap font-body transition-all duration-200 snap-center active:scale-95
                   ${i === activeWeek
                     ? "border-primary/50 bg-primary/15 text-foreground font-semibold"
                     : weekProg(i) >= 1
