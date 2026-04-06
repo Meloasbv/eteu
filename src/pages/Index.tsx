@@ -31,6 +31,39 @@ const WEEKS = [
   {week:18,dates:"23/05 a 29/05",days:[{day:"Sábado",r:["I Pe. 1–5","Hb. 1–6"]},{day:"Domingo",r:["Hb. 7–13","II Pe 1–3"]},{day:"Segunda",r:["Judas","I João 1–5"]},{day:"Terça",r:["II Tm. 1–4","II e III João"]},{day:"Quarta",r:["Ap. 1–11"]},{day:"Quinta",r:["Ap. 12–22"]},{day:"Sexta",r:[]}]},
 ];
 
+// April devotional calendar data
+const APRIL_CALENDAR: { [day: number]: string } = {
+  // Semana 1: 06/04 - 10/04 (Pneumatologia — O Espírito Santo)
+  7: "2 Coríntios 3:17",
+  8: "Atos 2:3-4",
+  9: "João 14:16",
+  10: "João 14:26",
+  11: "João 15:26",
+  // Semana 2: 13/04 - 17/04 (Cristologia — A Pessoa de Cristo)
+  14: "Colossenses 2:9",
+  15: "João 1:14",
+  16: "Lucas 24:6",
+  17: "Apocalipse 19:16",
+  18: "Filipenses 2:10-11",
+  // Semana 3: 20/04 - 24/04 (Soteriologia — A Obra da Salvação)
+  21: "Efésios 1:9-10",
+  22: "Hebreus 10:19-23",
+  23: "João 17:3",
+  24: "1 Pedro 2:9",
+  25: "1 Coríntios 13:4",
+  // Semana 4: 27/04 - 01/05 (O Coração Segundo Deus — Vida de Davi)
+  28: "1 Samuel 16:7",
+  29: "1 Samuel 17:45",
+  30: "Salmos 51:10",
+};
+
+const APRIL_THEMES: { week: string; theme: string; color: string }[] = [
+  { week: "06–10", theme: "O Espírito Santo", color: "hsl(var(--fire))" },
+  { week: "13–17", theme: "A Pessoa de Cristo", color: "hsl(var(--primary))" },
+  { week: "20–24", theme: "A Obra da Salvação", color: "#6B8A5E" },
+  { week: "27–01", theme: "Vida de Davi", color: "#7A6B8A" },
+];
+
 const DEVOTIONALS = [
   {
     period: "02/03 a 06/03",
