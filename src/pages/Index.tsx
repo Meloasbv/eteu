@@ -1232,7 +1232,7 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
             </div>
 
             {/* ── EXEGESIS STUDY ── */}
-            <div className="rounded-2xl border border-border bg-card overflow-hidden">
+            <div data-exegesis className="rounded-2xl border border-border bg-card overflow-hidden">
               <div className="p-5">
                 <p className="font-display text-[10px] tracking-[3px] uppercase text-muted-foreground font-semibold mb-3 flex items-center gap-2">
                   📜 Estudo Exegético
