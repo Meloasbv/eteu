@@ -750,7 +750,7 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
           </div>
 
           {/* Days grid */}
-          <div className="px-4 pt-1 pb-8 grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))" }}>
+          <div className="px-4 pt-1 pb-8 grid gap-3 grid-cols-1 sm:grid-cols-2">
             {cw.days.map((day, di) => {
               if (!day.r.length) return null;
               const isDone = !!checked[`${activeWeek}-${di}`];
