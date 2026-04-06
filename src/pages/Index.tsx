@@ -1130,6 +1130,100 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
               </div>
             )}
 
+            {/* ── APRIL CALENDAR ── */}
+            <div className="rounded-2xl border border-border bg-card overflow-hidden">
+              <div className="p-5">
+                <p className="font-display text-[10px] tracking-[3px] uppercase text-muted-foreground font-semibold mb-1 flex items-center gap-2">
+                  📅 Calendário de Abril
+                </p>
+                <p className="text-[11px] text-muted-foreground mb-4">Toque em um dia para ver a leitura devocional</p>
+
+                {/* Theme legend */}
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {APRIL_THEMES.map(t => (
+                    <span key={t.week} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-border text-[10px] font-display tracking-wide">
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{ background: t.color }} />
+                      <span className="text-muted-foreground">{t.week}:</span>
+                      <span className="text-foreground font-medium">{t.theme}</span>
+                    </span>
+                  ))}
+                </div>
+
+                {/* Calendar grid */}
+                {(() => {
+                  const daysOfWeek = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
+                  // April 2026: starts on Wednesday (index 2 in Mon-based week)
+                  const firstDayOffset = 2; // Wednesday
+                  const daysInMonth = 30;
+                  const today = new Date();
+                  const isCurrentMonth = today.getMonth() === 3 && today.getFullYear() === 2026;
+                  const todayDate = isCurrentMonth ? today.getDate() : -1;
+
+                  const cells: (number | null)[] = [];
+                  for (let i = 0; i < firstDayOffset; i++) cells.push(null);
+                  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+                  while (cells.length % 7 !== 0) cells.push(null);
+
+                  const getWeekColor = (day: number) => {
+                    if (day >= 6 && day <= 10) return "hsl(var(--fire))";
+                    if (day >= 13 && day <= 17) return "hsl(var(--primary))";
+                    if (day >= 20 && day <= 24) return "#6B8A5E";
+                    if (day >= 27 && day <= 30) return "#7A6B8A";
+                    return undefined;
+                  };
+
+                  return (
+                    <div>
+                      <div className="grid grid-cols-7 gap-1 mb-1">
+                        {daysOfWeek.map(d => (
+                          <div key={d} className="text-center text-[9px] font-display tracking-wider uppercase text-muted-foreground py-1">
+                            {d}
+                          </div>
+                        ))}
+                      </div>
+                      <div className="grid grid-cols-7 gap-1">
+                        {cells.map((day, i) => {
+                          if (day === null) return <div key={i} />;
+                          const ref = APRIL_CALENDAR[day];
+                          const wColor = getWeekColor(day);
+                          const isToday = day === todayDate;
+                          const isWeekend = (i % 7 === 5) || (i % 7 === 6);
+                          return (
+                            <button
+                              key={i}
+                              onClick={() => {
+                                if (ref) {
+                                  setExegeseVerse(ref);
+                                  // Scroll to exegesis section
+                                  setTimeout(() => {
+                                    document.querySelector('[data-exegesis]')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                  }, 100);
+                                }
+                              }}
+                              className={`relative aspect-square rounded-lg flex flex-col items-center justify-center transition-all duration-200
+                                ${isToday ? "ring-2 ring-primary ring-offset-1 ring-offset-background" : ""}
+                                ${ref ? "cursor-pointer hover:scale-105 active:scale-95" : "cursor-default"}
+                                ${isWeekend ? "opacity-40" : ""}
+                                ${ref ? "border border-border bg-card/80 hover:bg-card" : "bg-transparent"}`}
+                              style={ref && wColor ? { borderColor: wColor + "40" } : undefined}
+                              title={ref || undefined}
+                            >
+                              <span className={`text-[13px] font-medium ${isToday ? "text-primary" : ref ? "text-foreground" : "text-muted-foreground/50"}`}>
+                                {day}
+                              </span>
+                              {ref && (
+                                <span className="w-1.5 h-1.5 rounded-full mt-0.5" style={{ background: wColor || "hsl(var(--primary))" }} />
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+
             {/* ── DIVIDER ── */}
             <div className="flex items-center gap-3">
               <div className="h-px flex-1 bg-border" />
