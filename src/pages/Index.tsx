@@ -7,6 +7,8 @@ import RichTextEditor from "@/components/RichTextEditor";
 import Library from "@/components/Library";
 import Flashcards from "@/components/Flashcards";
 import Quiz from "@/components/Quiz";
+import { useScrollDirection } from "@/hooks/useScrollDirection";
+import { haptic } from "@/hooks/useHaptic";
 
 // ── DATA ──────────────────────────────────────────────────────────────────────
 
