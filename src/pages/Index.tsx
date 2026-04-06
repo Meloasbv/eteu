@@ -7,6 +7,8 @@ import RichTextEditor from "@/components/RichTextEditor";
 import Library from "@/components/Library";
 import Flashcards from "@/components/Flashcards";
 import Quiz from "@/components/Quiz";
+import { useScrollDirection } from "@/hooks/useScrollDirection";
+import { haptic } from "@/hooks/useHaptic";
 
 // ── DATA ──────────────────────────────────────────────────────────────────────
 
@@ -529,6 +531,18 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
     setTimeout(() => setSaved(false), 2000);
   }, [devTranscript, devSummary]);
 
+  const { direction, isAtTop } = useScrollDirection();
+  const hideBar = direction === "down" && !isAtTop;
+  const compactHeader = direction === "down" && !isAtTop;
+
+  const TABS = [
+    { key: "leitura" as const, icon: "📖", label: "Leitura" },
+    { key: "devocional" as const, icon: "🔥", label: "Devocional" },
+    { key: "agenda" as const, icon: "📅", label: "Agenda" },
+    { key: "anotacoes" as const, icon: "📝", label: "Notas" },
+    { key: "quiz" as const, icon: "🏆", label: "Quiz" },
+  ];
+
   return (
     <div className="min-h-screen bg-background text-foreground font-body transition-colors duration-300">
       {/* Hidden YouTube player */}
@@ -540,15 +554,21 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
         title="Background music"
       />
 
-      {/* ── FIXED HEADER ── */}
-      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border transition-colors duration-300">
-        {/* Top bar: Sair | Brand | Theme toggle */}
-        <div className="flex items-center justify-between px-4 pt-3 pb-1">
-          <button onClick={onLogout} className="font-display text-[8px] tracking-[2px] uppercase text-muted-foreground hover:text-primary transition-colors border-none bg-transparent cursor-pointer px-1 py-1">
-            Sair
+      {/* ── COMPACT MOBILE HEADER ── */}
+      <header className={`mobile-header ${compactHeader ? "header-compact" : ""}`}>
+        <div className="flex items-center justify-between px-5 py-2.5">
+          {/* Left: Logout icon */}
+          <button onClick={onLogout}
+            className="w-10 h-10 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-all cursor-pointer border-none bg-transparent"
+            aria-label="Sair">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
           </button>
-          <div className="text-center flex-1">
-            <p className="font-display text-[8px] tracking-[4px] uppercase text-muted-foreground font-normal mb-0.5">
+
+          {/* Center: Brand + Title */}
+          <div className="flex-1 text-center">
+            <p className="header-brand font-display text-[8px] tracking-[4px] uppercase text-muted-foreground font-normal h-3 leading-3 mb-0.5">
               Fascinação · 2026A
             </p>
             <h1 className="font-display text-[17px] font-normal text-primary tracking-wide leading-tight transition-all duration-300"
@@ -556,8 +576,9 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
               {displayTitle}
             </h1>
           </div>
+
+          {/* Right: Progress + Theme */}
           <div className="flex items-center gap-2">
-            {/* Progress circle */}
             <div className="w-[26px] h-[26px] relative shrink-0">
               <svg width="26" height="26" viewBox="0 0 26 26" style={{ transform: "rotate(-90deg)" }}>
                 <circle cx="13" cy="13" r="10" fill="none" className="stroke-border" strokeWidth="2.5" />
@@ -565,7 +586,6 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
                   strokeDasharray={`${prog * 62.83} 62.83`} style={{ transition: "stroke-dasharray .6s ease" }} />
               </svg>
             </div>
-            {/* Theme toggle */}
             <label className="w-[38px] h-[22px] block cursor-pointer shrink-0">
               <input type="checkbox" checked={theme === "dark"} onChange={() => setTheme(t => t === "light" ? "dark" : "light")} className="hidden" />
               <div className="w-[38px] h-[22px] rounded-full border border-border bg-muted relative transition-all duration-300">
@@ -577,31 +597,10 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
             </label>
           </div>
         </div>
-
-        {/* ── TAB BAR ── */}
-        <nav className="flex justify-around items-center px-2 pb-1.5">
-          {([
-            { key: "leitura" as const, icon: "📖", label: "Leitura" },
-            { key: "devocional" as const, icon: "🔥", label: "Devocional" },
-            { key: "agenda" as const, icon: "📅", label: "Agenda" },
-            { key: "anotacoes" as const, icon: "📝", label: "Notas" },
-            { key: "quiz" as const, icon: "🏆", label: "Quiz" },
-          ]).map(t => {
-            const isActive = tab === t.key;
-            return (
-              <button key={t.key} onClick={() => setTab(t.key)}
-                className={`flex flex-col items-center gap-0.5 py-1.5 px-2.5 rounded-lg flex-1 border-none cursor-pointer transition-all duration-200
-                  ${isActive ? "bg-primary/10" : "bg-transparent hover:bg-primary/5"}`}>
-                <span className="text-lg leading-none">{t.icon}</span>
-                <span className={`font-display text-[9px] tracking-wide transition-colors duration-200
-                  ${isActive ? "font-semibold text-primary" : "font-normal text-muted-foreground"}`}>
-                  {t.label}
-                </span>
-              </button>
-            );
-          })}
-        </nav>
       </header>
+
+      {/* ── MAIN CONTENT AREA ── */}
+      <div className="main-content">
 
       {/* ── HOME DASHBOARD ── */}
       {tab === "home" && (
@@ -688,10 +687,10 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
           )}
 
           {/* Week pills */}
-          <div className="px-4 pt-4 pb-3 overflow-x-auto flex gap-2 border-b border-border-subtle no-scrollbar">
+          <div className="px-4 pt-4 pb-3 overflow-x-auto flex gap-2 border-b border-border-subtle no-scrollbar scroll-smooth snap-x">
             {WEEKS.map((w, i) => (
-              <button key={i} onClick={() => setActiveWeek(i)}
-                className={`px-3.5 py-1.5 rounded-full border text-[13px] cursor-pointer whitespace-nowrap font-body transition-all duration-200
+              <button key={i} onClick={() => { haptic("light"); setActiveWeek(i); }}
+                className={`min-w-[44px] min-h-[44px] px-4 py-2.5 rounded-full border text-[13px] cursor-pointer whitespace-nowrap font-body transition-all duration-200 snap-center active:scale-95
                   ${i === activeWeek
                     ? "border-primary/50 bg-primary/15 text-foreground font-semibold"
                     : weekProg(i) >= 1
@@ -751,7 +750,7 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
           </div>
 
           {/* Days grid */}
-          <div className="px-4 pt-1 pb-8 grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))" }}>
+          <div className="px-4 pt-1 pb-8 grid gap-3 grid-cols-1 sm:grid-cols-2">
             {cw.days.map((day, di) => {
               if (!day.r.length) return null;
               const isDone = !!checked[`${activeWeek}-${di}`];
@@ -778,9 +777,9 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
                           {day.r.length} {day.r.length === 1 ? "leitura" : "leituras"}
                         </span>
                       </div>
-                      <div className={`w-6 h-6 rounded-full flex items-center justify-center
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-all duration-200
                         ${isDone ? "bg-success" : "border-2 border-border"}`}>
-                        {isDone && <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                        {isDone && <svg width="16" height="16" viewBox="0 0 14 14" fill="none">
                           <path d="M3 7l3 3 5-6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                         </svg>}
                       </div>
@@ -1393,7 +1392,7 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
                     bg-card/80 mb-3 text-[12px] text-text-secondary font-display font-semibold tracking-wider uppercase">
                     📅 {week.period}
                   </div>
-                  <div className="grid gap-2.5" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(260px,1fr))" }}>
+                  <div className="grid gap-2.5 grid-cols-1 sm:grid-cols-2">
                     {week.days.map((d, di) => {
                       const key = `dev-${wi}-${di}`;
                       const isOpen = expandedDev === key;
@@ -1453,9 +1452,31 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
         18 Semanas • Toda a Bíblia
       </div>
 
+      </div>{/* end main-content */}
+
+      {/* ── BOTTOM TAB BAR ── */}
+      <nav className={`bottom-tab-bar ${hideBar ? "hidden-bar" : ""}`}>
+        {TABS.map(t => {
+          const isActive = tab === t.key;
+          return (
+            <button key={t.key}
+              onClick={() => { haptic("light"); setTab(t.key); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+              className={isActive ? "tab-active" : ""}
+              aria-label={t.label}>
+              <span className="text-[22px] leading-none">{t.icon}</span>
+              <span className={`font-display text-[10px] tracking-[1px] uppercase transition-colors duration-200
+                ${isActive ? "text-primary font-semibold" : "text-muted-foreground"}`}>
+                {t.label}
+              </span>
+              <span className="tab-dot" />
+            </button>
+          );
+        })}
+      </nav>
+
       {/* Save toast */}
       {saved && (
-        <div className="fixed bottom-5 right-5 bg-success text-white py-2.5 px-4 rounded-lg text-[13px] z-50 shadow-elegant animate-fade-in">
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 bg-success text-white py-2.5 px-5 rounded-full text-[13px] z-[110] shadow-lg animate-fade-in">
           ✓ Progresso salvo
         </div>
       )}
