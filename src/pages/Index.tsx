@@ -1392,7 +1392,7 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
                     bg-card/80 mb-3 text-[12px] text-text-secondary font-display font-semibold tracking-wider uppercase">
                     📅 {week.period}
                   </div>
-                  <div className="grid gap-2.5" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(260px,1fr))" }}>
+                  <div className="grid gap-2.5 grid-cols-1 sm:grid-cols-2">
                     {week.days.map((d, di) => {
                       const key = `dev-${wi}-${di}`;
                       const isOpen = expandedDev === key;
