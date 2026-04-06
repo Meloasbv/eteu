@@ -531,6 +531,18 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
     setTimeout(() => setSaved(false), 2000);
   }, [devTranscript, devSummary]);
 
+  const { direction, isAtTop } = useScrollDirection();
+  const hideBar = direction === "down" && !isAtTop;
+  const compactHeader = direction === "down" && !isAtTop;
+
+  const TABS = [
+    { key: "leitura" as const, icon: "📖", label: "Leitura" },
+    { key: "devocional" as const, icon: "🔥", label: "Devocional" },
+    { key: "agenda" as const, icon: "📅", label: "Agenda" },
+    { key: "anotacoes" as const, icon: "📝", label: "Notas" },
+    { key: "quiz" as const, icon: "🏆", label: "Quiz" },
+  ];
+
   return (
     <div className="min-h-screen bg-background text-foreground font-body transition-colors duration-300">
       {/* Hidden YouTube player */}
@@ -542,15 +554,21 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
         title="Background music"
       />
 
-      {/* ── FIXED HEADER ── */}
-      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border transition-colors duration-300">
-        {/* Top bar: Sair | Brand | Theme toggle */}
-        <div className="flex items-center justify-between px-4 pt-3 pb-1">
-          <button onClick={onLogout} className="font-display text-[8px] tracking-[2px] uppercase text-muted-foreground hover:text-primary transition-colors border-none bg-transparent cursor-pointer px-1 py-1">
-            Sair
+      {/* ── COMPACT MOBILE HEADER ── */}
+      <header className={`mobile-header ${compactHeader ? "header-compact" : ""}`}>
+        <div className="flex items-center justify-between px-5 py-2.5">
+          {/* Left: Logout icon */}
+          <button onClick={onLogout}
+            className="w-10 h-10 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-all cursor-pointer border-none bg-transparent"
+            aria-label="Sair">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
           </button>
-          <div className="text-center flex-1">
-            <p className="font-display text-[8px] tracking-[4px] uppercase text-muted-foreground font-normal mb-0.5">
+
+          {/* Center: Brand + Title */}
+          <div className="flex-1 text-center">
+            <p className="header-brand font-display text-[8px] tracking-[4px] uppercase text-muted-foreground font-normal h-3 leading-3 mb-0.5">
               Fascinação · 2026A
             </p>
             <h1 className="font-display text-[17px] font-normal text-primary tracking-wide leading-tight transition-all duration-300"
@@ -558,8 +576,9 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
               {displayTitle}
             </h1>
           </div>
+
+          {/* Right: Progress + Theme */}
           <div className="flex items-center gap-2">
-            {/* Progress circle */}
             <div className="w-[26px] h-[26px] relative shrink-0">
               <svg width="26" height="26" viewBox="0 0 26 26" style={{ transform: "rotate(-90deg)" }}>
                 <circle cx="13" cy="13" r="10" fill="none" className="stroke-border" strokeWidth="2.5" />
@@ -567,7 +586,6 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
                   strokeDasharray={`${prog * 62.83} 62.83`} style={{ transition: "stroke-dasharray .6s ease" }} />
               </svg>
             </div>
-            {/* Theme toggle */}
             <label className="w-[38px] h-[22px] block cursor-pointer shrink-0">
               <input type="checkbox" checked={theme === "dark"} onChange={() => setTheme(t => t === "light" ? "dark" : "light")} className="hidden" />
               <div className="w-[38px] h-[22px] rounded-full border border-border bg-muted relative transition-all duration-300">
@@ -579,31 +597,10 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
             </label>
           </div>
         </div>
-
-        {/* ── TAB BAR ── */}
-        <nav className="flex justify-around items-center px-2 pb-1.5">
-          {([
-            { key: "leitura" as const, icon: "📖", label: "Leitura" },
-            { key: "devocional" as const, icon: "🔥", label: "Devocional" },
-            { key: "agenda" as const, icon: "📅", label: "Agenda" },
-            { key: "anotacoes" as const, icon: "📝", label: "Notas" },
-            { key: "quiz" as const, icon: "🏆", label: "Quiz" },
-          ]).map(t => {
-            const isActive = tab === t.key;
-            return (
-              <button key={t.key} onClick={() => setTab(t.key)}
-                className={`flex flex-col items-center gap-0.5 py-1.5 px-2.5 rounded-lg flex-1 border-none cursor-pointer transition-all duration-200
-                  ${isActive ? "bg-primary/10" : "bg-transparent hover:bg-primary/5"}`}>
-                <span className="text-lg leading-none">{t.icon}</span>
-                <span className={`font-display text-[9px] tracking-wide transition-colors duration-200
-                  ${isActive ? "font-semibold text-primary" : "font-normal text-muted-foreground"}`}>
-                  {t.label}
-                </span>
-              </button>
-            );
-          })}
-        </nav>
       </header>
+
+      {/* ── MAIN CONTENT AREA ── */}
+      <div className="main-content">
 
       {/* ── HOME DASHBOARD ── */}
       {tab === "home" && (
