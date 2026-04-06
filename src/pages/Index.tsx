@@ -1452,9 +1452,31 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
         18 Semanas • Toda a Bíblia
       </div>
 
+      </div>{/* end main-content */}
+
+      {/* ── BOTTOM TAB BAR ── */}
+      <nav className={`bottom-tab-bar ${hideBar ? "hidden-bar" : ""}`}>
+        {TABS.map(t => {
+          const isActive = tab === t.key;
+          return (
+            <button key={t.key}
+              onClick={() => { haptic("light"); setTab(t.key); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+              className={isActive ? "tab-active" : ""}
+              aria-label={t.label}>
+              <span className="text-[22px] leading-none">{t.icon}</span>
+              <span className={`font-display text-[10px] tracking-[1px] uppercase transition-colors duration-200
+                ${isActive ? "text-primary font-semibold" : "text-muted-foreground"}`}>
+                {t.label}
+              </span>
+              <span className="tab-dot" />
+            </button>
+          );
+        })}
+      </nav>
+
       {/* Save toast */}
       {saved && (
-        <div className="fixed bottom-5 right-5 bg-success text-white py-2.5 px-4 rounded-lg text-[13px] z-50 shadow-elegant animate-fade-in">
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 bg-success text-white py-2.5 px-5 rounded-full text-[13px] z-[110] shadow-lg animate-fade-in">
           ✓ Progresso salvo
         </div>
       )}
