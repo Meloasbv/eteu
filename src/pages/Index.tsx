@@ -9,7 +9,7 @@ import Flashcards from "@/components/Flashcards";
 import Quiz from "@/components/Quiz";
 import { useScrollDirection } from "@/hooks/useScrollDirection";
 import { haptic } from "@/hooks/useHaptic";
-import { BookOpen, Flame, Calendar, PenLine, Trophy, Check, Sun, Moon } from "lucide-react";
+import { BookOpen, Flame, Calendar, PenLine, Trophy, Check, Sun, Moon, LogOut, Sparkles, CheckCheck } from "lucide-react";
 
 // ── DATA ──────────────────────────────────────────────────────────────────────
 
