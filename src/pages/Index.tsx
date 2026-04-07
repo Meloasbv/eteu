@@ -647,6 +647,30 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
             </div>
           </div>
 
+          {/* Mark/Unmark entire week */}
+          <div className="mx-4 mt-2">
+            <button
+              onClick={() => {
+                const allDone = cw.days.every((day, di) => !day.r.length || !!checked[`${activeWeek}-${di}`]);
+                const newChecked = { ...checked };
+                cw.days.forEach((day, di) => {
+                  if (day.r.length) newChecked[`${activeWeek}-${di}`] = !allDone;
+                });
+                setChecked(newChecked);
+                setSaved(true); setTimeout(() => setSaved(false), 2000);
+                haptic("medium");
+              }}
+              className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-[10px] font-ui tracking-wider uppercase transition-all active:scale-95"
+              style={{
+                background: wp >= 1 ? 'hsl(var(--success) / 0.1)' : 'hsl(var(--primary) / 0.08)',
+                border: wp >= 1 ? '1px solid hsl(var(--success) / 0.25)' : '1px solid hsl(var(--primary) / 0.2)',
+                color: wp >= 1 ? 'hsl(var(--success))' : 'hsl(var(--primary))',
+              }}>
+              <CheckCheck size={14} />
+              {wp >= 1 ? "Desmarcar semana" : "Marcar semana inteira"}
+            </button>
+          </div>
+
           {/* Day cards — clean vertical list */}
           <div className="mx-4 mt-4 space-y-2 pb-4">
             {cw.days.map((day, di) => {
