@@ -501,8 +501,14 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
       {/* ── COMPACT MOBILE HEADER ── */}
       <header className={`mobile-header ${compactHeader ? "header-compact" : ""}`}>
         <div className="flex items-center justify-between">
-          {/* Left spacer */}
-          <div className="w-10 shrink-0" />
+          {/* Left: Logout */}
+          <button
+            onClick={onLogout}
+            className="w-10 h-10 flex items-center justify-center rounded-full text-muted-foreground hover:text-destructive transition-all shrink-0"
+            aria-label="Sair da conta"
+          >
+            <LogOut size={16} />
+          </button>
 
           {/* Center: Title */}
           <div className="flex-1 text-center">
