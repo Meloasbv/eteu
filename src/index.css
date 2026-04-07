@@ -263,12 +263,12 @@
   bottom: 0;
   left: 0;
   right: 0;
-  height: calc(var(--tab-bar-height) + var(--safe-area-bottom));
+  height: calc(56px + var(--safe-area-bottom));
   padding-bottom: var(--safe-area-bottom);
-  background: hsl(var(--background-secondary) / 0.95);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-top: 1px solid hsl(var(--primary) / 0.12);
+  background: hsl(var(--background-secondary) / 0.96);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-top: 1px solid hsl(var(--border) / 0.5);
   z-index: 100;
   display: flex;
   justify-content: space-around;
@@ -280,57 +280,38 @@
   transform: translateY(100%);
 }
 
-/* Tab item */
+/* Tab item — icon only */
 .tab-item {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 8px 0;
+  justify-content: center;
   flex: 1;
   border: none;
   background: transparent;
   cursor: pointer;
   position: relative;
-  min-height: var(--touch-min);
-  min-width: 64px;
+  height: 56px;
   transition: all 0.2s ease;
 }
 .tab-item:active {
-  transform: scale(0.93);
+  transform: scale(0.9);
 }
 .tab-item .tab-icon {
-  transition: transform 0.2s ease;
-}
-.tab-item.tab-active {
-  transform: translateY(-2px);
+  transition: transform 0.2s ease, color 0.2s ease;
 }
 .tab-item.tab-active .tab-icon {
-  transform: scale(1.15);
-}
-
-/* Tab label */
-.tab-label {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 1.2px;
-  text-transform: uppercase;
-  color: hsl(var(--muted-foreground));
-  transition: color 0.2s ease;
-  font-family: var(--font-ui);
-}
-.tab-item.tab-active .tab-label {
-  color: hsl(var(--primary));
+  transform: scale(1.1);
 }
 
 /* Dot indicator below active tab */
 .tab-item.tab-active::after {
   content: '';
-  width: 4px;
-  height: 4px;
+  position: absolute;
+  bottom: 8px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
   background: hsl(var(--primary));
-  margin-top: 2px;
 }
 
 /* ── Compact Header ── */
