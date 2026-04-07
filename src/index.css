@@ -248,7 +248,7 @@
 /* ── Mobile layout variables ── */
 :root {
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
-  --tab-bar-height: 72px;
+  --tab-bar-height: 56px;
   --header-height: 56px;
   --content-padding: 16px;
   --card-radius: 16px;
