@@ -8,28 +8,28 @@
   /* ── LIGHT THEME (pergaminho) ── */
   :root,
   [data-theme="light"] {
-    --background: 36 33% 93%;        /* #f5f0e8 */
-    --background-secondary: 33 26% 88%; /* #ece5d8 */
-    --background-tertiary: 30 20% 84%; /* #e2dace */
-    --foreground: 30 30% 12%;        /* #2c2518 */
+    --background: 36 33% 93%;
+    --background-secondary: 33 26% 88%;
+    --background-tertiary: 30 20% 84%;
+    --foreground: 30 30% 12%;
 
-    --card: 0 0% 100%;               /* #ffffff */
-    --card-hover: 30 33% 96%;        /* #faf7f2 */
+    --card: 0 0% 100%;
+    --card-hover: 30 33% 96%;
     --card-foreground: 30 30% 12%;
 
     --popover: 0 0% 100%;
     --popover-foreground: 30 30% 12%;
 
-    --primary: 30 42% 31%;           /* #8c6e3c - accent/ouro */
+    --primary: 30 42% 31%;
     --primary-foreground: 0 0% 100%;
-    --primary-hover: 32 44% 37%;     /* #a0803e */
+    --primary-hover: 32 44% 37%;
     --primary-subtle: 30 42% 31% / 0.10;
 
     --secondary: 33 26% 88%;
     --secondary-foreground: 30 30% 12%;
 
     --muted: 30 20% 84%;
-    --muted-foreground: 30 16% 52%;  /* #9a8b74 */
+    --muted-foreground: 30 16% 52%;
 
     --accent: 30 42% 31%;
     --accent-foreground: 0 0% 100%;
@@ -37,15 +37,15 @@
     --destructive: 0 58% 52%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 110 28% 31%;          /* #4a7a3c */
+    --success: 110 28% 31%;
     --success-subtle: 110 28% 31% / 0.08;
 
-    --fire: 20 62% 43%;              /* #c06830 */
+    --fire: 20 62% 43%;
     --fire-subtle: 20 62% 43% / 0.08;
 
-    --border: 33 20% 78%;            /* #d4cbb8 */
-    --border-subtle: 33 20% 87%;     /* #e8e0d0 */
-    --input: 36 33% 95%;             /* #f8f4ed */
+    --border: 33 20% 78%;
+    --border-subtle: 33 20% 87%;
+    --input: 36 33% 95%;
     --ring: 30 42% 31%;
 
     --highlight: 30 42% 31% / 0.06;
@@ -59,7 +59,6 @@
     --font-body: 'Crimson Text', Georgia, 'Cormorant Garamond', serif;
     --font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 
-    /* Sidebar */
     --sidebar-background: 33 26% 88%;
     --sidebar-foreground: 30 30% 12%;
     --sidebar-primary: 30 42% 31%;
@@ -69,37 +68,36 @@
     --sidebar-border: 33 20% 78%;
     --sidebar-ring: 30 42% 31%;
 
-    /* Text hierarchy */
-    --text-primary: 30 30% 12%;      /* #2c2518 */
-    --text-secondary: 30 16% 35%;    /* #6b5d4a */
-    --text-muted: 30 16% 52%;        /* #9a8b74 */
+    --text-primary: 30 30% 12%;
+    --text-secondary: 30 16% 35%;
+    --text-muted: 30 16% 52%;
   }
 
   /* ── DARK THEME (manuscrito antigo) ── */
   [data-theme="dark"],
   .dark {
-    --background: 36 28% 8%;         /* #1a1610 */
-    --background-secondary: 33 24% 11%; /* #231f18 */
-    --background-tertiary: 30 18% 15%; /* #2c2720 */
-    --foreground: 33 30% 85%;        /* #e8dcc8 */
+    --background: 36 28% 8%;
+    --background-secondary: 33 24% 11%;
+    --background-tertiary: 30 18% 15%;
+    --foreground: 33 30% 85%;
 
-    --card: 33 22% 13%;              /* #2a2519 */
-    --card-hover: 32 22% 17%;        /* #332d24 */
+    --card: 33 22% 13%;
+    --card-hover: 32 22% 17%;
     --card-foreground: 33 30% 85%;
 
     --popover: 33 22% 13%;
     --popover-foreground: 33 30% 85%;
 
-    --primary: 39 42% 58%;           /* #c4a46a - accent/ouro */
+    --primary: 39 42% 58%;
     --primary-foreground: 0 0% 100%;
-    --primary-hover: 39 50% 65%;     /* #d4b87a */
+    --primary-hover: 39 50% 65%;
     --primary-subtle: 39 42% 58% / 0.15;
 
     --secondary: 33 24% 11%;
     --secondary-foreground: 33 30% 85%;
 
     --muted: 33 24% 11%;
-    --muted-foreground: 30 14% 36%;  /* #7d6f5c */
+    --muted-foreground: 30 14% 36%;
 
     --accent: 39 42% 58%;
     --accent-foreground: 0 0% 100%;
@@ -107,15 +105,15 @@
     --destructive: 0 50% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 110 25% 48%;          /* #6a9c5a */
+    --success: 110 25% 48%;
     --success-subtle: 110 25% 48% / 0.12;
 
-    --fire: 24 60% 55%;              /* #d4854a */
+    --fire: 24 60% 55%;
     --fire-subtle: 24 60% 55% / 0.12;
 
-    --border: 33 18% 20%;            /* #3d362a */
-    --border-subtle: 33 14% 15%;     /* #2f2920 */
-    --input: 33 24% 10%;             /* #1e1a14 */
+    --border: 33 18% 20%;
+    --border-subtle: 33 14% 15%;
+    --input: 33 24% 10%;
     --ring: 39 42% 58%;
 
     --highlight: 39 42% 58% / 0.08;
@@ -123,7 +121,6 @@
     --shadow: 0 2px 12px rgba(0,0,0,0.4);
     --shadow-lg: 0 8px 32px rgba(0,0,0,0.5);
 
-    /* Sidebar */
     --sidebar-background: 33 24% 11%;
     --sidebar-foreground: 33 30% 85%;
     --sidebar-primary: 39 42% 58%;
@@ -133,10 +130,9 @@
     --sidebar-border: 33 18% 20%;
     --sidebar-ring: 39 42% 58%;
 
-    /* Text hierarchy */
-    --text-primary: 33 30% 85%;      /* #e8dcc8 */
-    --text-secondary: 33 16% 60%;    /* #b8a88e */
-    --text-muted: 30 14% 36%;        /* #7d6f5c */
+    --text-primary: 33 30% 85%;
+    --text-secondary: 33 16% 60%;
+    --text-muted: 30 14% 36%;
   }
 }
 
@@ -252,9 +248,9 @@
 /* ── Mobile layout variables ── */
 :root {
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
-  --tab-bar-height: 64px;
+  --tab-bar-height: 72px;
   --header-height: 56px;
-  --content-padding: 20px;
+  --content-padding: 16px;
   --card-radius: 16px;
   --pill-radius: 22px;
   --touch-min: 48px;
@@ -269,48 +265,72 @@
   right: 0;
   height: calc(var(--tab-bar-height) + var(--safe-area-bottom));
   padding-bottom: var(--safe-area-bottom);
-  background: hsl(var(--background-secondary) / 0.92);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-top: 1px solid hsl(var(--border) / 0.3);
+  background: hsl(var(--background-secondary) / 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid hsl(var(--primary) / 0.12);
   z-index: 100;
   display: flex;
   justify-content: space-around;
-  align-items: flex-start;
-  padding-top: 6px;
+  align-items: center;
+  padding-top: 0;
   transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 .bottom-tab-bar.hidden-bar {
   transform: translateY(100%);
 }
-.bottom-tab-bar button {
+
+/* Tab item */
+.tab-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
-  padding: 6px 0;
+  gap: 4px;
+  padding: 8px 0;
   flex: 1;
   border: none;
   background: transparent;
   cursor: pointer;
   position: relative;
   min-height: var(--touch-min);
-  transition: transform 150ms ease;
+  min-width: 64px;
+  transition: all 0.2s ease;
 }
-.bottom-tab-bar button:active {
+.tab-item:active {
   transform: scale(0.93);
 }
-.bottom-tab-bar .tab-dot {
+.tab-item .tab-icon {
+  transition: transform 0.2s ease;
+}
+.tab-item.tab-active {
+  transform: translateY(-2px);
+}
+.tab-item.tab-active .tab-icon {
+  transform: scale(1.15);
+}
+
+/* Tab label */
+.tab-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground));
+  transition: color 0.2s ease;
+  font-family: var(--font-ui);
+}
+.tab-item.tab-active .tab-label {
+  color: hsl(var(--primary));
+}
+
+/* Dot indicator below active tab */
+.tab-item.tab-active::after {
+  content: '';
   width: 4px;
   height: 4px;
   border-radius: 50%;
   background: hsl(var(--primary));
   margin-top: 2px;
-  opacity: 0;
-  transition: opacity 200ms ease;
-}
-.bottom-tab-bar .tab-active .tab-dot {
-  opacity: 1;
 }
 
 /* ── Compact Header ── */
@@ -318,10 +338,12 @@
   position: sticky;
   top: 0;
   z-index: 50;
+  padding: 12px 20px;
+  padding-top: env(safe-area-inset-top, 12px);
   background: hsl(var(--background) / 0.92);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border-bottom: 1px solid hsl(var(--border) / 0.3);
+  border-bottom: 1px solid hsl(var(--primary) / 0.08);
   transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 .mobile-header .header-brand {
@@ -353,7 +375,30 @@
 
 /* ── Content area padding for fixed bottom bar ── */
 .main-content {
-  padding-bottom: calc(var(--tab-bar-height) + var(--safe-area-bottom) + 16px);
+  padding-bottom: 88px;
+}
+
+/* ── FAB (Floating Action Button) ── */
+.fab {
+  position: fixed;
+  bottom: calc(var(--tab-bar-height) + var(--safe-area-bottom) + 16px);
+  right: 16px;
+  width: var(--fab-size);
+  height: var(--fab-size);
+  border-radius: 50%;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 90;
+  box-shadow: 0 4px 20px hsl(var(--primary) / 0.3);
+  transition: all 0.2s ease;
+}
+.fab:active {
+  transform: scale(0.93);
 }
 
 /* ── Print styles ── */
@@ -386,6 +431,22 @@
 }
 .animate-slide-up {
   animation: slide-up 0.3s ease-out;
+}
+
+@keyframes breathing {
+  0%, 100% { transform: scale(1); opacity: 0.9; }
+  50% { transform: scale(1.08); opacity: 1; }
+}
+.animate-breathing {
+  animation: breathing 3s ease-in-out infinite;
+}
+
+@keyframes float-up {
+  0% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-40px); }
+}
+.animate-float-up {
+  animation: float-up 0.8s ease-out forwards;
 }
 
 /* ── Note search highlights ── */
