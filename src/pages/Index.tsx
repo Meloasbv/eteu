@@ -1236,7 +1236,6 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
                 ${isActive ? "text-primary" : "text-muted-foreground"}`}>
                 {t.icon}
               </span>
-              <span className="tab-label">{t.label}</span>
             </button>
           );
         })}
