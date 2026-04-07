@@ -501,13 +501,15 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
       {/* ── COMPACT MOBILE HEADER ── */}
       <header className={`mobile-header ${compactHeader ? "header-compact" : ""}`}>
         <div className="flex items-center justify-between">
-          {/* Center: Brand + Title */}
+          {/* Left spacer */}
+          <div className="w-10 shrink-0" />
+
+          {/* Center: Title */}
           <div className="flex-1 text-center">
-            <p className="header-brand text-[9px] tracking-[3px] uppercase text-muted-foreground font-semibold font-ui h-3 leading-3 mb-0.5">
+            <p className="header-brand text-[9px] tracking-[3px] uppercase text-muted-foreground font-medium font-ui mb-0.5">
               Fascinação · 2026A
             </p>
-            <h1 className="font-body text-[20px] font-bold text-foreground tracking-wide leading-tight transition-all duration-300"
-              style={{ opacity: titleFading ? 0 : 1, transform: titleFading ? "translateY(-6px)" : "translateY(0)" }}>
+            <h1 className="text-[17px] font-semibold text-foreground leading-tight font-ui">
               {displayTitle}
             </h1>
           </div>
@@ -518,7 +520,7 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
             className="w-10 h-10 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground transition-all shrink-0"
             aria-label="Alternar tema"
           >
-            {theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
+            {theme === "light" ? <Moon size={16} /> : <Sun size={16} />}
           </button>
         </div>
       </header>
