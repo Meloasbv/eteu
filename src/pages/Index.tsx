@@ -9,7 +9,7 @@ import Flashcards from "@/components/Flashcards";
 import Quiz from "@/components/Quiz";
 import { useScrollDirection } from "@/hooks/useScrollDirection";
 import { haptic } from "@/hooks/useHaptic";
-import { BookOpen, Flame, Calendar, PenLine, Trophy, Check, Sun, Moon } from "lucide-react";
+import { BookOpen, Flame, Calendar, PenLine, Trophy, Check, Sun, Moon, LogOut, Sparkles, CheckCheck } from "lucide-react";
 
 // ── DATA ──────────────────────────────────────────────────────────────────────
 
@@ -501,8 +501,14 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
       {/* ── COMPACT MOBILE HEADER ── */}
       <header className={`mobile-header ${compactHeader ? "header-compact" : ""}`}>
         <div className="flex items-center justify-between">
-          {/* Left spacer */}
-          <div className="w-10 shrink-0" />
+          {/* Left: Logout */}
+          <button
+            onClick={onLogout}
+            className="w-10 h-10 flex items-center justify-center rounded-full text-muted-foreground hover:text-destructive transition-all shrink-0"
+            aria-label="Sair da conta"
+          >
+            <LogOut size={16} />
+          </button>
 
           {/* Center: Title */}
           <div className="flex-1 text-center">
@@ -641,47 +647,89 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
             </div>
           </div>
 
+          {/* Mark/Unmark entire week */}
+          <div className="mx-4 mt-2">
+            <button
+              onClick={() => {
+                const allDone = cw.days.every((day, di) => !day.r.length || !!checked[`${activeWeek}-${di}`]);
+                const newChecked = { ...checked };
+                cw.days.forEach((day, di) => {
+                  if (day.r.length) newChecked[`${activeWeek}-${di}`] = !allDone;
+                });
+                setChecked(newChecked);
+                setSaved(true); setTimeout(() => setSaved(false), 2000);
+                haptic("medium");
+              }}
+              className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-[10px] font-ui tracking-wider uppercase transition-all active:scale-95"
+              style={{
+                background: wp >= 1 ? 'hsl(var(--success) / 0.1)' : 'hsl(var(--primary) / 0.08)',
+                border: wp >= 1 ? '1px solid hsl(var(--success) / 0.25)' : '1px solid hsl(var(--primary) / 0.2)',
+                color: wp >= 1 ? 'hsl(var(--success))' : 'hsl(var(--primary))',
+              }}>
+              <CheckCheck size={14} />
+              {wp >= 1 ? "Desmarcar semana" : "Marcar semana inteira"}
+            </button>
+          </div>
+
           {/* Day cards — clean vertical list */}
           <div className="mx-4 mt-4 space-y-2 pb-4">
             {cw.days.map((day, di) => {
               if (!day.r.length) return null;
               const isDone = !!checked[`${activeWeek}-${di}`];
+              const ctxKey = `${activeWeek}-${di}`;
               return (
-                <div key={di}
-                  onClick={() => { toggle(activeWeek, di); haptic("light"); }}
-                  className="p-4 rounded-2xl flex items-center justify-between cursor-pointer transition-all duration-200 active:scale-[0.97]"
+                <div key={di} className="rounded-2xl transition-all duration-200"
                   style={{
                     background: 'hsl(var(--card))',
                     border: isDone
                       ? '1px solid hsl(var(--success) / 0.3)'
                       : '1px solid hsl(var(--border))',
                   }}>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-sm text-foreground font-ui">{ABBREVS[di]}</span>
-                      <span className="text-xs text-muted-foreground font-ui">
-                        {day.r.length} {day.r.length === 1 ? "leitura" : "leituras"}
-                      </span>
-                    </div>
-                    <div className="flex gap-1.5 mt-2 flex-wrap">
-                      {day.r.map((r, ri) => (
-                        <span key={ri} className="px-2.5 py-1 rounded-lg text-xs font-body"
-                          style={{
-                            background: isDone ? 'hsl(var(--success) / 0.1)' : 'hsl(var(--primary) / 0.08)',
-                            color: isDone ? 'hsl(var(--muted-foreground))' : 'hsl(var(--text-secondary))',
-                          }}>
-                          {r}
+                  <div
+                    onClick={() => { toggle(activeWeek, di); haptic("light"); }}
+                    className="p-4 flex items-center justify-between cursor-pointer active:scale-[0.97] transition-transform">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-sm text-foreground font-ui">{ABBREVS[di]}</span>
+                        <span className="text-xs text-muted-foreground font-ui">
+                          {day.r.length} {day.r.length === 1 ? "leitura" : "leituras"}
                         </span>
-                      ))}
+                      </div>
+                      <div className="flex gap-1.5 mt-2 flex-wrap">
+                        {day.r.map((r, ri) => (
+                          <span key={ri} className="px-2.5 py-1 rounded-lg text-xs font-body"
+                            style={{
+                              background: isDone ? 'hsl(var(--success) / 0.1)' : 'hsl(var(--primary) / 0.08)',
+                              color: isDone ? 'hsl(var(--muted-foreground))' : 'hsl(var(--text-secondary))',
+                            }}>
+                            {r}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    {/* Check circle */}
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 ml-3 transition-all"
+                      style={{
+                        background: isDone ? 'hsl(var(--success))' : 'transparent',
+                        border: isDone ? 'none' : '2px solid hsl(var(--border))',
+                      }}>
+                      {isDone && <Check size={18} className="text-white" strokeWidth={3} />}
                     </div>
                   </div>
-                  {/* Check circle */}
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 ml-3 transition-all"
-                    style={{
-                      background: isDone ? 'hsl(var(--success))' : 'transparent',
-                      border: isDone ? 'none' : '2px solid hsl(var(--border))',
-                    }}>
-                    {isDone && <Check size={18} className="text-white" strokeWidth={3} />}
+                  {/* AI Context button */}
+                  <div className="px-4 pb-3 pt-0">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); fetchReadingContext(activeWeek, di, day.r); }}
+                      disabled={contextLoading === ctxKey}
+                      className="flex items-center gap-1.5 text-[10px] font-ui tracking-wider uppercase text-primary/70 hover:text-primary transition-colors disabled:opacity-50">
+                      <Sparkles size={12} />
+                      {contextLoading === ctxKey ? "Carregando..." : readingContext[ctxKey] ? "Contexto IA ↓" : "Contexto da Leitura (IA)"}
+                    </button>
+                    {readingContext[ctxKey] && (
+                      <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground italic font-body">
+                        {readingContext[ctxKey]}
+                      </p>
+                    )}
                   </div>
                 </div>
               );
