@@ -9,6 +9,7 @@ import Flashcards from "@/components/Flashcards";
 import Quiz from "@/components/Quiz";
 import { useScrollDirection } from "@/hooks/useScrollDirection";
 import { haptic } from "@/hooks/useHaptic";
+import { BookOpen, Flame, Calendar, PenLine, Trophy, Check, Sun, Moon } from "lucide-react";
 
 // ── DATA ──────────────────────────────────────────────────────────────────────
 
@@ -153,63 +154,7 @@ function getTodayReading(checked: Record<string, boolean>) {
   return { weekIdx, dayIdx, week, day, isDone };
 }
 
-// ── Dashboard helper components ───────────────────────────────────────────────
-
-function DashSection({ title, subtitle, description, children }: {
-  title: string; subtitle: string; description: string; children: React.ReactNode;
-}) {
-  return (
-    <div style={{ marginBottom: 32 }}>
-      <div style={{
-        fontSize: 10, letterSpacing: 3, textTransform: "uppercase",
-        color: "#7a6230", fontWeight: 600, marginBottom: 4,
-      }}>
-        {title}
-      </div>
-      <div style={{ fontSize: 18, fontWeight: 600, color: "#e8d8b8", marginBottom: 2 }}>{subtitle}</div>
-      {description && (
-        <div style={{ fontSize: 12, color: "#6a5a48", marginBottom: 14, lineHeight: 1.5 }}>{description}</div>
-      )}
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {children}
-      </div>
-    </div>
-  );
-}
-
-function DashCard({ icon, title, subtitle, onClick, accent }: {
-  icon: string; title: string; subtitle: string; onClick: () => void; accent: string;
-}) {
-  return (
-    <div onClick={onClick} style={{
-      display: "flex", alignItems: "center", gap: 14,
-      padding: "16px 16px", borderRadius: 14, cursor: "pointer",
-      background: "rgba(255,255,255,.025)",
-      border: "1px solid rgba(200,180,140,.08)",
-      transition: "all .2s", position: "relative", overflow: "hidden",
-    }}
-      onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,.05)"; e.currentTarget.style.borderColor = accent + "40"; }}
-      onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,.025)"; e.currentTarget.style.borderColor = "rgba(200,180,140,.08)"; }}
-    >
-      <div style={{
-        position: "absolute", top: 0, left: 0, right: 0, height: 2,
-        background: `linear-gradient(90deg,${accent},transparent)`, opacity: 0.4,
-      }} />
-      <div style={{
-        width: 44, height: 44, borderRadius: 12, flexShrink: 0,
-        background: accent + "15", border: `1px solid ${accent}30`,
-        display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22,
-      }}>
-        {icon}
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 15, fontWeight: 600, color: "#e8d8b8" }}>{title}</div>
-        {subtitle && <div style={{ fontSize: 12, color: "#7a6a58", marginTop: 2 }}>{subtitle}</div>}
-      </div>
-      <span style={{ fontSize: 18, color: "#5a4a38", flexShrink: 0 }}>›</span>
-    </div>
-  );
-}
+// (Dashboard helpers removed — no longer used)
 
 // ── Theme ─────────────────────────────────────────────────────────────────────
 const THEME_KEY = "theme_preference";
@@ -252,7 +197,7 @@ export default function BiblePlan() {
 }
 
 function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string; accessCode: string | null; onLogout: () => void }) {
-  const [tab, setTab] = useState<"home" | "leitura" | "devocional" | "agenda" | "anotacoes" | "biblioteca" | "quiz">("leitura");
+  const [tab, setTab] = useState<"leitura" | "devocional" | "agenda" | "anotacoes" | "biblioteca" | "quiz">("leitura");
   const [activeWeek, setActiveWeek] = useState(0);
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [saved, setSaved] = useState(false);
@@ -294,11 +239,10 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
   const prevTab = useRef(tab);
   const prevNotesTitle = useRef(notesTitle);
   useEffect(() => {
-    const newTitle = tab === "home" ? "Estudo Tudo Em Um"
-      : tab === "leitura" ? "📖 Plano de Leitura"
-      : tab === "devocional" ? "🔥 Devocionais"
-      : tab === "agenda" ? "📅 Agenda"
-      : tab === "quiz" ? "🏆 Quiz"
+    const newTitle = tab === "leitura" ? "Plano de Leitura"
+      : tab === "devocional" ? "Devocionais"
+      : tab === "agenda" ? "Agenda"
+      : tab === "quiz" ? "Quiz"
       : notesTitle;
     if (newTitle !== displayTitle) {
       setTitleFading(true);
@@ -535,16 +479,16 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
   const hideBar = direction === "down" && !isAtTop;
   const compactHeader = direction === "down" && !isAtTop;
 
-  const TABS = [
-    { key: "leitura" as const, icon: "📖", label: "Leitura" },
-    { key: "devocional" as const, icon: "🔥", label: "Devocional" },
-    { key: "agenda" as const, icon: "📅", label: "Agenda" },
-    { key: "anotacoes" as const, icon: "📝", label: "Notas" },
-    { key: "quiz" as const, icon: "🏆", label: "Quiz" },
+  const TABS: { key: typeof tab; icon: React.ReactNode; label: string }[] = [
+    { key: "leitura", icon: <BookOpen size={22} />, label: "Leitura" },
+    { key: "devocional", icon: <Flame size={22} />, label: "Devocional" },
+    { key: "agenda", icon: <Calendar size={22} />, label: "Agenda" },
+    { key: "anotacoes", icon: <PenLine size={22} />, label: "Notas" },
+    { key: "quiz", icon: <Trophy size={22} />, label: "Quiz" },
   ];
 
   return (
-    <div className="min-h-screen bg-background text-foreground font-body transition-colors duration-300">
+    <div className="min-h-[100dvh] w-full bg-background text-foreground font-body transition-colors duration-300">
       {/* Hidden YouTube player */}
       <iframe
         ref={playerRef}
@@ -556,290 +500,186 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
 
       {/* ── COMPACT MOBILE HEADER ── */}
       <header className={`mobile-header ${compactHeader ? "header-compact" : ""}`}>
-        <div className="flex items-center justify-between px-5 py-2.5">
-          {/* Left: Logout icon */}
-          <button onClick={onLogout}
-            className="w-10 h-10 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-all cursor-pointer border-none bg-transparent"
-            aria-label="Sair">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
-            </svg>
-          </button>
-
+        <div className="flex items-center justify-between">
           {/* Center: Brand + Title */}
           <div className="flex-1 text-center">
-            <p className="header-brand font-display text-[8px] tracking-[4px] uppercase text-muted-foreground font-normal h-3 leading-3 mb-0.5">
+            <p className="header-brand text-[9px] tracking-[3px] uppercase text-muted-foreground font-semibold font-ui h-3 leading-3 mb-0.5">
               Fascinação · 2026A
             </p>
-            <h1 className="font-display text-[17px] font-normal text-primary tracking-wide leading-tight transition-all duration-300"
+            <h1 className="font-body text-[20px] font-bold text-foreground tracking-wide leading-tight transition-all duration-300"
               style={{ opacity: titleFading ? 0 : 1, transform: titleFading ? "translateY(-6px)" : "translateY(0)" }}>
               {displayTitle}
             </h1>
           </div>
 
-          {/* Right: Progress + Theme */}
-          <div className="flex items-center gap-2">
-            <div className="w-[26px] h-[26px] relative shrink-0">
-              <svg width="26" height="26" viewBox="0 0 26 26" style={{ transform: "rotate(-90deg)" }}>
-                <circle cx="13" cy="13" r="10" fill="none" className="stroke-border" strokeWidth="2.5" />
-                <circle cx="13" cy="13" r="10" fill="none" className="stroke-primary" strokeWidth="2.5" strokeLinecap="round"
-                  strokeDasharray={`${prog * 62.83} 62.83`} style={{ transition: "stroke-dasharray .6s ease" }} />
-              </svg>
-            </div>
-            <label className="w-[38px] h-[22px] block cursor-pointer shrink-0">
-              <input type="checkbox" checked={theme === "dark"} onChange={() => setTheme(t => t === "light" ? "dark" : "light")} className="hidden" />
-              <div className="w-[38px] h-[22px] rounded-full border border-border bg-muted relative transition-all duration-300">
-                <div className="absolute top-[2px] w-4 h-4 rounded-full bg-primary transition-all duration-300 flex items-center justify-center text-[9px]"
-                  style={{ left: theme === "dark" ? 18 : 2 }}>
-                  {theme === "light" ? "☀" : "☾"}
-                </div>
-              </div>
-            </label>
-          </div>
+          {/* Right: Theme toggle */}
+          <button
+            onClick={() => setTheme(t => t === "light" ? "dark" : "light")}
+            className="w-10 h-10 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground transition-all shrink-0"
+            aria-label="Alternar tema"
+          >
+            {theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
+          </button>
         </div>
       </header>
 
       {/* ── MAIN CONTENT AREA ── */}
       <div className="main-content">
 
-      {/* ── HOME DASHBOARD ── */}
-      {tab === "home" && (
-        <div style={{ padding: "24px 16px 40px", maxWidth: 700, margin: "0 auto" }}>
-
-          {/* ── Plano de Leitura ── */}
-          <DashSection title="Plano de leitura" subtitle="Cronologia Bíblica" description="Leia a Bíblia na ordem em que os eventos aconteceram ao longo da história">
-            <DashCard icon="📖" title="Leitura Cronológica" subtitle={`${Math.round(prog * 100)}% concluído · Semana ${activeWeek + 1}`} onClick={() => setTab("leitura")} accent="#C8A55C" />
-          </DashSection>
-
-          {/* ── Vida Espiritual ── */}
-          <DashSection title="Vida espiritual" subtitle="Devocionais da Semana" description="Reflexões diárias para aprofundar sua caminhada com Deus">
-            {DEVOTIONALS.slice(0, 2).map((dv, i) => (
-              <DashCard key={i} icon="🕯️" title={`Semana ${i + 1}`} subtitle={dv.period} onClick={() => setTab("devocional")} accent="#6B5B8A" />
-            ))}
-          </DashSection>
-
-          {/* ── Organização ── */}
-          <DashSection title="Organização" subtitle="Agenda de Leituras" description="Calendário das 18 semanas com os textos programados para cada dia">
-            <DashCard icon="📅" title="Semana atual" subtitle={`Sem. ${activeWeek + 1} · ${WEEKS[activeWeek].dates}`} onClick={() => setTab("agenda")} accent="#4A7C8C" />
-            {activeWeek + 1 < WEEKS.length && (
-              <DashCard icon="⏳" title="Próxima semana" subtitle={`Sem. ${activeWeek + 2} · ${WEEKS[activeWeek + 1].dates}`} onClick={() => { setActiveWeek(activeWeek + 1); setTab("leitura"); }} accent="#8a7a60" />
-            )}
-          </DashSection>
-
-          {/* ── Caderno de Estudo ── */}
-          <DashSection title="Caderno de estudo" subtitle="Anotações" description="">
-            <DashCard icon="📢" title="Track Proclamadores" subtitle="" onClick={() => setTab("anotacoes")} accent="#C8A55C" />
-            <DashCard icon="📚" title="Aulas" subtitle="" onClick={() => setTab("anotacoes")} accent="#4A7C8C" />
-          </DashSection>
-
-        </div>
-      )}
-
       {/* ── LEITURA TAB ── */}
       {tab === "leitura" && (
         <>
-          {/* Today's reading card */}
+          {/* Hero card — Leitura de Hoje */}
           {todayReading && (
-            <div className="px-4 pt-5 pb-2">
+            <div className="px-4 pt-4">
               <div
                 onClick={() => {
                   setActiveWeek(todayReading.weekIdx);
                   if (!todayReading.isDone) toggle(todayReading.weekIdx, todayReading.dayIdx);
+                  haptic("medium");
                 }}
-                className={`rounded-2xl p-5 cursor-pointer relative overflow-hidden border transition-all duration-300
-                  ${todayReading.isDone
-                    ? "bg-success/10 border-success/30"
-                    : "bg-primary/10 border-primary/30"}`}
+                className="rounded-2xl p-5 cursor-pointer relative overflow-hidden transition-all duration-300 active:scale-[0.97]"
+                style={{
+                  background: 'linear-gradient(135deg, hsl(var(--card)) 0%, hsl(var(--background)) 100%)',
+                  border: todayReading.isDone
+                    ? '1px solid hsl(var(--success) / 0.3)'
+                    : '1px solid hsl(var(--primary) / 0.2)',
+                  boxShadow: '0 8px 32px hsl(var(--background) / 0.3)',
+                }}
               >
-                <div className={`absolute top-0 left-0 right-0 h-[3px] rounded-t-2xl opacity-70
-                  ${todayReading.isDone ? "bg-gradient-to-r from-success to-transparent" : "bg-gradient-to-r from-primary to-transparent"}`} />
-                <div className="flex items-center justify-between mb-2.5">
-                  <div className="flex items-center gap-2.5">
-                    <span className="text-[22px]">{todayReading.isDone ? "✅" : "📖"}</span>
-                    <div>
-                      <div className={`text-[11px] tracking-[2px] uppercase font-bold font-display
-                        ${todayReading.isDone ? "text-success" : "text-primary"}`}>
-                        Leitura de Hoje
-                      </div>
-                      <div className="text-foreground font-bold mt-0.5">
-                        {todayReading.day.day} — Semana {todayReading.weekIdx + 1}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex flex-wrap">
+                {/* Glow accent */}
+                <div className="absolute top-0 right-0 w-32 h-32 rounded-full"
+                  style={{ background: todayReading.isDone
+                    ? 'radial-gradient(circle, hsl(var(--success) / 0.08) 0%, transparent 70%)'
+                    : 'radial-gradient(circle, hsl(var(--primary) / 0.08) 0%, transparent 70%)'
+                  }} />
+
+                <span className={`text-[10px] font-semibold tracking-[2px] uppercase font-ui
+                  ${todayReading.isDone ? "text-success" : "text-primary"}`}>
+                  Leitura de Hoje
+                </span>
+
+                <h2 className="font-body text-xl font-bold mt-1 text-foreground">
+                  {todayReading.day.day} — Semana {todayReading.weekIdx + 1}
+                </h2>
+
+                <div className="flex gap-2 mt-3 flex-wrap">
                   {todayReading.day.r.map((r, ri) => (
-                    <span key={ri} className={`inline-block px-3 py-1 rounded-lg text-[13.5px] m-1 border transition-colors
-                      ${todayReading.isDone
-                        ? "bg-success/10 text-success/70 border-success/15 line-through"
-                        : "bg-primary/10 text-foreground border-primary/20"}`}>
+                    <span key={ri} className="px-3 py-1.5 rounded-full text-sm font-body"
+                      style={{
+                        background: todayReading.isDone
+                          ? 'hsl(var(--success) / 0.12)'
+                          : 'hsl(var(--primary) / 0.12)',
+                        border: todayReading.isDone
+                          ? '1px solid hsl(var(--success) / 0.25)'
+                          : '1px solid hsl(var(--primary) / 0.25)',
+                        color: todayReading.isDone
+                          ? 'hsl(var(--success))'
+                          : 'hsl(var(--primary))',
+                      }}>
                       {r}
                     </span>
                   ))}
                 </div>
-                {!todayReading.isDone && (
-                  <div className="text-[11px] text-muted-foreground mt-2.5 text-right">
-                    Toque para marcar como lida
-                  </div>
-                )}
+
+                {/* Check button */}
+                <div className="absolute bottom-5 right-5 w-12 h-12 rounded-full flex items-center justify-center transition-all"
+                  style={{
+                    background: todayReading.isDone
+                      ? 'hsl(var(--success))'
+                      : 'hsl(var(--success) / 0.15)',
+                    border: todayReading.isDone
+                      ? 'none'
+                      : '2px solid hsl(var(--success) / 0.4)',
+                  }}>
+                  <Check size={20} className={todayReading.isDone ? "text-white" : "text-success"} strokeWidth={3} />
+                </div>
               </div>
             </div>
           )}
 
-          {/* Week pills */}
-          <div className="px-4 pt-4 pb-3 overflow-x-auto flex gap-2 border-b border-border-subtle no-scrollbar scroll-smooth snap-x">
-            {WEEKS.map((w, i) => (
-              <button key={i} onClick={() => { haptic("light"); setActiveWeek(i); }}
-                className={`min-w-[44px] min-h-[44px] px-4 py-2.5 rounded-full border text-[13px] cursor-pointer whitespace-nowrap font-body transition-all duration-200 snap-center active:scale-95
-                  ${i === activeWeek
-                    ? "border-primary/50 bg-primary/15 text-foreground font-semibold"
-                    : weekProg(i) >= 1
-                      ? "border-success/40 bg-success/10 text-success"
-                      : "border-border bg-card/50 text-muted-foreground"}`}>
-                {w.week}{weekProg(i) >= 1 ? " ✓" : ""}
-              </button>
-            ))}
+          {/* Week pills — horizontal scroll-snap carousel */}
+          <div className="flex gap-2 px-4 mt-4 overflow-x-auto no-scrollbar"
+            style={{ scrollSnapType: 'x mandatory' }}>
+            {WEEKS.map((w, i) => {
+              const isActive = i === activeWeek;
+              const isComplete = weekProg(i) >= 1;
+              return (
+                <button key={i}
+                  onClick={() => { haptic("light"); setActiveWeek(i); }}
+                  className="flex-shrink-0 w-11 h-11 rounded-full flex items-center justify-center text-sm font-bold transition-all active:scale-95 font-ui"
+                  style={{
+                    scrollSnapAlign: 'center',
+                    background: isActive ? 'hsl(var(--primary))' : 'transparent',
+                    color: isActive ? 'hsl(var(--primary-foreground))' : isComplete ? 'hsl(var(--success))' : 'hsl(var(--muted-foreground))',
+                    border: isComplete && !isActive ? '2px solid hsl(var(--success))' : isActive ? 'none' : '1px solid hsl(var(--border))',
+                  }}>
+                  {isComplete && !isActive ? '✓' : w.week}
+                </button>
+              );
+            })}
           </div>
 
-          {/* Week header */}
-          <div className="px-6 pt-5 pb-2 flex items-center justify-between">
+          {/* Week progress header */}
+          <div className="mx-4 mt-5 flex items-center justify-between">
             <div>
-              <div className="text-2xl font-semibold text-foreground">Semana {cw.week}</div>
-              <div className="text-[13px] text-muted-foreground mt-0.5">{cw.dates}</div>
+              <h3 className="font-body text-lg font-bold text-foreground">
+                Semana {cw.week}
+              </h3>
+              <span className="text-xs text-muted-foreground font-ui">{cw.dates}</span>
             </div>
-            <div className="flex items-center gap-2.5">
-              <div className="w-20 h-1 bg-border rounded overflow-hidden">
-                <div className={`h-full rounded transition-all duration-400
-                  ${wp >= 1 ? "bg-success" : "bg-primary"}`}
-                  style={{ width: `${wp * 100}%` }} />
+            <div className="flex items-center gap-3">
+              <div className="w-24 h-1.5 rounded-full overflow-hidden bg-border">
+                <div className="h-full rounded-full transition-all duration-400"
+                  style={{ width: `${wp * 100}%`, background: wp >= 1 ? 'hsl(var(--success))' : 'hsl(var(--primary))' }} />
               </div>
-              <span className="text-[13px] text-muted-foreground font-medium">{Math.round(wp * 100)}%</span>
+              <span className={`text-sm font-bold font-ui ${wp >= 1 ? "text-success" : "text-primary"}`}>
+                {Math.round(wp * 100)}%
+              </span>
             </div>
           </div>
 
-          {/* Nav arrows + Mark all week */}
-          <div className="px-6 pt-1 pb-3 flex gap-2 items-center">
-            {([-1, 1] as const).map(delta => (
-              <button key={delta} onClick={() => setActiveWeek(w => Math.max(0, Math.min(WEEKS.length - 1, w + delta)))}
-                disabled={(delta === -1 && activeWeek === 0) || (delta === 1 && activeWeek === WEEKS.length - 1)}
-                className="w-10 h-10 rounded-full border border-border bg-card/50 text-muted-foreground cursor-pointer text-lg
-                  flex items-center justify-center hover:border-primary/30 disabled:opacity-30 transition-all duration-200">
-                {delta === -1 ? "‹" : "›"}
-              </button>
-            ))}
-            <div className="flex-1" />
-            <button
-              onClick={() => {
-                const allDone = cw.days.every((day, di) => !day.r.length || checked[`${activeWeek}-${di}`]);
-                setChecked(prev => {
-                  const next = { ...prev };
-                  cw.days.forEach((day, di) => {
-                    if (day.r.length) next[`${activeWeek}-${di}`] = !allDone;
-                  });
-                  return next;
-                });
-                setSaved(true); setTimeout(() => setSaved(false), 2000);
-              }}
-              className={`px-4 py-2 rounded-xl text-[12px] font-semibold cursor-pointer border transition-all duration-200 font-display tracking-wide
-                ${wp >= 1
-                  ? "border-success/40 bg-success/10 text-success hover:bg-success/20"
-                  : "border-primary/40 bg-primary/10 text-primary hover:bg-primary/20"}`}
-            >
-              {wp >= 1 ? "✓ Desmarcar semana" : "☑ Marcar semana inteira"}
-            </button>
-          </div>
-
-          {/* Days grid */}
-          <div className="px-4 pt-1 pb-8 grid gap-3 grid-cols-1 sm:grid-cols-2">
+          {/* Day cards — clean vertical list */}
+          <div className="mx-4 mt-4 space-y-2 pb-4">
             {cw.days.map((day, di) => {
               if (!day.r.length) return null;
               const isDone = !!checked[`${activeWeek}-${di}`];
-              const c = COLORS[di];
-              const ctxKey = `${activeWeek}-${di}`;
-              const hasContext = !!readingContext[ctxKey];
-              const isLoadingCtx = contextLoading === ctxKey;
               return (
                 <div key={di}
-                  className={`rounded-xl relative overflow-hidden border transition-all duration-300
-                    ${isDone ? "bg-success/5 border-success/20" : "bg-card/50 border-border hover:border-primary/20"}`}>
-                  <div className="absolute top-0 left-0 right-0 h-[3px] rounded-t-xl"
-                    style={{
-                      background: isDone ? "linear-gradient(90deg,hsl(var(--success)),transparent)" : `linear-gradient(90deg,${c},transparent)`,
-                      opacity: isDone ? 0.7 : 0.5
-                    }} />
-                  <div className="p-5 cursor-pointer" onClick={() => toggle(activeWeek, di)}>
-                    <div className="flex items-center justify-between mb-3.5">
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-[17px] font-semibold" style={{ color: isDone ? "hsl(var(--success))" : c }}>
-                          {ABBREVS[di]}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {day.r.length} {day.r.length === 1 ? "leitura" : "leituras"}
-                        </span>
-                      </div>
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-all duration-200
-                        ${isDone ? "bg-success" : "border-2 border-border"}`}>
-                        {isDone && <svg width="16" height="16" viewBox="0 0 14 14" fill="none">
-                          <path d="M3 7l3 3 5-6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>}
-                      </div>
+                  onClick={() => { toggle(activeWeek, di); haptic("light"); }}
+                  className="p-4 rounded-2xl flex items-center justify-between cursor-pointer transition-all duration-200 active:scale-[0.97]"
+                  style={{
+                    background: 'hsl(var(--card))',
+                    border: isDone
+                      ? '1px solid hsl(var(--success) / 0.3)'
+                      : '1px solid hsl(var(--border))',
+                  }}>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-sm text-foreground font-ui">{ABBREVS[di]}</span>
+                      <span className="text-xs text-muted-foreground font-ui">
+                        {day.r.length} {day.r.length === 1 ? "leitura" : "leituras"}
+                      </span>
                     </div>
-                    <div className="flex flex-wrap">
+                    <div className="flex gap-1.5 mt-2 flex-wrap">
                       {day.r.map((r, ri) => (
-                        <span key={ri} className={`inline-block px-3 py-1 rounded-lg text-[13.5px] m-1 border
-                          ${isDone
-                            ? "bg-success/10 text-success/70 border-success/15 line-through opacity-70"
-                            : "text-foreground/75 border-border-subtle"}`}
-                          style={!isDone ? { background: `${c}18`, borderColor: `${c}25` } : {}}>
+                        <span key={ri} className="px-2.5 py-1 rounded-lg text-xs font-body"
+                          style={{
+                            background: isDone ? 'hsl(var(--success) / 0.1)' : 'hsl(var(--primary) / 0.08)',
+                            color: isDone ? 'hsl(var(--muted-foreground))' : 'hsl(var(--text-secondary))',
+                          }}>
                           {r}
                         </span>
                       ))}
                     </div>
                   </div>
-
-                  {/* AI Context button */}
-                  <div className="px-5 pb-4 pt-0">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (hasContext) {
-                          // Toggle: remove context
-                          setReadingContext(prev => {
-                            const next = { ...prev };
-                            delete next[ctxKey];
-                            return next;
-                          });
-                        } else {
-                          fetchReadingContext(activeWeek, di, day.r);
-                        }
-                      }}
-                      disabled={isLoadingCtx}
-                      className={`w-full py-2 rounded-lg text-[12px] font-medium cursor-pointer border transition-all duration-200
-                        ${hasContext
-                          ? "border-primary/30 bg-primary/10 text-primary"
-                          : "border-border-subtle bg-card/30 text-muted-foreground hover:border-primary/20 hover:text-primary"
-                        } disabled:opacity-50`}
-                    >
-                      {isLoadingCtx ? "✨ Gerando contexto..." : hasContext ? "📖 Ocultar contexto" : "✨ Contexto da Leitura (IA)"}
-                    </button>
-
-                    {/* Context display */}
-                    {hasContext && (
-                      <div className="mt-3 p-4 rounded-xl border border-border-subtle bg-card/50 animate-fade-in">
-                        <p className="font-display text-[10px] tracking-[2px] uppercase text-primary font-semibold mb-3 flex items-center gap-1.5">
-                          📖 Contexto da Leitura
-                        </p>
-                        <div className="text-[13.5px] leading-relaxed text-foreground/80 space-y-2">
-                          {readingContext[ctxKey].split('\n').filter(l => l.trim()).map((line, li) => {
-                            // Bold titles like **Gênesis 1-7**
-                            const formatted = line
-                              .replace(/\*\*(.+?)\*\*/g, '<strong class="text-foreground">$1</strong>')
-                              .replace(/\*(.+?)\*/g, '<em>$1</em>');
-                            return <p key={li} dangerouslySetInnerHTML={{ __html: formatted }} />;
-                          })}
-                        </div>
-                      </div>
-                    )}
+                  {/* Check circle */}
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 ml-3 transition-all"
+                    style={{
+                      background: isDone ? 'hsl(var(--success))' : 'transparent',
+                      border: isDone ? 'none' : '2px solid hsl(var(--border))',
+                    }}>
+                    {isDone && <Check size={18} className="text-white" strokeWidth={3} />}
                   </div>
                 </div>
               );
@@ -869,20 +709,13 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
           }
         }
 
-        // Parse exegesis string into structured word entries
         const parseExegeseEntries = (text: string) => {
-          // Split by **"word"** pattern to get individual entries
           const entries: { word: string; origin: string; definition: string }[] = [];
           const regex = /\*\*\"(.+?)\"\*\*\s*\(([^)]+)\)\s*[—–-]\s*(.+?)(?=\s*\*\*\"|$)/gs;
           let match;
           while ((match = regex.exec(text)) !== null) {
-            entries.push({
-              word: match[1],
-              origin: match[2].trim(),
-              definition: match[3].trim().replace(/\.\s*$/, ''),
-            });
+            entries.push({ word: match[1], origin: match[2].trim(), definition: match[3].trim().replace(/\.\s*$/, '') });
           }
-          // If regex didn't match, try line-by-line
           if (entries.length === 0) {
             const lines = text.split(/\.\s+\*\*/);
             for (const line of lines) {
@@ -893,9 +726,7 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
           return entries;
         };
 
-        // Get theological note from exegesis (last sentence after the word entries)
         const getTheologicalNote = (text: string) => {
-          // Look for sentences that start with context words
           const patterns = [/(?:O\s+(?:autor|texto|verso|versículo|contexto)|Paulo|Jesus|Tiago|Davi|O\s+Espírito|A\s+(?:LXX|oração)|Teologicamente).+$/s];
           for (const p of patterns) {
             const m = text.match(p);
@@ -926,7 +757,6 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
             .join("");
         };
 
-        // Render a devotional detail view (used for both today and expanded cards)
         const renderDevDetail = (d: { ref: string; summary: string; exegese?: string; verseText?: string }, accentColor: string) => {
           const entries = d.exegese ? parseExegeseEntries(d.exegese) : [];
           const theoNote = d.exegese ? getTheologicalNote(d.exegese) : null;
@@ -941,50 +771,40 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
               {/* Bible version selector */}
               {d.verseText && (
                 <div className="flex items-center gap-2 mb-2 overflow-x-auto no-scrollbar">
-                  <span className="text-[11px] text-muted-foreground shrink-0">Versão:</span>
+                  <span className="text-[11px] text-muted-foreground shrink-0 font-ui">Versão:</span>
                   {BIBLE_VERSIONS.map(v => (
-                    <button
-                      key={v.key}
-                      onClick={() => {
-                        setDevBibleVersion(v.key);
-                        if (v.key !== "almeida") fetchDevVerse(d.ref, v.key);
-                      }}
-                      className={`px-2.5 py-1 rounded-lg text-[11px] border cursor-pointer whitespace-nowrap transition-all duration-200
+                    <button key={v.key}
+                      onClick={() => { setDevBibleVersion(v.key); if (v.key !== "almeida") fetchDevVerse(d.ref, v.key); }}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] border cursor-pointer whitespace-nowrap transition-all duration-200 font-ui
                         ${devBibleVersion === v.key
                           ? "border-primary/40 bg-primary/10 text-primary font-semibold"
-                          : "border-border bg-card/50 text-muted-foreground hover:border-primary/20"}`}
-                    >
+                          : "border-border bg-card/50 text-muted-foreground hover:border-primary/20"}`}>
                       {v.label}
                     </button>
                   ))}
                 </div>
               )}
 
-              {/* Verse */}
               {d.verseText && (
                 <blockquote className="text-[17px] leading-[1.7] text-foreground italic font-body
                   px-5 py-4 my-5 rounded-xl bg-primary/5 border-l-[3px] relative"
                   style={{ borderLeftColor: accentColor }}>
                   {isLoadingVerse && (
                     <div className="absolute inset-0 bg-card/60 rounded-xl flex items-center justify-center">
-                      <span className="text-[13px] text-muted-foreground animate-pulse">Carregando versão...</span>
+                      <span className="text-[13px] text-muted-foreground animate-pulse font-ui">Carregando versão...</span>
                     </div>
                   )}
                   "{displayVerse}"
                   {devBibleVersion !== "almeida" && devVerseOverrides[cacheKey] && (
-                    <span className="block text-[11px] text-muted-foreground mt-2 not-italic font-normal">
+                    <span className="block text-[11px] text-muted-foreground mt-2 not-italic font-normal font-ui">
                       — {BIBLE_VERSIONS.find(v => v.key === devBibleVersion)?.label}
                     </span>
                   )}
                 </blockquote>
               )}
 
-              {/* Summary */}
-              <p className="text-[15px] leading-relaxed text-text-secondary mb-6">
-                {d.summary}
-              </p>
+              <p className="text-[15px] leading-relaxed text-text-secondary mb-6">{d.summary}</p>
 
-              {/* Exegesis - structured entries */}
               {entries.length > 0 && (
                 <div className="rounded-2xl border border-border bg-card p-5 mb-5">
                   <p className="font-display text-[10px] tracking-[3px] uppercase text-muted-foreground font-semibold mb-5 flex items-center gap-2">
@@ -997,29 +817,21 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
                           <strong>"{entry.word}"</strong>
                           <span className="text-muted-foreground text-[13px] ml-2">
                             ({entry.origin.split(',')[0]}.{' '}
-                            <em className="text-primary">{entry.origin.split(',').slice(1).join(',').trim() || entry.origin}</em>
-                            {' '})
+                            <em className="text-primary">{entry.origin.split(',').slice(1).join(',').trim() || entry.origin}</em>)
                           </span>
                         </p>
-                        <p className="text-[14px] text-text-secondary leading-relaxed pl-0.5">
-                          — {entry.definition}
-                        </p>
+                        <p className="text-[14px] text-text-secondary leading-relaxed pl-0.5">— {entry.definition}</p>
                       </div>
                     ))}
                   </div>
-
-                  {/* Theological note */}
                   {theoNote && (
                     <div className="mt-5 rounded-xl bg-primary/5 border border-primary/10 px-4 py-3.5">
-                      <p className="text-[14px] text-text-secondary italic leading-relaxed">
-                        {theoNote}
-                      </p>
+                      <p className="text-[14px] text-text-secondary italic leading-relaxed">{theoNote}</p>
                     </div>
                   )}
                 </div>
               )}
 
-              {/* Fallback: if no structured entries found, render raw */}
               {d.exegese && entries.length === 0 && (
                 <div className="rounded-2xl border border-border bg-card p-5 mb-5">
                   <p className="font-display text-[10px] tracking-[3px] uppercase text-muted-foreground font-semibold mb-4">
@@ -1033,36 +845,33 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
                       .replace(/\. /g, '.<br/>') }} />
                 </div>
               )}
-
             </>
           );
         };
 
         return (
-          <div className="px-4 pt-5 pb-24 space-y-6">
+          <div className="px-4 pt-5 pb-4 space-y-6">
 
             {/* ── HERO: TODAY'S DEVOTIONAL ── */}
             {todayDev ? (
               <div>
-                {/* Header */}
                 <div className="flex items-center gap-2 mb-5">
                   <span className="text-2xl">🔥</span>
                   <div>
-                    <p className="font-display text-[9px] tracking-[3px] uppercase text-fire font-bold">
+                    <p className="font-ui text-[9px] tracking-[3px] uppercase text-fire font-bold">
                       Devocional de Hoje — {todayDev.day}
                     </p>
-                    <p className="text-[11px] text-muted-foreground">{todayDev.period}</p>
+                    <p className="text-[11px] text-muted-foreground font-ui">{todayDev.period}</p>
                   </div>
                 </div>
 
-                {/* Reference title */}
-                <h2 className="font-display text-[26px] font-semibold text-foreground leading-tight mb-1">
+                <h2 className="font-body text-[26px] font-bold text-foreground leading-tight mb-1">
                   {todayDev.ref}
                 </h2>
 
                 {renderDevDetail(todayDev, "hsl(var(--fire))")}
 
-                {/* ── REFLECTION SECTION ── */}
+                {/* Reflection section */}
                 <div className="rounded-2xl border border-border bg-card p-5">
                   <div className="flex items-center justify-between mb-4">
                     <p className="font-display text-[10px] tracking-[3px] uppercase text-muted-foreground font-semibold flex items-center gap-2">
@@ -1070,12 +879,9 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
                     </p>
                   </div>
 
-                  {/* Prompt pills */}
                   <div className="flex flex-wrap gap-2 mb-4">
                     {["O que Deus está me dizendo?", "Como isso se aplica hoje?", "Pelo que sou grato?"].map(prompt => (
-                      <button key={prompt} onClick={() => {
-                        setDevReflection(prev => prev + (prev ? '\n' : '') + `<p>${prompt}</p>`);
-                      }}
+                      <button key={prompt} onClick={() => setDevReflection(prev => prev + (prev ? '\n' : '') + `<p>${prompt}</p>`)}
                         className="px-3 py-1.5 rounded-lg border border-border bg-background text-[12px] text-text-secondary
                           hover:border-primary/30 hover:text-foreground cursor-pointer transition-all duration-150 font-body">
                         {prompt}
@@ -1083,14 +889,8 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
                     ))}
                   </div>
 
-                  {/* Rich text editor */}
-                  <RichTextEditor
-                    content={devReflection}
-                    onChange={setDevReflection}
-                    placeholder="Escreva sua reflexão sobre o devocional de hoje..."
-                  />
+                  <RichTextEditor content={devReflection} onChange={setDevReflection} placeholder="Escreva sua reflexão sobre o devocional de hoje..." />
 
-                  {/* Save button */}
                   <div className="flex justify-end mt-4">
                     <button
                       onClick={() => {
@@ -1103,8 +903,8 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
                         setDevReflection("");
                         setSaved(true); setTimeout(() => setSaved(false), 2000);
                       }}
-                      className="px-6 py-2.5 rounded-xl bg-primary text-primary-foreground font-display text-[10px] tracking-wider uppercase
-                        cursor-pointer hover:bg-primary-hover active:scale-[0.97] transition-all duration-200 shadow-elegant"
+                      className="px-6 py-2.5 rounded-xl bg-primary text-primary-foreground font-ui text-[10px] tracking-wider uppercase
+                        cursor-pointer hover:bg-primary-hover active:scale-[0.97] transition-all duration-200"
                     >
                       Salvar reflexão
                     </button>
@@ -1112,20 +912,15 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
                 </div>
               </div>
             ) : (
-              <div className="relative rounded-2xl overflow-hidden">
-                <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-fire/50 via-primary/30 to-transparent" />
-                <div className="relative p-6 border border-border rounded-2xl text-center bg-card/50">
-                  <span className="text-3xl mb-3 block">🕊️</span>
-                  <p className="font-display text-[10px] tracking-[3px] uppercase text-muted-foreground font-bold mb-1.5">
-                    Devocional de Hoje
-                  </p>
-                  <p className="text-sm text-muted-foreground italic">
-                    Sem devocional programado para hoje.
-                  </p>
-                  <p className="text-[11px] text-muted-foreground/60 mt-1">
-                    Explore os devocionais anteriores abaixo
-                  </p>
-                </div>
+              /* Empty state */
+              <div className="flex flex-col items-center justify-center px-8 py-16">
+                <span className="text-5xl mb-4 animate-breathing">🕊️</span>
+                <h2 className="font-body text-lg font-bold text-center text-foreground">
+                  Nenhum devocional para hoje
+                </h2>
+                <p className="text-sm text-center mt-2 text-muted-foreground">
+                  Explore os devocionais anteriores ou use as ferramentas abaixo
+                </p>
               </div>
             )}
 
@@ -1135,12 +930,11 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
                 <p className="font-display text-[10px] tracking-[3px] uppercase text-muted-foreground font-semibold mb-1 flex items-center gap-2">
                   📅 Calendário de Abril
                 </p>
-                <p className="text-[11px] text-muted-foreground mb-4">Toque em um dia para ver a leitura devocional</p>
+                <p className="text-[11px] text-muted-foreground mb-4 font-ui">Toque em um dia para ver a leitura devocional</p>
 
-                {/* Theme legend */}
                 <div className="flex flex-wrap gap-2 mb-4">
                   {APRIL_THEMES.map(t => (
-                    <span key={t.week} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-border text-[10px] font-display tracking-wide">
+                    <span key={t.week} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-border text-[10px] font-ui tracking-wide">
                       <span className="w-2 h-2 rounded-full shrink-0" style={{ background: t.color }} />
                       <span className="text-muted-foreground">{t.week}:</span>
                       <span className="text-foreground font-medium">{t.theme}</span>
@@ -1148,21 +942,17 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
                   ))}
                 </div>
 
-                {/* Calendar grid */}
                 {(() => {
                   const daysOfWeek = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
-                  // April 2026: starts on Wednesday (index 2 in Mon-based week)
-                  const firstDayOffset = 2; // Wednesday
+                  const firstDayOffset = 2;
                   const daysInMonth = 30;
                   const today = new Date();
                   const isCurrentMonth = today.getMonth() === 3 && today.getFullYear() === 2026;
                   const todayDate = isCurrentMonth ? today.getDate() : -1;
-
                   const cells: (number | null)[] = [];
                   for (let i = 0; i < firstDayOffset; i++) cells.push(null);
                   for (let d = 1; d <= daysInMonth; d++) cells.push(d);
                   while (cells.length % 7 !== 0) cells.push(null);
-
                   const getWeekColor = (day: number) => {
                     if (day >= 6 && day <= 10) return "hsl(var(--fire))";
                     if (day >= 13 && day <= 17) return "hsl(var(--primary))";
@@ -1170,14 +960,11 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
                     if (day >= 27 && day <= 30) return "#7A6B8A";
                     return undefined;
                   };
-
                   return (
                     <div>
                       <div className="grid grid-cols-7 gap-1 mb-1">
                         {daysOfWeek.map(d => (
-                          <div key={d} className="text-center text-[9px] font-display tracking-wider uppercase text-muted-foreground py-1">
-                            {d}
-                          </div>
+                          <div key={d} className="text-center text-[9px] font-ui tracking-wider uppercase text-muted-foreground py-1">{d}</div>
                         ))}
                       </div>
                       <div className="grid grid-cols-7 gap-1">
@@ -1188,31 +975,26 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
                           const isToday = day === todayDate;
                           const isWeekend = (i % 7 === 5) || (i % 7 === 6);
                           return (
-                            <button
-                              key={i}
+                            <button key={i}
                               onClick={() => {
                                 if (ref) {
                                   setExegeseVerse(ref);
-                                  // Scroll to exegesis section
                                   setTimeout(() => {
                                     document.querySelector('[data-exegesis]')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                                   }, 100);
                                 }
                               }}
-                              className={`relative aspect-square rounded-lg flex flex-col items-center justify-center transition-all duration-200
+                              className={`relative aspect-square rounded-lg flex flex-col items-center justify-center transition-all duration-200 min-w-[44px] min-h-[44px]
                                 ${isToday ? "ring-2 ring-primary ring-offset-1 ring-offset-background" : ""}
                                 ${ref ? "cursor-pointer hover:scale-105 active:scale-95" : "cursor-default"}
                                 ${isWeekend ? "opacity-40" : ""}
                                 ${ref ? "border border-border bg-card/80 hover:bg-card" : "bg-transparent"}`}
                               style={ref && wColor ? { borderColor: wColor + "40" } : undefined}
-                              title={ref || undefined}
-                            >
+                              title={ref || undefined}>
                               <span className={`text-[13px] font-medium ${isToday ? "text-primary" : ref ? "text-foreground" : "text-muted-foreground/50"}`}>
                                 {day}
                               </span>
-                              {ref && (
-                                <span className="w-1.5 h-1.5 rounded-full mt-0.5" style={{ background: wColor || "hsl(var(--primary))" }} />
-                              )}
+                              {ref && <span className="w-1.5 h-1.5 rounded-full mt-0.5" style={{ background: wColor || "hsl(var(--primary))" }} />}
                             </button>
                           );
                         })}
@@ -1223,11 +1005,48 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
               </div>
             </div>
 
-            {/* ── DIVIDER ── */}
+            {/* ── TOOLS DIVIDER ── */}
             <div className="flex items-center gap-3">
               <div className="h-px flex-1 bg-border" />
-              <span className="font-display text-[8px] tracking-[3px] uppercase text-muted-foreground">Ferramentas</span>
+              <span className="font-ui text-[10px] tracking-[2px] uppercase text-muted-foreground font-semibold">Ferramentas</span>
               <div className="h-px flex-1 bg-border" />
+            </div>
+
+            {/* ── TOOLS GRID 2x1 ── */}
+            <div className="grid grid-cols-2 gap-3">
+              {/* Estudo Exegético */}
+              <button
+                onClick={() => {
+                  document.querySelector('[data-exegesis]')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }}
+                className="aspect-square rounded-2xl p-5 flex flex-col items-center justify-center gap-3 transition-all active:scale-95"
+                style={{
+                  background: 'linear-gradient(135deg, hsl(var(--card)) 0%, hsl(var(--background-secondary)) 100%)',
+                  border: '1px solid hsl(var(--primary) / 0.15)',
+                }}>
+                <span className="text-3xl">📖</span>
+                <div className="text-center">
+                  <div className="text-xs font-bold tracking-wider uppercase text-primary font-ui">Estudo</div>
+                  <div className="text-[10px] mt-0.5 text-muted-foreground font-ui">Exegese palavra a palavra</div>
+                </div>
+              </button>
+
+              {/* Gravar */}
+              <button
+                onClick={() => {
+                  document.querySelector('[data-recording]')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }}
+                className="aspect-square rounded-2xl p-5 flex flex-col items-center justify-center gap-3 transition-all active:scale-95"
+                style={{
+                  background: 'linear-gradient(135deg, hsl(var(--card)) 0%, hsl(var(--background-secondary)) 100%)',
+                  border: '1px solid hsl(var(--primary) / 0.15)',
+                }}>
+                <span className="text-3xl">🎙️</span>
+                <div className="text-center">
+                  <div className="text-xs font-bold tracking-wider uppercase text-primary font-ui">Gravar</div>
+                  <div className="text-[10px] mt-0.5 text-muted-foreground font-ui">Reflexão em áudio</div>
+                </div>
+              </button>
             </div>
 
             {/* ── EXEGESIS STUDY ── */}
@@ -1239,7 +1058,6 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
                 <p className="text-[13px] text-muted-foreground mb-4 leading-relaxed">
                   Envie um versículo e receba uma análise palavra por palavra com o significado original em grego/hebraico.
                 </p>
-
                 <div className="flex gap-2 mb-3">
                   <input
                     type="text"
@@ -1253,22 +1071,15 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
                       placeholder:text-muted-foreground placeholder:italic
                       transition-all duration-200"
                   />
-                  <button
-                    onClick={handleExegese}
-                    disabled={!exegeseVerse.trim() || exegeseLoading}
-                    className="px-5 py-3 rounded-xl bg-primary text-primary-foreground font-display text-[10px] tracking-wider uppercase cursor-pointer shrink-0
-                      disabled:opacity-40 hover:bg-primary-hover active:scale-95 transition-all duration-200 shadow-elegant"
-                  >
+                  <button onClick={handleExegese} disabled={!exegeseVerse.trim() || exegeseLoading}
+                    className="px-5 py-3 rounded-xl bg-primary text-primary-foreground font-ui text-[10px] tracking-wider uppercase cursor-pointer shrink-0
+                      disabled:opacity-40 hover:bg-primary-hover active:scale-95 transition-all duration-200">
                     {exegeseLoading ? "⏳" : "Estudar"}
                   </button>
                 </div>
-
                 {exegeseError && (
-                  <p className="text-[13px] text-destructive italic mb-2 flex items-center gap-1.5">
-                    <span>⚠</span> {exegeseError}
-                  </p>
+                  <p className="text-[13px] text-destructive italic mb-2 flex items-center gap-1.5"><span>⚠</span> {exegeseError}</p>
                 )}
-
                 {exegeseResult && (
                   <div className="mt-3 rounded-xl border border-border bg-background/50 p-4">
                     <p className="font-display text-[9px] tracking-[2px] uppercase text-primary font-bold mb-3">
@@ -1277,30 +1088,19 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
                     <div className="exegese-html text-sm leading-[2] text-text-secondary"
                       dangerouslySetInnerHTML={{ __html: renderExegeseBlock(exegeseResult.content) }} />
                     <div className="flex gap-2 mt-4 pt-3 border-t border-border-subtle">
-                      <button
-                        onClick={() => {
-                          const noteText = `# Exegese: ${exegeseResult.verse}\n\n${exegeseResult.content}`;
-                          const notes = JSON.parse(localStorage.getItem("bible-notes-2026") || "[]");
-                          const now2 = new Date().toISOString();
-                          notes.unshift({ id: Date.now(), categoria: "devocionais", semana: "", texto: noteText, criadoEm: now2, atualizadoEm: now2 });
-                          localStorage.setItem("bible-notes-2026", JSON.stringify(notes));
-                          setSaved(true); setTimeout(() => setSaved(false), 2000);
-                        }}
-                        className="flex-1 py-2.5 rounded-xl bg-fire/10 border border-fire/30
-                          text-fire font-display text-[9px] tracking-wide uppercase text-center cursor-pointer
-                          hover:bg-fire/15 active:scale-[0.98] transition-all duration-150"
-                      >
+                      <button onClick={() => {
+                        const noteText = `# Exegese: ${exegeseResult.verse}\n\n${exegeseResult.content}`;
+                        const notes = JSON.parse(localStorage.getItem("bible-notes-2026") || "[]");
+                        const now2 = new Date().toISOString();
+                        notes.unshift({ id: Date.now(), categoria: "devocionais", semana: "", texto: noteText, criadoEm: now2, atualizadoEm: now2 });
+                        localStorage.setItem("bible-notes-2026", JSON.stringify(notes));
+                        setSaved(true); setTimeout(() => setSaved(false), 2000);
+                      }}
+                        className="flex-1 py-2.5 rounded-xl bg-fire/10 border border-fire/30 text-fire font-ui text-[9px] tracking-wide uppercase text-center cursor-pointer hover:bg-fire/15 active:scale-[0.98] transition-all duration-150">
                         🔥 Salvar em Devocionais
                       </button>
-                      <button
-                        onClick={() => {
-                          navigator.clipboard.writeText(exegeseResult.content);
-                          setSaved(true); setTimeout(() => setSaved(false), 2000);
-                        }}
-                        className="px-4 py-2.5 rounded-xl border border-border bg-transparent
-                          text-muted-foreground font-display text-[9px] tracking-wide uppercase cursor-pointer
-                          hover:border-primary/30 hover:text-foreground active:scale-[0.98] transition-all duration-150"
-                      >
+                      <button onClick={() => { navigator.clipboard.writeText(exegeseResult.content); setSaved(true); setTimeout(() => setSaved(false), 2000); }}
+                        className="px-4 py-2.5 rounded-xl border border-border bg-transparent text-muted-foreground font-ui text-[9px] tracking-wide uppercase cursor-pointer hover:border-primary/30 hover:text-foreground active:scale-[0.98] transition-all duration-150">
                         Copiar
                       </button>
                     </div>
@@ -1310,7 +1110,7 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
             </div>
 
             {/* ── RECORD DEVOTIONAL ── */}
-            <div className="rounded-2xl border border-border bg-card overflow-hidden">
+            <div data-recording className="rounded-2xl border border-border bg-card overflow-hidden">
               <div className="p-5">
                 <p className="font-display text-[10px] tracking-[3px] uppercase text-muted-foreground font-semibold mb-3 flex items-center gap-2">
                   🎙️ Gravar Devocional
@@ -1318,54 +1118,35 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
                 <p className="text-[13px] text-muted-foreground mb-4 leading-relaxed">
                   Grave sua reflexão em áudio e ela será transcrita automaticamente.
                 </p>
-
-                <button
-                  onClick={toggleDevRecording}
-                  className={`w-full py-3.5 rounded-xl border font-display text-[11px] tracking-[2px] uppercase cursor-pointer
-                    flex items-center justify-center gap-2.5 transition-all duration-200
+                <button onClick={toggleDevRecording}
+                  className={`w-full py-3.5 rounded-xl border font-ui text-[11px] tracking-[2px] uppercase cursor-pointer
+                    flex items-center justify-center gap-2.5 transition-all duration-200 min-h-[48px]
                     ${devRecording
                       ? "bg-destructive/10 border-destructive text-destructive animate-pulse"
-                      : "bg-background border-border text-primary hover:border-primary/40 active:scale-[0.98]"}`}
-                >
+                      : "bg-background border-border text-primary hover:border-primary/40 active:scale-[0.98]"}`}>
                   {devRecording ? "⏹ Parar Gravação" : "🎙️ Iniciar Gravação"}
                 </button>
-
                 {devTranscript && (
                   <div className="mt-4 space-y-3">
-                    <div className="bg-primary/5 border border-primary/10 border-l-[3px] border-l-primary
-                      rounded-r-xl p-4 text-[15px] leading-relaxed text-text-secondary italic font-body">
+                    <div className="bg-primary/5 border border-primary/10 border-l-[3px] border-l-primary rounded-r-xl p-4 text-[15px] leading-relaxed text-text-secondary italic font-body">
                       {devTranscript}
                     </div>
-                    <button
-                      onClick={summarizeTranscript}
-                      disabled={devSummarizing}
-                      className="w-full py-2.5 rounded-xl bg-accent/10 border border-accent/25
-                        text-accent font-display text-[9px] tracking-wide uppercase cursor-pointer
-                        disabled:opacity-50 hover:bg-accent/15 active:scale-[0.98] transition-all duration-200"
-                    >
+                    <button onClick={summarizeTranscript} disabled={devSummarizing}
+                      className="w-full py-2.5 rounded-xl bg-accent/10 border border-accent/25 text-accent font-ui text-[9px] tracking-wide uppercase cursor-pointer disabled:opacity-50 hover:bg-accent/15 active:scale-[0.98] transition-all duration-200 min-h-[44px]">
                       {devSummarizing ? "⏳ Resumindo..." : "✨ Resumir em Tópicos com IA"}
                     </button>
                     {devSummary && (
-                      <div className="bg-accent/5 border border-accent/10 border-l-[3px] border-l-accent
-                        rounded-r-xl p-4 text-sm leading-relaxed text-text-secondary whitespace-pre-wrap">
+                      <div className="bg-accent/5 border border-accent/10 border-l-[3px] border-l-accent rounded-r-xl p-4 text-sm leading-relaxed text-text-secondary whitespace-pre-wrap">
                         {devSummary}
                       </div>
                     )}
                     <div className="flex gap-2">
-                      <button
-                        onClick={() => saveDevTranscript(!!devSummary)}
-                        className="flex-1 py-2.5 rounded-xl bg-fire/10 border border-fire/30
-                          text-fire font-display text-[9px] tracking-wide uppercase cursor-pointer
-                          hover:bg-fire/15 active:scale-[0.98] transition-all duration-150"
-                      >
+                      <button onClick={() => saveDevTranscript(!!devSummary)}
+                        className="flex-1 py-2.5 rounded-xl bg-fire/10 border border-fire/30 text-fire font-ui text-[9px] tracking-wide uppercase cursor-pointer hover:bg-fire/15 active:scale-[0.98] transition-all duration-150 min-h-[44px]">
                         🔥 Salvar em Devocionais
                       </button>
-                      <button
-                        onClick={() => { setDevTranscript(""); devTranscriptRef.current = ""; setDevSummary(""); }}
-                        className="px-4 py-2.5 rounded-xl border border-border bg-transparent
-                          text-muted-foreground font-display text-[9px] tracking-wide uppercase cursor-pointer
-                          hover:border-primary/30 active:scale-[0.98] transition-all duration-150"
-                      >
+                      <button onClick={() => { setDevTranscript(""); devTranscriptRef.current = ""; setDevSummary(""); }}
+                        className="px-4 py-2.5 rounded-xl border border-border bg-transparent text-muted-foreground font-ui text-[9px] tracking-wide uppercase cursor-pointer hover:border-primary/30 active:scale-[0.98] transition-all duration-150 min-h-[44px]">
                         Limpar
                       </button>
                     </div>
@@ -1374,10 +1155,10 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
               </div>
             </div>
 
-            {/* ── DIVIDER ── */}
+            {/* ── ARCHIVE DIVIDER ── */}
             <div className="flex items-center gap-3">
               <div className="h-px flex-1 bg-border" />
-              <span className="font-display text-[8px] tracking-[3px] uppercase text-muted-foreground">Arquivo</span>
+              <span className="font-ui text-[10px] tracking-[2px] uppercase text-muted-foreground font-semibold">Arquivo</span>
               <div className="h-px flex-1 bg-border" />
             </div>
 
@@ -1389,36 +1170,29 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
               {DEVOTIONALS.map((week, wi) => (
                 <div key={wi} className="mb-6">
                   <div className="inline-flex items-center px-3.5 py-1.5 rounded-full border border-border
-                    bg-card/80 mb-3 text-[12px] text-text-secondary font-display font-semibold tracking-wider uppercase">
+                    bg-card/80 mb-3 text-[12px] text-text-secondary font-ui font-semibold tracking-wider uppercase">
                     📅 {week.period}
                   </div>
-                  <div className="grid gap-2.5 grid-cols-1 sm:grid-cols-2">
+                  <div className="space-y-2">
                     {week.days.map((d, di) => {
                       const key = `dev-${wi}-${di}`;
                       const isOpen = expandedDev === key;
                       const c = DEV_DAY_COLORS[d.day] ?? "#C8A55C";
                       return (
                         <div key={di}
-                          className={`rounded-xl relative overflow-hidden border transition-all duration-300
+                          className={`rounded-2xl relative overflow-hidden border transition-all duration-300
                             ${isOpen
-                              ? "border-primary/30 bg-card shadow-elegant-lg"
+                              ? "border-primary/30 bg-card"
                               : "border-border hover:border-primary/20 bg-card/50 hover:bg-card/80"}`}>
                           <div className="absolute top-0 left-0 right-0 h-[2px] opacity-60"
                             style={{ background: `linear-gradient(90deg,${c},transparent)` }} />
-                          <div className="p-4 cursor-pointer" onClick={() => setExpandedDev(isOpen ? null : key)}>
+                          <div className="p-4 cursor-pointer active:scale-[0.98] transition-transform" onClick={() => setExpandedDev(isOpen ? null : key)}>
                             <div className="flex items-start justify-between gap-2">
                               <div>
-                                <div className="text-[10px] font-display font-bold tracking-wider uppercase mb-1" style={{ color: c }}>
-                                  {d.day}
-                                </div>
-                                <div className="text-[15px] font-semibold text-foreground font-display">
-                                  {d.ref}
-                                </div>
+                                <div className="text-[10px] font-ui font-bold tracking-wider uppercase mb-1" style={{ color: c }}>{d.day}</div>
+                                <div className="text-[15px] font-semibold text-foreground font-body">{d.ref}</div>
                               </div>
-                              <span className={`text-lg text-muted-foreground shrink-0 mt-0.5 transition-transform duration-200
-                                ${isOpen ? "rotate-45" : ""}`}>
-                                +
-                              </span>
+                              <span className={`text-lg text-muted-foreground shrink-0 mt-0.5 transition-transform duration-200 ${isOpen ? "rotate-45" : ""}`}>+</span>
                             </div>
                           </div>
                           {isOpen && (
@@ -1447,11 +1221,6 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
       {/* ── QUIZ TAB ── */}
       {tab === "quiz" && <Quiz userCodeId={userCodeId} />}
 
-      {/* Footer */}
-      <div className="text-center py-6 px-6 text-[11px] text-muted-foreground tracking-[2px] uppercase font-display">
-        18 Semanas • Toda a Bíblia
-      </div>
-
       </div>{/* end main-content */}
 
       {/* ── BOTTOM TAB BAR ── */}
@@ -1461,14 +1230,13 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
           return (
             <button key={t.key}
               onClick={() => { haptic("light"); setTab(t.key); window.scrollTo({ top: 0, behavior: "smooth" }); }}
-              className={isActive ? "tab-active" : ""}
+              className={`tab-item ${isActive ? "tab-active" : ""}`}
               aria-label={t.label}>
-              <span className="text-[22px] leading-none">{t.icon}</span>
-              <span className={`font-display text-[10px] tracking-[1px] uppercase transition-colors duration-200
-                ${isActive ? "text-primary font-semibold" : "text-muted-foreground"}`}>
-                {t.label}
+              <span className={`tab-icon leading-none transition-colors duration-200
+                ${isActive ? "text-primary" : "text-muted-foreground"}`}>
+                {t.icon}
               </span>
-              <span className="tab-dot" />
+              <span className="tab-label">{t.label}</span>
             </button>
           );
         })}
@@ -1476,7 +1244,7 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
 
       {/* Save toast */}
       {saved && (
-        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 bg-success text-white py-2.5 px-5 rounded-full text-[13px] z-[110] shadow-lg animate-fade-in">
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 bg-success text-white py-2.5 px-5 rounded-full text-[13px] z-[110] shadow-lg animate-fade-in font-ui">
           ✓ Progresso salvo
         </div>
       )}
