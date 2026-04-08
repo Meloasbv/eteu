@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import WeekSchedule from "@/components/WeekSchedule";
-import BibleNotes from "@/components/BibleNotes";
+import StudyTab from "@/components/study/StudyTab";
 import CodeLogin from "@/components/CodeLogin";
 import RichTextEditor from "@/components/RichTextEditor";
 import Library from "@/components/Library";
@@ -243,7 +243,7 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
       : tab === "devocional" ? "Devocionais"
       : tab === "agenda" ? "Agenda"
       : tab === "quiz" ? "Quiz"
-      : notesTitle;
+      : "Estudo";
     if (newTitle !== displayTitle) {
       setTitleFading(true);
       setTimeout(() => {
@@ -483,7 +483,7 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
     { key: "leitura", icon: <BookOpen size={22} />, label: "Leitura" },
     { key: "devocional", icon: <Flame size={22} />, label: "Devocional" },
     { key: "agenda", icon: <Calendar size={22} />, label: "Agenda" },
-    { key: "anotacoes", icon: <PenLine size={22} />, label: "Notas" },
+    { key: "anotacoes", icon: <PenLine size={22} />, label: "Estudo" },
     { key: "quiz", icon: <Trophy size={22} />, label: "Quiz" },
   ];
 
@@ -1265,8 +1265,8 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
       {/* ── AGENDA TAB ── */}
       {tab === "agenda" && <WeekSchedule userCodeId={userCodeId} />}
 
-      {/* ── ANOTAÇÕES TAB ── */}
-      {tab === "anotacoes" && <BibleNotes onTitleChange={setNotesTitle} userCodeId={userCodeId} />}
+      {/* ── ESTUDO TAB ── */}
+      {tab === "anotacoes" && <StudyTab userCodeId={userCodeId} />}
 
       {/* ── QUIZ TAB ── */}
       {tab === "quiz" && <Quiz userCodeId={userCodeId} />}
