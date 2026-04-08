@@ -483,7 +483,7 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
     { key: "leitura", icon: <BookOpen size={22} />, label: "Leitura" },
     { key: "devocional", icon: <Flame size={22} />, label: "Devocional" },
     { key: "agenda", icon: <Calendar size={22} />, label: "Agenda" },
-    { key: "anotacoes", icon: <PenLine size={22} />, label: "Notas" },
+    { key: "anotacoes", icon: <PenLine size={22} />, label: "Estudo" },
     { key: "quiz", icon: <Trophy size={22} />, label: "Quiz" },
   ];
 
