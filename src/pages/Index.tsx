@@ -243,7 +243,7 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
       : tab === "devocional" ? "Devocionais"
       : tab === "agenda" ? "Agenda"
       : tab === "quiz" ? "Quiz"
-      : notesTitle;
+      : "Estudo";
     if (newTitle !== displayTitle) {
       setTitleFading(true);
       setTimeout(() => {
