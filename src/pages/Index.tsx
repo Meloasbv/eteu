@@ -6,10 +6,10 @@ import CodeLogin from "@/components/CodeLogin";
 import RichTextEditor from "@/components/RichTextEditor";
 import Library from "@/components/Library";
 import Flashcards from "@/components/Flashcards";
-import Quiz from "@/components/Quiz";
+// Quiz removed from tabs
 import { useScrollDirection } from "@/hooks/useScrollDirection";
 import { haptic } from "@/hooks/useHaptic";
-import { BookOpen, Flame, Calendar, PenLine, Trophy, Check, Sun, Moon, LogOut, Sparkles, CheckCheck } from "lucide-react";
+import { BookOpen, Flame, Calendar, PenLine, Check, Sun, Moon, LogOut, Sparkles, CheckCheck } from "lucide-react";
 
 // ── DATA ──────────────────────────────────────────────────────────────────────
 
@@ -197,7 +197,7 @@ export default function BiblePlan() {
 }
 
 function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string; accessCode: string | null; onLogout: () => void }) {
-  const [tab, setTab] = useState<"leitura" | "devocional" | "agenda" | "anotacoes" | "biblioteca" | "quiz">("leitura");
+  const [tab, setTab] = useState<"leitura" | "devocional" | "agenda" | "anotacoes" | "biblioteca">("leitura");
   const [activeWeek, setActiveWeek] = useState(0);
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [saved, setSaved] = useState(false);
@@ -242,7 +242,6 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
     const newTitle = tab === "leitura" ? "Plano de Leitura"
       : tab === "devocional" ? "Devocionais"
       : tab === "agenda" ? "Agenda"
-      : tab === "quiz" ? "Quiz"
       : "Estudo";
     if (newTitle !== displayTitle) {
       setTitleFading(true);
@@ -484,7 +483,6 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
     { key: "devocional", icon: <Flame size={22} />, label: "Devocional" },
     { key: "agenda", icon: <Calendar size={22} />, label: "Agenda" },
     { key: "anotacoes", icon: <PenLine size={22} />, label: "Estudo" },
-    { key: "quiz", icon: <Trophy size={22} />, label: "Quiz" },
   ];
 
   return (
@@ -1268,8 +1266,6 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
       {/* ── ESTUDO TAB ── */}
       {tab === "anotacoes" && <StudyTab userCodeId={userCodeId} />}
 
-      {/* ── QUIZ TAB ── */}
-      {tab === "quiz" && <Quiz userCodeId={userCodeId} />}
 
       </div>{/* end main-content */}
 

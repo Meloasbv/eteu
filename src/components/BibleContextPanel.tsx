@@ -141,7 +141,7 @@ export default function BibleContextPanel({ open, reference, onClose, onInsertVe
     else setConnectionsLoading(false);
   }, [reference, verseText]);
 
-  // Auto-fetch verse on open
+  // Auto-fetch verse + exegesis on open
   useEffect(() => {
     if (open && reference) {
       setVerseText(null);
@@ -149,10 +149,17 @@ export default function BibleContextPanel({ open, reference, onClose, onInsertVe
       setExegesisData(null);
       setConnectionsData(null);
       setError("");
-      setTab("verse");
+      setTab("exegesis");
       fetchVerse();
     }
   }, [open, reference, fetchVerse]);
+
+  // Pre-fetch exegesis when panel opens and verse is loaded
+  useEffect(() => {
+    if (open && reference && verseText && !exegesisData && !exegesisLoading) {
+      fetchAIData("exegesis");
+    }
+  }, [open, reference, verseText, exegesisData, exegesisLoading, fetchAIData]);
 
   // Fetch AI data when tab changes
   useEffect(() => {
