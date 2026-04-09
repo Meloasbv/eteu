@@ -1,57 +1,33 @@
 
 
-## Plan: Redesign Mobile Completo — Correção Urgente
+## Plan: 5 Correções no Fascinação
 
-O app tem problemas estruturais no mobile: `#root` com `max-width: 1280px` e `padding: 2rem` no App.css, container principal sem fullscreen, bottom tab bar fraca, e layouts internos de Leitura/Devocional não otimizados para mobile.
+### 1. Remover aba Quiz
+- **`src/pages/Index.tsx`**: Remover `"quiz"` do tipo de estado `tab`, remover o item Quiz do array `TABS`, remover `import Quiz`, remover o bloco `{tab === "quiz" && <Quiz ... />}`
+- Não deletar os arquivos Quiz.tsx e quizData.ts (podem ser usados futuramente)
 
----
+### 2. Melhorar formatação das respostas da IA no Assistente
+- **`src/components/study/ChatMessage.tsx`**: Melhorar a renderização markdown — aumentar espaçamento entre seções, adicionar separadores visuais entre blocos, melhorar tipografia dos headings (Georgia serif, tamanhos maiores), estilizar blockquotes com borda dourada e fundo sutil, melhorar listas com bullets estilizados, adicionar espaçamento `prose-p:my-2` e `prose-headings:mt-6 prose-headings:mb-3`
+- **`supabase/functions/study-chat/index.ts`**: Ajustar o system prompt para instruir a IA a formatar respostas com seções claras usando `##`, usar listas com bullets, separar parágrafos curtos, e evitar blocos de texto densos. Adicionar instrução: "Quebre respostas em seções curtas com subtítulos. Use parágrafos curtos (2-3 frases máximo). Use listas quando possível."
 
-### Arquivos a modificar
+### 3. Conectar ChatGPT API (usar Lovable AI com modelo GPT)
+- **`supabase/functions/study-chat/index.ts`**: Trocar o modelo de `google/gemini-2.5-flash` para `openai/gpt-5-mini` (melhor custo-benefício via Lovable AI gateway — mesma infraestrutura, sem necessidade de API key do OpenAI)
+- Todas as outras edge functions que usam IA (`bible-context`, `verse-ai`, `notes-ai`, etc.) podem manter os modelos atuais ou ser migradas conforme necessidade futura
 
-#### 1. `src/App.css` — Limpar completamente
-- Remover `max-width`, `margin: 0 auto`, `padding: 2rem` do `#root`
-- Substituir por reset fullscreen: `width: 100%; margin: 0; padding: 0; min-height: 100dvh; overflow-x: hidden`
-- Remover classes `.logo`, `.card`, `.read-the-docs` (não usadas)
+### 4. Corrigir pesquisa de versículo nas Notas (BibleContextPanel)
+- **Problema**: O `BibleContextPanel` ao abrir só mostra o versículo na aba "Versículo" mas as abas "Contexto", "Exegese" e "Conexões" dependem de clicar manualmente em cada aba e chamar a edge function `bible-context`
+- **Correção em `src/components/BibleContextPanel.tsx`**: Ao abrir o painel, auto-carregar a aba de Exegese junto com o versículo (pré-fetch dos dados de contexto e exegese em paralelo), e mudar o tab inicial para "exegesis" em vez de "verse" para mostrar as informações ricas diretamente
+- Verificar se a edge function `bible-context` está deployada e funcionando corretamente
 
-#### 2. `src/index.css` — Atualizar bottom tab bar e header
-- **Bottom tab bar**: altura 72px, `background: rgba(26,22,16,0.95)`, blur 20px, borda `rgba(196,164,106,0.12)`, tabs com Lucide icons (não emojis), labels 10px uppercase bold, dot indicator via `::after`, tab ativa com `translateY(-2px)` e scale 1.15 no ícone
-- **Header**: padding 12px 20px, background `rgba(26,22,16,0.92)`, blur 16px, borda sutil `rgba(196,164,106,0.08)`
-- **main-content**: `padding-bottom: 88px`
-- Adicionar classes `.fab` (56px circular accent com sombra dourada)
+### 5. Melhorar visual do campo Assistente
+- **`src/components/study/AssistantChat.tsx`**: Melhorar espaçamento das mensagens (gap de 16px entre mensagens), adicionar avatar/ícone para o assistente (📖 ou ícone subtle), melhorar a animação de typing (dots mais elegantes), aumentar padding das mensagens
+- **`src/components/study/ChatMessage.tsx`**: Adicionar borda sutil nas mensagens do assistente, melhorar contraste tipográfico, aumentar line-height para 1.8, adicionar animação de fade-in suave nas novas mensagens
+- **`src/components/study/SuggestionCards.tsx`**: Verificar e melhorar o visual dos cards de sugestão iniciais
 
-#### 3. `src/pages/Index.tsx` — Redesign das abas Leitura e Devocional
-
-**Bottom Tab Bar:**
-- Trocar emojis por Lucide icons: `BookOpen`, `Flame`, `Calendar`, `PenLine`, `Trophy`
-- Aplicar classes CSS novas (tab-item, tab-icon, tab-label)
-
-**Header:**
-- Remover botão "SAIR" / logout do header
-- Manter apenas: label "FASCINAÇÃO · 2026A" + título da aba + toggle de tema
-
-**Aba Leitura — refazer layout:**
-- **Hero card** "Leitura de Hoje": gradient background `#2a2519 → #1e1a14`, glow accent no canto, label accent 10px uppercase, título serif 20px, pills dos livros com fundo `rgba(196,164,106,0.12)`, botão check circular 48px absolute bottom-right
-- **Seletor de semanas**: carrossel horizontal com scroll-snap, pills circulares 44x44px (active: filled accent, complete: borda verde + ✓, future: borda `#3d362a`)
-- **Progresso da semana**: título serif + barra de progresso 6px com porcentagem
-- **Cards de dias**: lista vertical limpa, cada card com `background: #2a2519`, `border: 1px solid #2f2920`, nome do dia bold + qt leituras + pills dos livros + check circle 40x40px
-- **Remover**: botões "< >" de navegação, "DESMARCAR SEMANA", "Contexto da Leitura (IA)" de dentro dos cards, line-through nos livros lidos
-
-**Aba Devocional — refazer:**
-- Estado vazio: emoji 🕊️ centralizado 48px + mensagem
-- **Ferramentas**: grid 2x1 de cards quadrados (aspect-square) com gradient background, emojis 32px, labels uppercase accent
-- **Calendário e Arquivo**: manter mas ajustar espaçamentos
-- Exegese e Gravar mantêm funcionalidade mas com visual atualizado
-
-#### 4. Cores e tipografia
-- Usar EXATAMENTE: background `#1a1610`, cards `#2a2519`, texto `#e8dcc8`, accent `#c4a46a`, muted `#7d6f5c`, success `#6a9c5a`
-- Serif: Georgia para conteúdo; Sans: system-ui para UI/labels
-- Sem tons esverdeados no background de cards
-- Min 15px para corpo, 10-11px para labels com tracking 1.5-2px
-
----
-
-### O que NÃO muda
-- Lógica de dados, autenticação, edge functions, Supabase
-- Abas Agenda (`WeekSchedule`), Notas (`BibleNotes`), Quiz (`Quiz`) — componentes separados, não afetados neste passo
-- Design system base (variáveis CSS permanecem)
+### Arquivos modificados
+1. `src/pages/Index.tsx` — remover Quiz
+2. `src/components/study/ChatMessage.tsx` — melhorar formatação markdown
+3. `supabase/functions/study-chat/index.ts` — trocar modelo + ajustar prompt
+4. `src/components/BibleContextPanel.tsx` — auto-carregar exegese
+5. `src/components/study/AssistantChat.tsx` — melhorar visual do chat
 
