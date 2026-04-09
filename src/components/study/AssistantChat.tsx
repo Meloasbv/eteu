@@ -258,11 +258,11 @@ export default function AssistantChat({ userCodeId }: { userCodeId: string }) {
       )}
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 pb-48">
+      <div className="flex-1 overflow-y-auto px-4 pb-48 scroll-smooth">
         {messages.length === 0 ? (
           <SuggestionCards onSelect={sendMessage} />
         ) : (
-          <div className="space-y-3 py-2">
+          <div className="space-y-5 py-3">
             {messages.map((msg, i) => (
               <ChatMessage
                 key={i}
