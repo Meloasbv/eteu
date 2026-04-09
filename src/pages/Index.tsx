@@ -9,7 +9,7 @@ import Flashcards from "@/components/Flashcards";
 // Quiz removed from tabs
 import { useScrollDirection } from "@/hooks/useScrollDirection";
 import { haptic } from "@/hooks/useHaptic";
-import { BookOpen, Flame, Calendar, PenLine, Trophy, Check, Sun, Moon, LogOut, Sparkles, CheckCheck } from "lucide-react";
+import { BookOpen, Flame, Calendar, PenLine, Check, Sun, Moon, LogOut, Sparkles, CheckCheck } from "lucide-react";
 
 // ── DATA ──────────────────────────────────────────────────────────────────────
 
@@ -242,7 +242,6 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
     const newTitle = tab === "leitura" ? "Plano de Leitura"
       : tab === "devocional" ? "Devocionais"
       : tab === "agenda" ? "Agenda"
-      : tab === "quiz" ? "Quiz"
       : "Estudo";
     if (newTitle !== displayTitle) {
       setTitleFading(true);
