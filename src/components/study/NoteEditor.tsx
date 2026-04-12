@@ -5,7 +5,7 @@ import BibleContextPanel from "@/components/BibleContextPanel";
 import { supabase } from "@/integrations/supabase/client";
 import ReactMarkdown from "react-markdown";
 import type { StudyNote } from "./NotebookList";
-import { useEditor } from "@tiptap/react";
+
 
 const CATEGORIES = ["Exegese", "Teologia", "Sermões", "Devocionais", "Aulas", "Pessoal"];
 
