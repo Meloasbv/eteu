@@ -44,11 +44,11 @@ function getFirstDayOfWeek(year: number, month: number) {
   return new Date(year, month, 1).getDay();
 }
 
-const emptyForm = (date: string) => ({
+const emptyForm = (date: string): { name: string; start: string; end: string; location: string; icon: string; color: string; textColor: string; date: string; repeat: "none" | "daily" | "weekly" | "monthly" } => ({
   name: "", start: "08:00", end: "09:00",
   location: "", icon: "📌",
   color: COLOR_OPTIONS[0].bg, textColor: COLOR_OPTIONS[0].text,
-  date, repeat: "none" as const,
+  date, repeat: "none",
 });
 
 export default function WeekSchedule({ userCodeId }: { userCodeId: string }) {
