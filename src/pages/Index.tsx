@@ -35,30 +35,31 @@ const WEEKS = [
   {week:18,dates:"23/05 a 29/05",days:[{day:"Sábado",r:["I Pe. 1–5","Hb. 1–6"]},{day:"Domingo",r:["Hb. 7–13","II Pe 1–3"]},{day:"Segunda",r:["Judas","I João 1–5"]},{day:"Terça",r:["II Tm. 1–4","II e III João"]},{day:"Quarta",r:["Ap. 1–11"]},{day:"Quinta",r:["Ap. 12–22"]},{day:"Sexta",r:[]}]},
 ];
 
-// April devotional calendar data
+// April devotional calendar data (from PDF — Devocional Abril 2026)
 const APRIL_CALENDAR: { [day: number]: string } = {
   // Semana 1: 06/04 - 10/04 (Pneumatologia — O Espírito Santo)
-  7: "2 Coríntios 3:17",
-  8: "Atos 2:3-4",
-  9: "João 14:16",
-  10: "João 14:26",
-  11: "João 15:26",
+  6: "2 Coríntios 3:17",
+  7: "João 14:16",
+  8: "João 14:26",
+  9: "Atos 2:3-4",
+  10: "João 15:26",
   // Semana 2: 13/04 - 17/04 (Cristologia — A Pessoa de Cristo)
+  13: "João 1:14",
   14: "Colossenses 2:9",
-  15: "João 1:14",
-  16: "Lucas 24:6",
+  15: "Lucas 24:6",
+  16: "Colossenses 1:15-16",
   17: "Apocalipse 19:16",
-  18: "Filipenses 2:10-11",
   // Semana 3: 20/04 - 24/04 (Soteriologia — A Obra da Salvação)
-  21: "Efésios 1:9-10",
-  22: "Hebreus 10:19-23",
-  23: "João 17:3",
+  20: "Efésios 1:9-10",
+  21: "Hebreus 10:19-23",
+  22: "João 17:3",
+  23: "Deuteronômio 13:4",
   24: "1 Pedro 2:9",
-  25: "1 Coríntios 13:4",
   // Semana 4: 27/04 - 01/05 (O Coração Segundo Deus — Vida de Davi)
-  28: "1 Samuel 16:7",
-  29: "1 Samuel 17:45",
-  30: "Salmos 51:10",
+  27: "1 Samuel 16:7",
+  28: "1 Samuel 17:45",
+  29: "Salmos 51:10",
+  30: "Atos 13:22",
 };
 
 const APRIL_THEMES: { week: string; theme: string; color: string }[] = [
