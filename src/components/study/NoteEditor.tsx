@@ -1,10 +1,18 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { ArrowLeft, MoreVertical, Check, Send, ImagePlus } from "lucide-react";
+import { ArrowLeft, MoreVertical, Check, Send, ImagePlus, Mic, MicOff, Loader2 } from "lucide-react";
 import RichTextEditor, { insertVerseIntoEditor } from "@/components/RichTextEditor";
 import BibleContextPanel from "@/components/BibleContextPanel";
 import { supabase } from "@/integrations/supabase/client";
 import ReactMarkdown from "react-markdown";
+import { toast } from "sonner";
 import type { StudyNote } from "./NotebookList";
+
+declare global {
+  interface Window {
+    webkitSpeechRecognition: any;
+    SpeechRecognition: any;
+  }
+}
 
 
 const CATEGORIES = ["Exegese", "Teologia", "Sermões", "Devocionais", "Aulas", "Pessoal"];
