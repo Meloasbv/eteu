@@ -660,6 +660,16 @@ export default function DevotionalTab({ devotionals, aprilCalendar, aprilThemes,
           ✓ Salvo
         </div>
       )}
+
+      {/* ── VERSE READER ── */}
+      {showVerseReader && (
+        <VerseReader
+          book={readerBook}
+          chapter={readerChapter}
+          version={version}
+          onClose={() => setShowVerseReader(false)}
+        />
+      )}
     </div>
   );
 }
