@@ -239,7 +239,17 @@
   box-shadow: var(--shadow-elegant);
   margin: 12px 0;
   display: block;
+  cursor: pointer;
+  transition: outline 0.15s ease;
 }
+.tiptap-editor-content img.ProseMirror-selectednode {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 2px;
+}
+.tiptap-editor-content img[style*="width: 25%"] { max-width: 25%; }
+.tiptap-editor-content img[style*="width: 50%"] { max-width: 50%; }
+.tiptap-editor-content img[style*="width: 75%"] { max-width: 75%; }
+.tiptap-editor-content img[style*="width: 100%"] { max-width: 100%; }
 
 /* Hide scrollbar utility */
 .no-scrollbar::-webkit-scrollbar { display: none; }

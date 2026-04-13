@@ -206,20 +206,21 @@ export default function AssistantChat({ userCodeId }: { userCodeId: string }) {
   ];
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 relative">
+    <div className="flex flex-col flex-1 min-h-0 relative"
+      style={{ background: 'radial-gradient(ellipse at 50% 0%, hsl(var(--primary) / 0.03) 0%, transparent 60%)' }}>
       {/* History button */}
-      <div className="flex items-center justify-between px-4 py-2">
+      <div className="flex items-center justify-between px-4 py-2.5">
         <button
           onClick={newConversation}
-          className="text-[10px] font-ui tracking-wider uppercase text-muted-foreground hover:text-primary transition-colors"
+          className="text-[10.5px] font-ui tracking-[1.5px] uppercase font-semibold text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"
         >
           + Nova conversa
         </button>
         <button
           onClick={() => setShowHistory(!showHistory)}
-          className="flex items-center gap-1.5 text-[10px] font-ui tracking-wider uppercase text-muted-foreground hover:text-primary transition-colors"
+          className="flex items-center gap-1.5 text-[10.5px] font-ui tracking-[1.5px] uppercase font-semibold text-muted-foreground hover:text-primary transition-colors"
         >
-          <History size={14} /> Histórico
+          <History size={13} /> Histórico
         </button>
       </div>
 
@@ -285,18 +286,19 @@ export default function AssistantChat({ userCodeId }: { userCodeId: string }) {
       </div>
 
       {/* Input area — fixed at bottom */}
-      <div className="fixed bottom-[var(--tab-bar-height)] left-0 right-0 z-20 bg-background/90 backdrop-blur-xl border-t border-border/50 px-4 pt-2 pb-[env(safe-area-inset-bottom,8px)]">
+      <div className="fixed bottom-[var(--tab-bar-height)] left-0 right-0 z-20 backdrop-blur-xl border-t px-4 pt-2 pb-[env(safe-area-inset-bottom,8px)]"
+        style={{ background: 'hsl(var(--background) / 0.92)', borderColor: 'hsl(var(--border) / 0.5)' }}>
         {/* Shortcuts */}
         <div className="flex gap-2 mb-2 overflow-x-auto no-scrollbar pl-1">
           {shortcuts.map((s, i) => (
             <button
               key={i}
               onClick={s.action}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-2xl text-[11px] font-semibold tracking-[1px] uppercase font-ui shrink-0 transition-all active:scale-95"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-2xl text-[10.5px] font-semibold tracking-[1.5px] uppercase font-ui shrink-0 transition-all active:scale-95"
               style={{
-                background: 'hsl(var(--primary) / 0.08)',
+                background: 'hsl(var(--primary) / 0.06)',
                 border: '1px solid hsl(var(--primary) / 0.15)',
-                color: 'hsl(var(--muted-foreground))',
+                color: 'hsl(var(--primary))',
               }}
             >
               {s.icon} {s.label}
@@ -312,8 +314,9 @@ export default function AssistantChat({ userCodeId }: { userCodeId: string }) {
             onChange={handleInputChange}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(input); } }}
             placeholder="Pergunte sobre a Bíblia…"
-            className="flex-1 resize-none rounded-3xl px-4 py-3 text-[15px] font-body placeholder:italic transition-all"
+            className="flex-1 resize-none rounded-2xl px-4 py-3 text-[15px] placeholder:italic transition-all"
             style={{
+              fontFamily: "'Crimson Text', Georgia, serif",
               background: 'hsl(var(--card))',
               border: '1px solid hsl(var(--border))',
               color: 'hsl(var(--foreground))',
@@ -321,8 +324,8 @@ export default function AssistantChat({ userCodeId }: { userCodeId: string }) {
               maxHeight: '120px',
               outline: 'none',
             }}
-            onFocus={(e) => (e.target.style.borderColor = 'hsl(var(--primary))')}
-            onBlur={(e) => (e.target.style.borderColor = 'hsl(var(--border))')}
+            onFocus={(e) => { e.target.style.borderColor = 'hsl(var(--primary))'; e.target.style.boxShadow = '0 0 0 3px hsl(var(--primary) / 0.1)'; }}
+            onBlur={(e) => { e.target.style.borderColor = 'hsl(var(--border))'; e.target.style.boxShadow = 'none'; }}
           />
           {input.trim() && (
             <button

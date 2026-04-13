@@ -744,6 +744,7 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
         let todayDev: { ref: string; summary: string; day: string; period: string; exegese?: string; verseText?: string } | null = null;
         const year = now.getFullYear();
 
+        // First try DEVOTIONALS data
         for (const week of DEVOTIONALS) {
           const [startStr, endStr] = week.period.split(" a ");
           const [sd, sm] = startStr.split("/").map(Number);
@@ -754,6 +755,25 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
             const match = week.days.find(d => d.day === todayName);
             if (match) todayDev = { ...match, period: week.period };
             break;
+          }
+        }
+
+        // Fallback: use APRIL_CALENDAR if no DEVOTIONALS match and we're in April
+        if (!todayDev && now.getMonth() === 3) {
+          const todayDate = now.getDate();
+          const ref = APRIL_CALENDAR[todayDate];
+          if (ref) {
+            const weekTheme = APRIL_THEMES.find(t => {
+              const [s, e] = t.week.split("–").map(Number);
+              return todayDate >= s && todayDate <= (e < s ? e + 30 : e);
+            });
+            todayDev = {
+              ref,
+              summary: `Devocional do calendário de Abril — ${weekTheme?.theme || "Estudo bíblico"}. Toque em "Estudar" abaixo para ver a exegese completa.`,
+              day: todayName,
+              period: `Abril ${year}`,
+              verseText: undefined,
+            };
           }
         }
 
@@ -896,6 +916,12 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
             </>
           );
         };
+
+        // Auto-set exegese verse if from calendar
+        if (todayDev && !todayDev.exegese && !exegeseVerse) {
+          // Will trigger on first render to pre-fill exegesis input
+          setTimeout(() => setExegeseVerse(todayDev!.ref), 100);
+        }
 
         return (
           <div className="px-4 pt-5 pb-4 space-y-6">
