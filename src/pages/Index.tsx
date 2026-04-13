@@ -917,6 +917,12 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
           );
         };
 
+        // Auto-set exegese verse if from calendar
+        if (todayDev && !todayDev.exegese && !exegeseVerse) {
+          // Will trigger on first render to pre-fill exegesis input
+          setTimeout(() => setExegeseVerse(todayDev!.ref), 100);
+        }
+
         return (
           <div className="px-4 pt-5 pb-4 space-y-6">
 
