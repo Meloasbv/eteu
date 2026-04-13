@@ -7,6 +7,7 @@ import RichTextEditor from "@/components/RichTextEditor";
 import Library from "@/components/Library";
 import Flashcards from "@/components/Flashcards";
 import DevotionalTab from "@/components/DevotionalTab";
+import ReadingFocusView from "@/components/ReadingFocusView";
 import DesktopSidebar from "@/components/desktop/DesktopSidebar";
 import DesktopRightPanel from "@/components/desktop/DesktopRightPanel";
 import { useIsMobile } from "@/hooks/use-mobile";
