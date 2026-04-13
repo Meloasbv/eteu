@@ -201,6 +201,9 @@ export default function ReadingFocusView({
               <p className="text-sm text-muted-foreground font-ui animate-pulse">
                 Carregando texto bíblico...
               </p>
+              <p className="text-[11px] text-muted-foreground/50 font-ui text-center max-w-[240px]">
+                A primeira leitura pode demorar até 60 segundos dependendo da quantidade de capítulos.
+              </p>
               <div className="flex gap-2 mt-2 flex-wrap justify-center">
                 {readings.map((r, i) => (
                   <span key={i} className="px-2.5 py-1 rounded-lg text-[11px] bg-primary/8 text-primary/60 font-ui">

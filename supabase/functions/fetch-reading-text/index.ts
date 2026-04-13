@@ -28,18 +28,13 @@ serve(async (req) => {
 
     const readingsList = readings.join(", ");
 
-    const systemPrompt = `Você é um assistente bíblico especializado. Sua tarefa é fornecer o TEXTO COMPLETO dos capítulos e versículos solicitados.
+    const systemPrompt = `Você é um assistente bíblico. Forneça o TEXTO COMPLETO dos capítulos solicitados da tradução ARA.
 
-REGRAS CRÍTICAS:
-- Retorne o texto bíblico REAL da tradução Almeida Revista e Atualizada (ARA)
-- Para cada referência, inclua o nome do livro e capítulo como título
-- Numere cada versículo
-- Separe livros/capítulos diferentes com uma linha "---"
-- NÃO resuma. NÃO parafraseie. Dê o texto COMPLETO de cada capítulo mencionado
-- Se a referência indicar capítulos (ex: "Gn. 1-7"), forneça TODOS os capítulos
-- Para referências muito extensas (mais de 5 capítulos), forneça os 3 primeiros capítulos completos e um resumo dos demais com os versículos-chave
-- Use formato limpo: "**Gênesis 1**" como título, depois "1 No princípio..." etc.
-- Mantenha a linguagem original da tradução ARA`;
+REGRAS:
+- Texto bíblico REAL da ARA. NÃO resuma. NÃO parafraseie.
+- Numere cada versículo. Separe capítulos com "---"
+- Título: "**Gênesis 1**" etc.
+- Para mais de 5 capítulos: 3 primeiros completos + resumo dos demais com versículos-chave`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -48,10 +43,10 @@ REGRAS CRÍTICAS:
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "google/gemini-2.5-flash-lite",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: `Forneça o texto bíblico completo para a seguinte leitura do dia: ${readingsList}` },
+          { role: "user", content: `Texto bíblico completo ARA: ${readingsList}` },
         ],
       }),
     });
