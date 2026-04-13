@@ -147,12 +147,36 @@ export default function NoteEditor({ note, onUpdate, onBack, onDelete }: Props) 
       reader.onload = () => {
         const src = typeof reader.result === "string" ? reader.result : null;
         if (!src) return;
-        const imgHtml = `<img src="${src}" alt="${file.name}" class="rounded-xl border border-border shadow-elegant max-w-full h-auto my-3" loading="lazy" />`;
+        const imgHtml = `<img src="${src}" alt="${file.name}" style="width: 100%;" class="rounded-xl border border-border shadow-elegant max-w-full h-auto my-3" loading="lazy" />`;
         setContent(prev => prev + imgHtml);
       };
       reader.readAsDataURL(file);
     });
     e.target.value = "";
+  };
+
+  // Image resize handler
+  const [selectedImg, setSelectedImg] = useState<HTMLImageElement | null>(null);
+  const handleEditorClick = useCallback((e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.tagName === "IMG") {
+      setSelectedImg(target as HTMLImageElement);
+    } else {
+      setSelectedImg(null);
+    }
+  }, []);
+
+  const resizeImage = (width: string) => {
+    if (!selectedImg) return;
+    selectedImg.style.width = width;
+    selectedImg.removeAttribute("class");
+    selectedImg.className = "rounded-xl border border-border shadow-elegant h-auto my-3";
+    // Trigger content update
+    const container = selectedImg.closest('.tiptap-editor-content');
+    if (container) {
+      setContent(container.innerHTML);
+    }
+    setSelectedImg(null);
   };
 
   return (
