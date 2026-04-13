@@ -341,9 +341,322 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
   ];
 
   // ── CONTENT (shared between mobile & desktop) ──
-  const mainContent = (
-    <>
-      {tab === "leitura" && (
+  const renderContent = () => (
+    <div className={isMobile ? "main-content" : "flex-1 overflow-y-auto h-screen"}>
+      {/* Desktop header for content area */}
+      {!isMobile && (
+        <div className="sticky top-0 z-30 px-6 py-4 border-b border-border/30 bg-background/80 backdrop-blur-md">
+          <h1 className={`text-[20px] font-bold text-foreground font-display tracking-wide transition-all duration-500 ${titleFading ? "opacity-0" : "opacity-100"}`}>
+            {displayTitle}
+          </h1>
+        </div>
+      )}
+
+      <div className={!isMobile ? "px-6 py-4 max-w-3xl mx-auto" : ""}>
+        {/* ── LEITURA TAB ── */}
+        {tab === "leitura" && (
+          <>
+            {/* Hero card — Leitura de Hoje */}
+            {todayReading && (
+              <div className="px-4 pt-4 lg:px-0">
+                <div
+                  onClick={() => {
+                    setActiveWeek(todayReading.weekIdx);
+                    if (!todayReading.isDone) toggle(todayReading.weekIdx, todayReading.dayIdx);
+                    haptic("medium");
+                  }}
+                  className="rounded-2xl p-5 cursor-pointer relative overflow-hidden transition-all duration-300 active:scale-[0.97]"
+                  style={{
+                    background: 'linear-gradient(135deg, hsl(var(--card)) 0%, hsl(var(--background)) 100%)',
+                    border: todayReading.isDone
+                      ? '1px solid hsl(var(--success) / 0.3)'
+                      : '1px solid hsl(var(--primary) / 0.2)',
+                    boxShadow: '0 8px 32px hsl(var(--background) / 0.3)',
+                  }}
+                >
+                  <div className="absolute top-0 right-0 w-32 h-32 rounded-full"
+                    style={{ background: todayReading.isDone
+                      ? 'radial-gradient(circle, hsl(var(--success) / 0.08) 0%, transparent 70%)'
+                      : 'radial-gradient(circle, hsl(var(--primary) / 0.08) 0%, transparent 70%)'
+                    }} />
+
+                  <span className={`text-[10px] font-semibold tracking-[2px] uppercase font-ui
+                    ${todayReading.isDone ? "text-success" : "text-primary"}`}>
+                    Leitura de Hoje
+                  </span>
+
+                  <h2 className="font-body text-xl font-bold mt-1 text-foreground">
+                    {todayReading.day.day} — Semana {todayReading.weekIdx + 1}
+                  </h2>
+
+                  <div className="flex gap-2 mt-3 flex-wrap">
+                    {todayReading.day.r.map((r, ri) => (
+                      <span key={ri} className="px-3 py-1.5 rounded-full text-sm font-body"
+                        style={{
+                          background: todayReading.isDone
+                            ? 'hsl(var(--success) / 0.12)'
+                            : 'hsl(var(--primary) / 0.12)',
+                          border: todayReading.isDone
+                            ? '1px solid hsl(var(--success) / 0.25)'
+                            : '1px solid hsl(var(--primary) / 0.25)',
+                          color: todayReading.isDone
+                            ? 'hsl(var(--success))'
+                            : 'hsl(var(--primary))',
+                        }}>
+                        {r}
+                      </span>
+                    ))}
+                  </div>
+
+                  <div className="absolute bottom-5 right-5 w-12 h-12 rounded-full flex items-center justify-center transition-all"
+                    style={{
+                      background: todayReading.isDone
+                        ? 'hsl(var(--success))'
+                        : 'hsl(var(--success) / 0.15)',
+                      border: todayReading.isDone
+                        ? 'none'
+                        : '2px solid hsl(var(--success) / 0.4)',
+                    }}>
+                    <Check size={20} className={todayReading.isDone ? "text-white" : "text-success"} strokeWidth={3} />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Week pills */}
+            <div className="flex gap-2 px-4 lg:px-0 mt-4 overflow-x-auto no-scrollbar"
+              style={{ scrollSnapType: 'x mandatory' }}>
+              {WEEKS.map((w, i) => {
+                const isActive = i === activeWeek;
+                const isComplete = weekProg(i) >= 1;
+                return (
+                  <button key={i}
+                    onClick={() => { haptic("light"); setActiveWeek(i); }}
+                    className="flex-shrink-0 w-11 h-11 rounded-full flex items-center justify-center text-sm font-bold transition-all active:scale-95 font-ui"
+                    style={{
+                      scrollSnapAlign: 'center',
+                      background: isActive ? 'hsl(var(--primary))' : 'transparent',
+                      color: isActive ? 'hsl(var(--primary-foreground))' : isComplete ? 'hsl(var(--success))' : 'hsl(var(--muted-foreground))',
+                      border: isComplete && !isActive ? '2px solid hsl(var(--success))' : isActive ? 'none' : '1px solid hsl(var(--border))',
+                    }}>
+                    {isComplete && !isActive ? '✓' : w.week}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Week progress header */}
+            <div className="mx-4 lg:mx-0 mt-5 flex items-center justify-between">
+              <div>
+                <h3 className="font-body text-lg font-bold text-foreground">
+                  Semana {cw.week}
+                </h3>
+                <span className="text-xs text-muted-foreground font-ui">{cw.dates}</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-24 h-1.5 rounded-full overflow-hidden bg-border">
+                  <div className="h-full rounded-full transition-all duration-400"
+                    style={{ width: `${wp * 100}%`, background: wp >= 1 ? 'hsl(var(--success))' : 'hsl(var(--primary))' }} />
+                </div>
+                <span className={`text-sm font-bold font-ui ${wp >= 1 ? "text-success" : "text-primary"}`}>
+                  {Math.round(wp * 100)}%
+                </span>
+              </div>
+            </div>
+
+            {/* Mark/Unmark entire week */}
+            <div className="mx-4 lg:mx-0 mt-2">
+              <button
+                onClick={() => {
+                  const allDone = cw.days.every((day, di) => !day.r.length || !!checked[`${activeWeek}-${di}`]);
+                  const newChecked = { ...checked };
+                  cw.days.forEach((day, di) => {
+                    if (day.r.length) newChecked[`${activeWeek}-${di}`] = !allDone;
+                  });
+                  setChecked(newChecked);
+                  setSaved(true); setTimeout(() => setSaved(false), 2000);
+                  haptic("medium");
+                }}
+                className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-[10px] font-ui tracking-wider uppercase transition-all active:scale-95"
+                style={{
+                  background: wp >= 1 ? 'hsl(var(--success) / 0.1)' : 'hsl(var(--primary) / 0.08)',
+                  border: wp >= 1 ? '1px solid hsl(var(--success) / 0.25)' : '1px solid hsl(var(--primary) / 0.2)',
+                  color: wp >= 1 ? 'hsl(var(--success))' : 'hsl(var(--primary))',
+                }}>
+                <CheckCheck size={14} />
+                {wp >= 1 ? "Desmarcar semana" : "Marcar semana inteira"}
+              </button>
+            </div>
+
+            {/* Day cards */}
+            <div className="mx-4 lg:mx-0 mt-4 space-y-2 pb-4">
+              {cw.days.map((day, di) => {
+                if (!day.r.length) return null;
+                const isDone = !!checked[`${activeWeek}-${di}`];
+                const ctxKey = `${activeWeek}-${di}`;
+                return (
+                  <div key={di} className="rounded-2xl transition-all duration-200"
+                    style={{
+                      background: 'hsl(var(--card))',
+                      border: isDone
+                        ? '1px solid hsl(var(--success) / 0.3)'
+                        : '1px solid hsl(var(--border))',
+                    }}>
+                    <div
+                      onClick={() => { toggle(activeWeek, di); haptic("light"); }}
+                      className="p-4 flex items-center justify-between cursor-pointer active:scale-[0.97] transition-transform">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-sm text-foreground font-ui">{ABBREVS[di]}</span>
+                          <span className="text-xs text-muted-foreground font-ui">
+                            {day.r.length} {day.r.length === 1 ? "leitura" : "leituras"}
+                          </span>
+                        </div>
+                        <div className="flex gap-1.5 mt-2 flex-wrap">
+                          {day.r.map((r, ri) => (
+                            <span key={ri} className="px-2.5 py-1 rounded-lg text-xs font-body"
+                              style={{
+                                background: isDone ? 'hsl(var(--success) / 0.1)' : 'hsl(var(--primary) / 0.08)',
+                                color: isDone ? 'hsl(var(--muted-foreground))' : 'hsl(var(--text-secondary))',
+                              }}>
+                              {r}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 ml-3 transition-all"
+                        style={{
+                          background: isDone ? 'hsl(var(--success))' : 'transparent',
+                          border: isDone ? 'none' : '2px solid hsl(var(--border))',
+                        }}>
+                        {isDone && <Check size={18} className="text-white" strokeWidth={3} />}
+                      </div>
+                    </div>
+                    <div className="px-4 pb-3 pt-0">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); fetchReadingContext(activeWeek, di, day.r); }}
+                        disabled={contextLoading === ctxKey}
+                        className="flex items-center gap-1.5 text-[10px] font-ui tracking-wider uppercase text-primary/70 hover:text-primary transition-colors disabled:opacity-50">
+                        <Sparkles size={12} />
+                        {contextLoading === ctxKey ? "Carregando..." : readingContext[ctxKey] ? "Contexto IA ↓" : "Contexto da Leitura (IA)"}
+                      </button>
+                      {readingContext[ctxKey] && (
+                        <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground italic font-body">
+                          {readingContext[ctxKey]}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+
+        {/* ── DEVOCIONAL TAB ── */}
+        {tab === "devocional" && (
+          <DevotionalTab
+            devotionals={DEVOTIONALS}
+            aprilCalendar={APRIL_CALENDAR}
+            aprilThemes={APRIL_THEMES}
+            onSaveNote={(text) => {
+              const notes = JSON.parse(localStorage.getItem("bible-notes-2026") || "[]");
+              const now2 = new Date().toISOString();
+              notes.unshift({ id: Date.now(), categoria: "devocionais", semana: "", texto: text, criadoEm: now2, atualizadoEm: now2 });
+              localStorage.setItem("bible-notes-2026", JSON.stringify(notes));
+              setSaved(true);
+              setTimeout(() => setSaved(false), 2000);
+            }}
+          />
+        )}
+
+        {/* ── AGENDA TAB ── */}
+        {tab === "agenda" && <WeekSchedule userCodeId={userCodeId} />}
+
+        {/* ── ESTUDO TAB ── */}
+        {tab === "anotacoes" && <StudyTab userCodeId={userCodeId} />}
+      </div>
+    </div>
+  );
+
+  // ── DESKTOP LAYOUT (3 columns like Notion) ──
+  if (!isMobile) {
+    return (
+      <div className="flex w-full min-h-screen bg-background text-foreground font-body transition-colors duration-300">
+        <iframe
+          ref={playerRef}
+          src="https://www.youtube.com/embed/juWsw7-IuaE?enablejsapi=1&autoplay=0&loop=1&playlist=juWsw7-IuaE"
+          allow="autoplay"
+          className="absolute w-0 h-0 border-none opacity-0 pointer-events-none"
+          title="Background music"
+        />
+
+        {/* Left sidebar */}
+        <DesktopSidebar
+          tab={tab}
+          setTab={setTab}
+          theme={theme}
+          setTheme={setTheme}
+          onLogout={onLogout}
+        />
+
+        {/* Center content */}
+        {renderContent()}
+
+        {/* Right panel */}
+        <DesktopRightPanel
+          totalProgress={prog}
+          weekProgress={wp}
+          activeWeek={activeWeek}
+          totalWeeks={WEEKS.length}
+          checked={checked}
+          todayVerse={todayDevotional?.verse}
+          todayRef={todayDevotional?.ref}
+          streakDays={streakDays}
+        />
+
+        {/* Save toast */}
+        {saved && (
+          <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-success text-white py-2.5 px-5 rounded-full text-[13px] z-[110] shadow-lg animate-fade-in font-ui">
+            ✓ Progresso salvo
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── MOBILE LAYOUT (original) ──
+  return (
+    <div className="min-h-[100dvh] w-full bg-background text-foreground font-body transition-colors duration-300">
+      <iframe
+        ref={playerRef}
+        src="https://www.youtube.com/embed/juWsw7-IuaE?enablejsapi=1&autoplay=0&loop=1&playlist=juWsw7-IuaE"
+        allow="autoplay"
+        className="absolute w-0 h-0 border-none opacity-0 pointer-events-none"
+        title="Background music"
+      />
+
+      {/* ── COMPACT MOBILE HEADER ── */}
+      <header className={`mobile-header ${compactHeader ? "header-compact" : ""}`}>
+        <div className="flex items-center justify-between">
+          <button
+            onClick={onLogout}
+            className="w-10 h-10 flex items-center justify-center rounded-full text-muted-foreground hover:text-destructive transition-all shrink-0"
+            aria-label="Sair da conta"
+          >
+            <LogOut size={16} />
+          </button>
+          <div className="flex-1 text-center">
+            <p className="header-brand text-[9px] tracking-[3px] uppercase text-muted-foreground font-medium font-ui mb-0.5">
+              Fascinação · 2026A
+            </p>
+            <h1 className={`text-[18px] font-bold text-foreground leading-tight font-display tracking-[1px] transition-all duration-500 ${titleFading ? "opacity-0 translate-y-1 scale-95" : "opacity-100 translate-y-0 scale-100"}`}>
+              {displayTitle}
+            </h1>
+          </div>
+          <button
+            onClick={() => setTheme(t => t === "light" ? "dark" : "light")}
+            className="w-10 h-10 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground transition-all shrink-0"
             aria-label="Alternar tema"
           >
             {theme === "light" ? <Moon size={16} /> : <Sun size={16} />}
@@ -351,238 +664,7 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
         </div>
       </header>
 
-      {/* ── MAIN CONTENT AREA ── */}
-      <div className="main-content">
-
-      {/* ── LEITURA TAB ── */}
-      {tab === "leitura" && (
-        <>
-          {/* Hero card — Leitura de Hoje */}
-          {todayReading && (
-            <div className="px-4 pt-4">
-              <div
-                onClick={() => {
-                  setActiveWeek(todayReading.weekIdx);
-                  if (!todayReading.isDone) toggle(todayReading.weekIdx, todayReading.dayIdx);
-                  haptic("medium");
-                }}
-                className="rounded-2xl p-5 cursor-pointer relative overflow-hidden transition-all duration-300 active:scale-[0.97]"
-                style={{
-                  background: 'linear-gradient(135deg, hsl(var(--card)) 0%, hsl(var(--background)) 100%)',
-                  border: todayReading.isDone
-                    ? '1px solid hsl(var(--success) / 0.3)'
-                    : '1px solid hsl(var(--primary) / 0.2)',
-                  boxShadow: '0 8px 32px hsl(var(--background) / 0.3)',
-                }}
-              >
-                {/* Glow accent */}
-                <div className="absolute top-0 right-0 w-32 h-32 rounded-full"
-                  style={{ background: todayReading.isDone
-                    ? 'radial-gradient(circle, hsl(var(--success) / 0.08) 0%, transparent 70%)'
-                    : 'radial-gradient(circle, hsl(var(--primary) / 0.08) 0%, transparent 70%)'
-                  }} />
-
-                <span className={`text-[10px] font-semibold tracking-[2px] uppercase font-ui
-                  ${todayReading.isDone ? "text-success" : "text-primary"}`}>
-                  Leitura de Hoje
-                </span>
-
-                <h2 className="font-body text-xl font-bold mt-1 text-foreground">
-                  {todayReading.day.day} — Semana {todayReading.weekIdx + 1}
-                </h2>
-
-                <div className="flex gap-2 mt-3 flex-wrap">
-                  {todayReading.day.r.map((r, ri) => (
-                    <span key={ri} className="px-3 py-1.5 rounded-full text-sm font-body"
-                      style={{
-                        background: todayReading.isDone
-                          ? 'hsl(var(--success) / 0.12)'
-                          : 'hsl(var(--primary) / 0.12)',
-                        border: todayReading.isDone
-                          ? '1px solid hsl(var(--success) / 0.25)'
-                          : '1px solid hsl(var(--primary) / 0.25)',
-                        color: todayReading.isDone
-                          ? 'hsl(var(--success))'
-                          : 'hsl(var(--primary))',
-                      }}>
-                      {r}
-                    </span>
-                  ))}
-                </div>
-
-                {/* Check button */}
-                <div className="absolute bottom-5 right-5 w-12 h-12 rounded-full flex items-center justify-center transition-all"
-                  style={{
-                    background: todayReading.isDone
-                      ? 'hsl(var(--success))'
-                      : 'hsl(var(--success) / 0.15)',
-                    border: todayReading.isDone
-                      ? 'none'
-                      : '2px solid hsl(var(--success) / 0.4)',
-                  }}>
-                  <Check size={20} className={todayReading.isDone ? "text-white" : "text-success"} strokeWidth={3} />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Week pills — horizontal scroll-snap carousel */}
-          <div className="flex gap-2 px-4 mt-4 overflow-x-auto no-scrollbar"
-            style={{ scrollSnapType: 'x mandatory' }}>
-            {WEEKS.map((w, i) => {
-              const isActive = i === activeWeek;
-              const isComplete = weekProg(i) >= 1;
-              return (
-                <button key={i}
-                  onClick={() => { haptic("light"); setActiveWeek(i); }}
-                  className="flex-shrink-0 w-11 h-11 rounded-full flex items-center justify-center text-sm font-bold transition-all active:scale-95 font-ui"
-                  style={{
-                    scrollSnapAlign: 'center',
-                    background: isActive ? 'hsl(var(--primary))' : 'transparent',
-                    color: isActive ? 'hsl(var(--primary-foreground))' : isComplete ? 'hsl(var(--success))' : 'hsl(var(--muted-foreground))',
-                    border: isComplete && !isActive ? '2px solid hsl(var(--success))' : isActive ? 'none' : '1px solid hsl(var(--border))',
-                  }}>
-                  {isComplete && !isActive ? '✓' : w.week}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Week progress header */}
-          <div className="mx-4 mt-5 flex items-center justify-between">
-            <div>
-              <h3 className="font-body text-lg font-bold text-foreground">
-                Semana {cw.week}
-              </h3>
-              <span className="text-xs text-muted-foreground font-ui">{cw.dates}</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="w-24 h-1.5 rounded-full overflow-hidden bg-border">
-                <div className="h-full rounded-full transition-all duration-400"
-                  style={{ width: `${wp * 100}%`, background: wp >= 1 ? 'hsl(var(--success))' : 'hsl(var(--primary))' }} />
-              </div>
-              <span className={`text-sm font-bold font-ui ${wp >= 1 ? "text-success" : "text-primary"}`}>
-                {Math.round(wp * 100)}%
-              </span>
-            </div>
-          </div>
-
-          {/* Mark/Unmark entire week */}
-          <div className="mx-4 mt-2">
-            <button
-              onClick={() => {
-                const allDone = cw.days.every((day, di) => !day.r.length || !!checked[`${activeWeek}-${di}`]);
-                const newChecked = { ...checked };
-                cw.days.forEach((day, di) => {
-                  if (day.r.length) newChecked[`${activeWeek}-${di}`] = !allDone;
-                });
-                setChecked(newChecked);
-                setSaved(true); setTimeout(() => setSaved(false), 2000);
-                haptic("medium");
-              }}
-              className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-[10px] font-ui tracking-wider uppercase transition-all active:scale-95"
-              style={{
-                background: wp >= 1 ? 'hsl(var(--success) / 0.1)' : 'hsl(var(--primary) / 0.08)',
-                border: wp >= 1 ? '1px solid hsl(var(--success) / 0.25)' : '1px solid hsl(var(--primary) / 0.2)',
-                color: wp >= 1 ? 'hsl(var(--success))' : 'hsl(var(--primary))',
-              }}>
-              <CheckCheck size={14} />
-              {wp >= 1 ? "Desmarcar semana" : "Marcar semana inteira"}
-            </button>
-          </div>
-
-          {/* Day cards — clean vertical list */}
-          <div className="mx-4 mt-4 space-y-2 pb-4">
-            {cw.days.map((day, di) => {
-              if (!day.r.length) return null;
-              const isDone = !!checked[`${activeWeek}-${di}`];
-              const ctxKey = `${activeWeek}-${di}`;
-              return (
-                <div key={di} className="rounded-2xl transition-all duration-200"
-                  style={{
-                    background: 'hsl(var(--card))',
-                    border: isDone
-                      ? '1px solid hsl(var(--success) / 0.3)'
-                      : '1px solid hsl(var(--border))',
-                  }}>
-                  <div
-                    onClick={() => { toggle(activeWeek, di); haptic("light"); }}
-                    className="p-4 flex items-center justify-between cursor-pointer active:scale-[0.97] transition-transform">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-sm text-foreground font-ui">{ABBREVS[di]}</span>
-                        <span className="text-xs text-muted-foreground font-ui">
-                          {day.r.length} {day.r.length === 1 ? "leitura" : "leituras"}
-                        </span>
-                      </div>
-                      <div className="flex gap-1.5 mt-2 flex-wrap">
-                        {day.r.map((r, ri) => (
-                          <span key={ri} className="px-2.5 py-1 rounded-lg text-xs font-body"
-                            style={{
-                              background: isDone ? 'hsl(var(--success) / 0.1)' : 'hsl(var(--primary) / 0.08)',
-                              color: isDone ? 'hsl(var(--muted-foreground))' : 'hsl(var(--text-secondary))',
-                            }}>
-                            {r}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                    {/* Check circle */}
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 ml-3 transition-all"
-                      style={{
-                        background: isDone ? 'hsl(var(--success))' : 'transparent',
-                        border: isDone ? 'none' : '2px solid hsl(var(--border))',
-                      }}>
-                      {isDone && <Check size={18} className="text-white" strokeWidth={3} />}
-                    </div>
-                  </div>
-                  {/* AI Context button */}
-                  <div className="px-4 pb-3 pt-0">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); fetchReadingContext(activeWeek, di, day.r); }}
-                      disabled={contextLoading === ctxKey}
-                      className="flex items-center gap-1.5 text-[10px] font-ui tracking-wider uppercase text-primary/70 hover:text-primary transition-colors disabled:opacity-50">
-                      <Sparkles size={12} />
-                      {contextLoading === ctxKey ? "Carregando..." : readingContext[ctxKey] ? "Contexto IA ↓" : "Contexto da Leitura (IA)"}
-                    </button>
-                    {readingContext[ctxKey] && (
-                      <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground italic font-body">
-                        {readingContext[ctxKey]}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </>
-      )}
-
-      {/* ── DEVOCIONAL TAB ── */}
-      {tab === "devocional" && (
-        <DevotionalTab
-          devotionals={DEVOTIONALS}
-          aprilCalendar={APRIL_CALENDAR}
-          aprilThemes={APRIL_THEMES}
-          onSaveNote={(text) => {
-            const notes = JSON.parse(localStorage.getItem("bible-notes-2026") || "[]");
-            const now2 = new Date().toISOString();
-            notes.unshift({ id: Date.now(), categoria: "devocionais", semana: "", texto: text, criadoEm: now2, atualizadoEm: now2 });
-            localStorage.setItem("bible-notes-2026", JSON.stringify(notes));
-            setSaved(true);
-            setTimeout(() => setSaved(false), 2000);
-          }}
-        />
-      )}
-
-      {/* ── AGENDA TAB ── */}
-      {tab === "agenda" && <WeekSchedule userCodeId={userCodeId} />}
-
-      {/* ── ESTUDO TAB ── */}
-      {tab === "anotacoes" && <StudyTab userCodeId={userCodeId} />}
-
-
-      </div>{/* end main-content */}
+      {renderContent()}
 
       {/* ── BOTTOM TAB BAR ── */}
       <nav className={`bottom-tab-bar ${hideBar ? "hidden-bar" : ""}`}>
