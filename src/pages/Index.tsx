@@ -205,7 +205,6 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
   const [activeWeek, setActiveWeek] = useState(0);
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [saved, setSaved] = useState(false);
-  // Reading context AI
   const [readingContext, setReadingContext] = useState<Record<string, string>>({});
   const [contextLoading, setContextLoading] = useState<string | null>(null);
   const [theme, setTheme] = useState<"light" | "dark">(() => {
@@ -215,14 +214,13 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
   const [displayTitle, setDisplayTitle] = useState("Estudo Tudo Em Um");
   const [musicPlaying, setMusicPlaying] = useState(false);
   const playerRef = useRef<HTMLIFrameElement>(null);
+  const isMobile = useIsMobile();
 
-  // Apply theme to html element
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
     try { localStorage.setItem(THEME_KEY, theme); } catch {}
   }, [theme]);
 
-  // Animate title changes
   const prevTab = useRef(tab);
   useEffect(() => {
     const newTitle = tab === "leitura" ? "Plano de Leitura"
@@ -289,6 +287,37 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
   const circ = 2 * Math.PI * 22;
   const todayReading = getTodayReading(checked);
 
+  // Calculate streak
+  const streakDays = useMemo(() => {
+    let streak = 0;
+    const now = new Date();
+    const planStart = new Date(2026, 0, 24);
+    for (let d = 0; d < 18 * 7; d++) {
+      const checkDate = new Date(now.getTime() - d * 86400000);
+      if (checkDate < planStart) break;
+      const diffDays = Math.floor((checkDate.getTime() - planStart.getTime()) / 86400000);
+      const wi = Math.floor(diffDays / 7);
+      const di = diffDays % 7;
+      if (checked[`${wi}-${di}`]) streak++;
+      else if (d > 0) break;
+    }
+    return streak;
+  }, [checked]);
+
+  // Get today's devotional verse for right panel
+  const todayDevotional = useMemo(() => {
+    const now = new Date();
+    const dayOfMonth = now.getDate();
+    const ref = APRIL_CALENDAR[dayOfMonth];
+    if (!ref) return null;
+    for (const period of DEVOTIONALS) {
+      for (const d of period.days) {
+        if (d.ref === ref) return { ref: d.ref, verse: d.verseText };
+      }
+    }
+    return ref ? { ref, verse: "" } : null;
+  }, []);
+
   const toggleMusic = useCallback(() => {
     const iframe = playerRef.current;
     if (!iframe) return;
@@ -299,8 +328,6 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
     }
     setMusicPlaying(!musicPlaying);
   }, [musicPlaying]);
-
-
 
   const { direction, isAtTop } = useScrollDirection();
   const hideBar = direction === "down" && !isAtTop;
@@ -313,43 +340,10 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
     { key: "anotacoes", icon: <PenLine size={22} />, label: "Estudo" },
   ];
 
-  return (
-    <div className="min-h-[100dvh] w-full bg-background text-foreground font-body transition-colors duration-300">
-      {/* Hidden YouTube player */}
-      <iframe
-        ref={playerRef}
-        src="https://www.youtube.com/embed/juWsw7-IuaE?enablejsapi=1&autoplay=0&loop=1&playlist=juWsw7-IuaE"
-        allow="autoplay"
-        className="absolute w-0 h-0 border-none opacity-0 pointer-events-none"
-        title="Background music"
-      />
-
-      {/* ── COMPACT MOBILE HEADER ── */}
-      <header className={`mobile-header ${compactHeader ? "header-compact" : ""}`}>
-        <div className="flex items-center justify-between">
-          {/* Left: Logout */}
-          <button
-            onClick={onLogout}
-            className="w-10 h-10 flex items-center justify-center rounded-full text-muted-foreground hover:text-destructive transition-all shrink-0"
-            aria-label="Sair da conta"
-          >
-            <LogOut size={16} />
-          </button>
-
-          {/* Center: Title */}
-          <div className="flex-1 text-center">
-            <p className="header-brand text-[9px] tracking-[3px] uppercase text-muted-foreground font-medium font-ui mb-0.5">
-              Fascinação · 2026A
-            </p>
-            <h1 className={`text-[18px] font-bold text-foreground leading-tight font-display tracking-[1px] transition-all duration-500 ${titleFading ? "opacity-0 translate-y-1 scale-95" : "opacity-100 translate-y-0 scale-100"}`}>
-              {displayTitle}
-            </h1>
-          </div>
-
-          {/* Right: Theme toggle */}
-          <button
-            onClick={() => setTheme(t => t === "light" ? "dark" : "light")}
-            className="w-10 h-10 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground transition-all shrink-0"
+  // ── CONTENT (shared between mobile & desktop) ──
+  const mainContent = (
+    <>
+      {tab === "leitura" && (
             aria-label="Alternar tema"
           >
             {theme === "light" ? <Moon size={16} /> : <Sun size={16} />}
