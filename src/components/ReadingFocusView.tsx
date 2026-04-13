@@ -27,6 +27,7 @@ export default function ReadingFocusView({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [speaking, setSpeaking] = useState(false);
+  const [ttsSpeed, setTtsSpeed] = useState(1);
   const [scrollProgress, setScrollProgress] = useState(0);
   const [showContext, setShowContext] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -84,14 +85,14 @@ export default function ReadingFocusView({
         if (idx >= chunks.length) { setSpeaking(false); return; }
         const utt = new SpeechSynthesisUtterance(chunks[idx]);
         utt.lang = "pt-BR";
-        utt.rate = 0.95;
+        utt.rate = ttsSpeed;
         utt.onend = () => { idx++; speakNext(); };
         window.speechSynthesis.speak(utt);
       };
       setSpeaking(true);
       speakNext();
     }
-  }, [speaking, bibleText]);
+  }, [speaking, bibleText, ttsSpeed]);
 
   useEffect(() => () => { window.speechSynthesis.cancel(); }, []);
 
@@ -125,14 +126,22 @@ export default function ReadingFocusView({
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
-          {/* TTS */}
-          <button
-            onClick={toggleSpeak}
-            className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors
-              ${speaking ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            {speaking ? <VolumeX size={16} /> : <Volume2 size={16} />}
-          </button>
+          {/* TTS + Speed */}
+          <div className="flex items-center gap-1">
+            <button
+              onClick={toggleSpeak}
+              className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors
+                ${speaking ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              {speaking ? <VolumeX size={16} /> : <Volume2 size={16} />}
+            </button>
+            <button
+              onClick={() => setTtsSpeed(s => { const speeds = [0.75, 1, 1.25, 1.5]; const i = speeds.indexOf(s); return speeds[(i + 1) % speeds.length]; })}
+              className="h-7 px-2 rounded-full text-[10px] font-bold font-ui text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+            >
+              {ttsSpeed}x
+            </button>
+          </div>
 
           {/* Context */}
           {onFetchContext && (

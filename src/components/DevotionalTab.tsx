@@ -235,15 +235,16 @@ export default function DevotionalTab({ devotionals, aprilCalendar, aprilThemes,
     });
   }, [selectedDay, version, fetchVerse]);
 
+  const [ttsSpeed, setTtsSpeed] = useState(1);
   const toggleSpeak = useCallback(() => {
     if (speaking) { window.speechSynthesis.cancel(); setSpeaking(false); return; }
     const text = verseText || "";
     if (!text) return;
     const utt = new SpeechSynthesisUtterance(text);
-    utt.lang = "pt-BR"; utt.rate = 0.85;
+    utt.lang = "pt-BR"; utt.rate = ttsSpeed;
     utt.onend = () => setSpeaking(false);
     window.speechSynthesis.speak(utt); setSpeaking(true);
-  }, [speaking, verseText]);
+  }, [speaking, verseText, ttsSpeed]);
 
   const saveReflection = () => {
     if (!reflection.trim()) return;
@@ -419,6 +420,13 @@ export default function DevotionalTab({ devotionals, aprilCalendar, aprilThemes,
           }} />
           <ActionBtn icon={speaking ? <VolumeX size={18} strokeWidth={1.5} /> : <Volume2 size={18} strokeWidth={1.5} />}
             label={speaking ? "Parar" : "Ouvir"} onClick={toggleSpeak} active={speaking} />
+          <button
+            onClick={() => setTtsSpeed(s => { const speeds = [0.75, 1, 1.25, 1.5]; const i = speeds.indexOf(s); return speeds[(i + 1) % speeds.length]; })}
+            className="flex flex-col items-center gap-0.5 text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <span className="w-9 h-9 rounded-full flex items-center justify-center bg-muted/30 text-[11px] font-bold font-ui">{ttsSpeed}x</span>
+            <span className="text-[9px] font-ui">Veloc.</span>
+          </button>
           <ActionBtn icon={<BookOpenCheck size={18} strokeWidth={1.5} />} label="Ler" onClick={openVerseReader} />
         </div>
       </div>
