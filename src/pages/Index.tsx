@@ -6,6 +6,7 @@ import CodeLogin from "@/components/CodeLogin";
 import RichTextEditor from "@/components/RichTextEditor";
 import Library from "@/components/Library";
 import Flashcards from "@/components/Flashcards";
+import DevotionalTab from "@/components/DevotionalTab";
 // Quiz removed from tabs
 import { useScrollDirection } from "@/hooks/useScrollDirection";
 import { haptic } from "@/hooks/useHaptic";
