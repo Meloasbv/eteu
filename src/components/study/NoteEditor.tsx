@@ -1,10 +1,18 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { ArrowLeft, MoreVertical, Check, Send, ImagePlus } from "lucide-react";
+import { ArrowLeft, MoreVertical, Check, Send, ImagePlus, Mic, MicOff, Loader2 } from "lucide-react";
 import RichTextEditor, { insertVerseIntoEditor } from "@/components/RichTextEditor";
 import BibleContextPanel from "@/components/BibleContextPanel";
 import { supabase } from "@/integrations/supabase/client";
 import ReactMarkdown from "react-markdown";
+import { toast } from "sonner";
 import type { StudyNote } from "./NotebookList";
+
+declare global {
+  interface Window {
+    webkitSpeechRecognition: any;
+    SpeechRecognition: any;
+  }
+}
 
 
 const CATEGORIES = ["Exegese", "Teologia", "Sermões", "Devocionais", "Aulas", "Pessoal"];
@@ -42,6 +50,13 @@ export default function NoteEditor({ note, onUpdate, onBack, onDelete }: Props) 
 
   // Image upload
   const imageInputRef = useRef<HTMLInputElement>(null);
+
+  // Voice AI mode
+  const [isRecording, setIsRecording] = useState(false);
+  const [liveTranscript, setLiveTranscript] = useState("");
+  const [isProcessingVoice, setIsProcessingVoice] = useState(false);
+  const recognitionRef = useRef<any>(null);
+  const fullTranscriptRef = useRef("");
 
   const wordCount = content.replace(/<[^>]*>/g, '').split(/\s+/).filter(Boolean).length;
 
@@ -179,6 +194,95 @@ export default function NoteEditor({ note, onUpdate, onBack, onDelete }: Props) 
     setSelectedImg(null);
   };
 
+  // Voice AI mode functions
+  const startRecording = useCallback(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      toast.error("Seu navegador não suporta reconhecimento de voz. Use Chrome ou Edge.");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = "pt-BR";
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    fullTranscriptRef.current = "";
+    setLiveTranscript("");
+
+    recognition.onresult = (event: any) => {
+      let interim = "";
+      let final = "";
+      for (let i = 0; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          final += transcript + " ";
+        } else {
+          interim += transcript;
+        }
+      }
+      if (final) fullTranscriptRef.current = final;
+      setLiveTranscript(fullTranscriptRef.current + interim);
+    };
+
+    recognition.onerror = (event: any) => {
+      console.error("Speech recognition error:", event.error);
+      if (event.error !== "no-speech") {
+        toast.error("Erro no reconhecimento de voz");
+      }
+      setIsRecording(false);
+    };
+
+    recognition.onend = () => {
+      // If still recording, restart (browser may stop after silence)
+      if (recognitionRef.current && isRecording) {
+        try { recognition.start(); } catch {}
+      }
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
+    setIsRecording(true);
+    toast.info("🎙️ Gravando... Fale agora");
+  }, [isRecording]);
+
+  const stopRecording = useCallback(async () => {
+    if (recognitionRef.current) {
+      recognitionRef.current.onend = null;
+      recognitionRef.current.stop();
+      recognitionRef.current = null;
+    }
+    setIsRecording(false);
+
+    const transcript = fullTranscriptRef.current.trim() || liveTranscript.trim();
+    if (!transcript) {
+      toast.warning("Nenhum áudio detectado");
+      setLiveTranscript("");
+      return;
+    }
+
+    setIsProcessingVoice(true);
+    toast.info("✨ Processando com IA...");
+
+    try {
+      const { data, error } = await supabase.functions.invoke("transcribe-format", {
+        body: { transcript },
+      });
+
+      if (error || data?.error) {
+        toast.error(data?.error || "Erro ao processar transcrição");
+      } else if (data?.result) {
+        setContent(prev => prev + data.result);
+        toast.success("✅ Nota formatada e inserida!");
+      }
+    } catch {
+      toast.error("Erro de conexão ao processar");
+    } finally {
+      setIsProcessingVoice(false);
+      setLiveTranscript("");
+    }
+  }, [liveTranscript]);
+
   return (
     <div className="flex flex-col flex-1 min-h-0">
       {/* Header */}
@@ -261,9 +365,40 @@ export default function NoteEditor({ note, onUpdate, onBack, onDelete }: Props) 
         >
           ✨ IA Chat
         </button>
+        <button
+          onClick={isRecording ? stopRecording : startRecording}
+          disabled={isProcessingVoice}
+          className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-ui font-semibold transition-all border border-border/50"
+          style={{
+            color: isRecording ? '#ef4444' : isProcessingVoice ? 'hsl(var(--muted-foreground))' : 'hsl(var(--muted-foreground))',
+            background: isRecording ? 'rgba(239,68,68,0.1)' : isProcessingVoice ? 'hsl(var(--primary) / 0.05)' : 'transparent',
+            borderColor: isRecording ? 'rgba(239,68,68,0.3)' : undefined,
+          }}
+        >
+          {isProcessingVoice ? (
+            <><Loader2 size={14} className="animate-spin" /> Processando...</>
+          ) : isRecording ? (
+            <><MicOff size={14} /> Parar</>
+          ) : (
+            <><Mic size={14} /> Modo IA</>
+          )}
+        </button>
         <div className="flex-1" />
         <span className="text-[10px] text-muted-foreground font-ui">{wordCount} palavras</span>
       </div>
+
+      {/* Live transcript preview */}
+      {(isRecording || liveTranscript) && !isProcessingVoice && (
+        <div className="mx-4 mt-2 px-3 py-2.5 rounded-xl animate-fade-in" style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)' }}>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+            <span className="text-[10px] font-ui font-semibold uppercase tracking-wider text-red-400">Gravando</span>
+          </div>
+          <p className="text-[13px] text-foreground/80 leading-relaxed font-ui">
+            {liveTranscript || <span className="text-muted-foreground italic">Aguardando fala...</span>}
+          </p>
+        </div>
+      )}
 
       {/* Image resize toolbar */}
       {selectedImg && (
