@@ -194,6 +194,95 @@ export default function NoteEditor({ note, onUpdate, onBack, onDelete }: Props) 
     setSelectedImg(null);
   };
 
+  // Voice AI mode functions
+  const startRecording = useCallback(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      toast.error("Seu navegador não suporta reconhecimento de voz. Use Chrome ou Edge.");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = "pt-BR";
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    fullTranscriptRef.current = "";
+    setLiveTranscript("");
+
+    recognition.onresult = (event: any) => {
+      let interim = "";
+      let final = "";
+      for (let i = 0; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          final += transcript + " ";
+        } else {
+          interim += transcript;
+        }
+      }
+      if (final) fullTranscriptRef.current = final;
+      setLiveTranscript(fullTranscriptRef.current + interim);
+    };
+
+    recognition.onerror = (event: any) => {
+      console.error("Speech recognition error:", event.error);
+      if (event.error !== "no-speech") {
+        toast.error("Erro no reconhecimento de voz");
+      }
+      setIsRecording(false);
+    };
+
+    recognition.onend = () => {
+      // If still recording, restart (browser may stop after silence)
+      if (recognitionRef.current && isRecording) {
+        try { recognition.start(); } catch {}
+      }
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
+    setIsRecording(true);
+    toast.info("🎙️ Gravando... Fale agora");
+  }, [isRecording]);
+
+  const stopRecording = useCallback(async () => {
+    if (recognitionRef.current) {
+      recognitionRef.current.onend = null;
+      recognitionRef.current.stop();
+      recognitionRef.current = null;
+    }
+    setIsRecording(false);
+
+    const transcript = fullTranscriptRef.current.trim() || liveTranscript.trim();
+    if (!transcript) {
+      toast.warning("Nenhum áudio detectado");
+      setLiveTranscript("");
+      return;
+    }
+
+    setIsProcessingVoice(true);
+    toast.info("✨ Processando com IA...");
+
+    try {
+      const { data, error } = await supabase.functions.invoke("transcribe-format", {
+        body: { transcript },
+      });
+
+      if (error || data?.error) {
+        toast.error(data?.error || "Erro ao processar transcrição");
+      } else if (data?.result) {
+        setContent(prev => prev + data.result);
+        toast.success("✅ Nota formatada e inserida!");
+      }
+    } catch {
+      toast.error("Erro de conexão ao processar");
+    } finally {
+      setIsProcessingVoice(false);
+      setLiveTranscript("");
+    }
+  }, [liveTranscript]);
+
   return (
     <div className="flex flex-col flex-1 min-h-0">
       {/* Header */}
