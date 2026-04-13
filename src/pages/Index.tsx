@@ -710,6 +710,22 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
         })}
       </nav>
 
+      {/* Focus reading view */}
+      {focusReading && (
+        <ReadingFocusView
+          weekIdx={focusReading.weekIdx}
+          dayIdx={focusReading.dayIdx}
+          dayName={focusReading.dayName}
+          readings={focusReading.readings}
+          isDone={!!checked[`${focusReading.weekIdx}-${focusReading.dayIdx}`]}
+          onToggleDone={() => toggle(focusReading.weekIdx, focusReading.dayIdx)}
+          onClose={() => setFocusReading(null)}
+          contextText={readingContext[`${focusReading.weekIdx}-${focusReading.dayIdx}`]}
+          onFetchContext={() => fetchReadingContext(focusReading.weekIdx, focusReading.dayIdx, focusReading.readings)}
+          contextLoading={contextLoading === `${focusReading.weekIdx}-${focusReading.dayIdx}`}
+        />
+      )}
+
       {/* Save toast */}
       {saved && (
         <div className="fixed bottom-24 left-1/2 -translate-x-1/2 bg-success text-white py-2.5 px-5 rounded-full text-[13px] z-[110] shadow-lg animate-fade-in font-ui">
