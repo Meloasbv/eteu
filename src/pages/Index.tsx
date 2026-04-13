@@ -202,24 +202,6 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
   const [activeWeek, setActiveWeek] = useState(0);
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [saved, setSaved] = useState(false);
-  const [expandedDev, setExpandedDev] = useState<string | null>(null);
-  // Exegesis study
-  const [exegeseVerse, setExegeseVerse] = useState("");
-  const [exegeseLoading, setExegeseLoading] = useState(false);
-  const [exegeseResult, setExegeseResult] = useState<{ verse: string; content: string } | null>(null);
-  const [exegeseError, setExegeseError] = useState("");
-
-  const [musicPlaying, setMusicPlaying] = useState(false);
-  // Devocional audio recording
-  const [devRecording, setDevRecording] = useState(false);
-  const [devTranscript, setDevTranscript] = useState("");
-  const devRecognitionRef = useRef<any>(null);
-  const devTranscriptRef = useRef("");
-  const [notesTitle, setNotesTitle] = useState("📝 Anotações");
-  // Bible version for devotionals
-  const [devBibleVersion, setDevBibleVersion] = useState("almeida");
-  const [devVerseOverrides, setDevVerseOverrides] = useState<Record<string, string>>({});
-  const [devVerseLoading, setDevVerseLoading] = useState<string | null>(null);
   // Reading context AI
   const [readingContext, setReadingContext] = useState<Record<string, string>>({});
   const [contextLoading, setContextLoading] = useState<string | null>(null);
