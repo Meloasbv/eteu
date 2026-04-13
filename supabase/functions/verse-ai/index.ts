@@ -12,10 +12,8 @@ serve(async (req) => {
   }
 
   try {
-    const { reference } = await req.json();
-
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY is not configured");
+    const body = await req.json();
+    const reference = body.reference || body.verse;
 
     if (!reference) {
       return new Response(
@@ -24,14 +22,33 @@ serve(async (req) => {
       );
     }
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    const OPENAI_API_KEY = (Deno.env.get("OPENAI_API_KEY") || "").replace(/[^\x20-\x7E]/g, "").trim();
+    const LOVABLE_API_KEY = (Deno.env.get("LOVABLE_API_KEY") || "").replace(/[^\x20-\x7E]/g, "").trim();
+
+    let apiUrl: string;
+    let authHeader: string;
+    let model: string;
+
+    if (OPENAI_API_KEY && OPENAI_API_KEY.startsWith("sk-")) {
+      apiUrl = "https://api.openai.com/v1/chat/completions";
+      authHeader = `Bearer ${OPENAI_API_KEY}`;
+      model = "gpt-4o-mini";
+    } else if (LOVABLE_API_KEY) {
+      apiUrl = "https://agentic.lovable.dev/v1/chat/completions";
+      authHeader = `Bearer ${LOVABLE_API_KEY}`;
+      model = "google/gemini-2.5-flash";
+    } else {
+      throw new Error("No AI API key configured");
+    }
+
+    const response = await fetch(apiUrl, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        "Authorization": authHeader,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model,
         messages: [
           {
             role: "system",
@@ -43,21 +60,16 @@ serve(async (req) => {
     });
 
     if (!response.ok) {
-      const status = response.status;
-      if (status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limited" }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      return new Response(JSON.stringify({ error: "AI error" }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      const t = await response.text();
+      console.error("AI error:", response.status, t);
+      return new Response(JSON.stringify({ error: "AI error" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const data = await response.json();
     const text = data.choices?.[0]?.message?.content?.trim() || "";
 
-    return new Response(JSON.stringify({ text }), {
+    return new Response(JSON.stringify({ text, result: text }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {

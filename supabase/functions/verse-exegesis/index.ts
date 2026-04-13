@@ -14,16 +14,31 @@ serve(async (req) => {
   try {
     const { verse, verseText } = await req.json();
 
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    if (!OPENAI_API_KEY) {
-      throw new Error("OPENAI_API_KEY is not configured");
-    }
-
     if (!verse || !verseText) {
       return new Response(
         JSON.stringify({ error: "Envie o versículo e sua referência." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // Try OpenAI key first, fallback to Lovable AI Gateway
+    const OPENAI_API_KEY = (Deno.env.get("OPENAI_API_KEY") || "").replace(/[^\x20-\x7E]/g, "").trim();
+    const LOVABLE_API_KEY = (Deno.env.get("LOVABLE_API_KEY") || "").replace(/[^\x20-\x7E]/g, "").trim();
+
+    let apiUrl: string;
+    let authHeader: string;
+    let model: string;
+
+    if (OPENAI_API_KEY && OPENAI_API_KEY.startsWith("sk-")) {
+      apiUrl = "https://api.openai.com/v1/chat/completions";
+      authHeader = `Bearer ${OPENAI_API_KEY}`;
+      model = "gpt-4o-mini";
+    } else if (LOVABLE_API_KEY) {
+      apiUrl = "https://agentic.lovable.dev/v1/chat/completions";
+      authHeader = `Bearer ${LOVABLE_API_KEY}`;
+      model = "google/gemini-2.5-flash";
+    } else {
+      throw new Error("No AI API key configured");
     }
 
     const systemPrompt = `Você é um teólogo e estudioso bíblico especializado em exegese. Sua tarefa é fazer uma análise exegética palavra por palavra de um versículo bíblico.
@@ -42,45 +57,30 @@ Formato de resposta:
 - Seja profundo mas acessível
 - Use referências cruzadas quando relevante (ex: "cf. Rm 8:28")`;
 
-    const userPrompt = `Faça uma exegese palavra por palavra deste versículo:\n\nReferência: ${verse}\nTexto: "${verseText}"`;
-
-    const response = await fetch(
-      "https://api.openai.com/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${OPENAI_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userPrompt },
-          ],
-        }),
-      }
-    );
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers: {
+        "Authorization": authHeader,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `Faça uma exegese palavra por palavra deste versículo:\n\nReferência: ${verse}\nTexto: "${verseText}"` },
+        ],
+      }),
+    });
 
     if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Muitas requisições. Tente novamente em alguns instantes." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "Créditos de IA esgotados." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
       const t = await response.text();
-      console.error("AI gateway error:", response.status, t);
-      return new Response(
-        JSON.stringify({ error: "Erro ao processar com IA" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      console.error("AI error:", response.status, t);
+      if (response.status === 429) {
+        return new Response(JSON.stringify({ error: "Muitas requisições. Tente novamente." }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify({ error: "Erro ao processar com IA" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const data = await response.json();
