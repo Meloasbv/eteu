@@ -475,3 +475,42 @@ mark.note-search-match-active {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ── DEVOTIONAL SPIRITUAL DESIGN ── */
+.devotional-container {
+  min-height: calc(100dvh - 140px);
+  background: linear-gradient(
+    180deg,
+    hsl(var(--background)) 0%,
+    hsl(var(--background)) 60%,
+    hsl(var(--card) / 0.3) 100%
+  );
+}
+
+.devotional-container blockquote {
+  position: relative;
+}
+
+.devotional-exegesis h2 {
+  font-family: 'Crimson Text', Georgia, serif;
+}
+
+.devotional-exegesis h3 {
+  font-family: 'Crimson Text', Georgia, serif;
+}
+
+.devotional-exegesis p {
+  font-family: 'Crimson Text', Georgia, serif;
+}
+
+.devotional-editor .tiptap-editor-content {
+  font-family: 'Crimson Text', Georgia, serif !important;
+  font-size: 15px;
+  line-height: 2;
+  color: hsl(var(--foreground) / 0.7);
+}
+
+.devotional-editor .tiptap-editor-content p.is-editor-empty::before {
+  font-style: italic;
+  color: hsl(var(--foreground) / 0.2);
+}
