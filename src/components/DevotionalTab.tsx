@@ -252,6 +252,25 @@ export default function DevotionalTab({ devotionals, aprilCalendar, aprilThemes,
     setSaved(true); setTimeout(() => setSaved(false), 2500);
   };
 
+  const saveDisciplerNote = () => {
+    if (!disciplerNote.trim()) return;
+    onSaveNote(`# 📩 Nota para Discipulador — ${todayRef}\n\n${disciplerNote}\n\n---\n_${dateStr}_`);
+    setDisciplerNoteSent(true);
+    setTimeout(() => setDisciplerNoteSent(false), 3000);
+  };
+
+  // Parse reference for verse reader
+  const openVerseReader = useCallback(() => {
+    if (!todayRef) return;
+    // Parse "João 1:14" => book="João", chapter=1
+    const match = todayRef.match(/^(.+?)\s+(\d+)/);
+    if (match) {
+      setReaderBook(match[1]);
+      setReaderChapter(parseInt(match[2]));
+      setShowVerseReader(true);
+    }
+  }, [todayRef]);
+
   const dateStr = now.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" });
 
   // ── EMPTY STATE ──
