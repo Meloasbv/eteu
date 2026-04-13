@@ -1,33 +1,58 @@
 
 
-## Plan: 5 Correções no Fascinação
+## Plan: Modo IA nas Notas — Transcrição de Áudio com Formatação Automática
 
-### 1. Remover aba Quiz
-- **`src/pages/Index.tsx`**: Remover `"quiz"` do tipo de estado `tab`, remover o item Quiz do array `TABS`, remover `import Quiz`, remover o bloco `{tab === "quiz" && <Quiz ... />}`
-- Não deletar os arquivos Quiz.tsx e quizData.ts (podem ser usados futuramente)
+### O que será feito
 
-### 2. Melhorar formatação das respostas da IA no Assistente
-- **`src/components/study/ChatMessage.tsx`**: Melhorar a renderização markdown — aumentar espaçamento entre seções, adicionar separadores visuais entre blocos, melhorar tipografia dos headings (Georgia serif, tamanhos maiores), estilizar blockquotes com borda dourada e fundo sutil, melhorar listas com bullets estilizados, adicionar espaçamento `prose-p:my-2` e `prose-headings:mt-6 prose-headings:mb-3`
-- **`supabase/functions/study-chat/index.ts`**: Ajustar o system prompt para instruir a IA a formatar respostas com seções claras usando `##`, usar listas com bullets, separar parágrafos curtos, e evitar blocos de texto densos. Adicionar instrução: "Quebre respostas em seções curtas com subtítulos. Use parágrafos curtos (2-3 frases máximo). Use listas quando possível."
-
-### 3. Conectar ChatGPT API (usar Lovable AI com modelo GPT)
-- **`supabase/functions/study-chat/index.ts`**: Trocar o modelo de `google/gemini-2.5-flash` para `openai/gpt-5-mini` (melhor custo-benefício via Lovable AI gateway — mesma infraestrutura, sem necessidade de API key do OpenAI)
-- Todas as outras edge functions que usam IA (`bible-context`, `verse-ai`, `notes-ai`, etc.) podem manter os modelos atuais ou ser migradas conforme necessidade futura
-
-### 4. Corrigir pesquisa de versículo nas Notas (BibleContextPanel)
-- **Problema**: O `BibleContextPanel` ao abrir só mostra o versículo na aba "Versículo" mas as abas "Contexto", "Exegese" e "Conexões" dependem de clicar manualmente em cada aba e chamar a edge function `bible-context`
-- **Correção em `src/components/BibleContextPanel.tsx`**: Ao abrir o painel, auto-carregar a aba de Exegese junto com o versículo (pré-fetch dos dados de contexto e exegese em paralelo), e mudar o tab inicial para "exegesis" em vez de "verse" para mostrar as informações ricas diretamente
-- Verificar se a edge function `bible-context` está deployada e funcionando corretamente
-
-### 5. Melhorar visual do campo Assistente
-- **`src/components/study/AssistantChat.tsx`**: Melhorar espaçamento das mensagens (gap de 16px entre mensagens), adicionar avatar/ícone para o assistente (📖 ou ícone subtle), melhorar a animação de typing (dots mais elegantes), aumentar padding das mensagens
-- **`src/components/study/ChatMessage.tsx`**: Adicionar borda sutil nas mensagens do assistente, melhorar contraste tipográfico, aumentar line-height para 1.8, adicionar animação de fade-in suave nas novas mensagens
-- **`src/components/study/SuggestionCards.tsx`**: Verificar e melhorar o visual dos cards de sugestão iniciais
+Adicionar um botão **"🎙️ Modo IA"** no editor de notas que:
+1. Grava áudio do microfone usando Web Speech API (reconhecimento em tempo real)
+2. Envia a transcrição para uma edge function que usa **GPT-5-mini** (via Lovable AI gateway)
+3. A IA corrige, formata com headings/negrito/listas, detecta referências bíblicas e insere versículos automaticamente como blockquotes
+4. O resultado formatado é inserido diretamente no editor TipTap como HTML
 
 ### Arquivos modificados
-1. `src/pages/Index.tsx` — remover Quiz
-2. `src/components/study/ChatMessage.tsx` — melhorar formatação markdown
-3. `supabase/functions/study-chat/index.ts` — trocar modelo + ajustar prompt
-4. `src/components/BibleContextPanel.tsx` — auto-carregar exegese
-5. `src/components/study/AssistantChat.tsx` — melhorar visual do chat
+
+#### 1. `supabase/functions/transcribe-format/index.ts` — Nova edge function
+- Recebe o texto transcrito bruto do Speech API
+- Usa `openai/gpt-5-mini` via Lovable AI gateway com system prompt especializado:
+  - Corrigir nomes bíblicos e termos teológicos mal transcritos
+  - Formatar em Markdown com `##` headings, **negrito**, listas
+  - Detectar referências bíblicas mencionadas e inserir como `> "texto" — Referência`
+  - Buscar os versículos corretos e incluí-los formatados
+- Retorna HTML pronto para inserção no editor
+
+#### 2. `src/components/study/NoteEditor.tsx` — Adicionar Modo IA
+- Novo botão **"🎙️ Modo IA"** na barra de ferramentas (ao lado de "Imagem" e "IA Chat")
+- Ao ativar:
+  - Inicia `webkitSpeechRecognition` / `SpeechRecognition` (contínuo, pt-BR)
+  - Mostra indicador visual pulsante vermelho "Gravando..."
+  - Texto transcrito aparece em tempo real num preview abaixo da toolbar
+- Ao parar (botão ou silêncio prolongado):
+  - Envia a transcrição completa para `transcribe-format`
+  - Recebe HTML formatado com versículos inseridos
+  - Insere no editor TipTap na posição do cursor
+  - Mostra toast de sucesso
+
+#### 3. `supabase/functions/study-chat/index.ts` — Já usa GPT, sem mudanças
+#### 4. `supabase/functions/notes-ai/index.ts` — Trocar modelo para `openai/gpt-5-mini`
+#### 5. `supabase/functions/summarize-transcript/index.ts` — Trocar modelo para `openai/gpt-5-mini`
+
+### Fluxo do usuário
+
+```text
+1. Abre nota → toca "🎙️ Modo IA"
+2. Fala: "Hoje vamos estudar João 3:16, o versículo diz que Deus amou o mundo..."
+3. Texto aparece em tempo real no preview
+4. Toca "Parar" → IA processa em 2-3 segundos
+5. Editor recebe HTML formatado:
+   - ## Estudo de João 3:16
+   - > "Porque Deus amou o mundo..." — João 3:16
+   - Parágrafos formatados com negrito nos termos-chave
+```
+
+### Detalhes técnicos
+- Web Speech API é nativa do browser, sem dependências extras
+- Fallback: se Speech API não disponível, mostra mensagem informativa
+- O processamento IA acontece server-side na edge function
+- Toda a infra usa Lovable AI gateway (sem API key adicional necessária)
 
