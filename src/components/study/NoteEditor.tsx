@@ -51,6 +51,13 @@ export default function NoteEditor({ note, onUpdate, onBack, onDelete }: Props) 
   // Image upload
   const imageInputRef = useRef<HTMLInputElement>(null);
 
+  // Voice AI mode
+  const [isRecording, setIsRecording] = useState(false);
+  const [liveTranscript, setLiveTranscript] = useState("");
+  const [isProcessingVoice, setIsProcessingVoice] = useState(false);
+  const recognitionRef = useRef<any>(null);
+  const fullTranscriptRef = useRef("");
+
   const wordCount = content.replace(/<[^>]*>/g, '').split(/\s+/).filter(Boolean).length;
 
   const save = useCallback(() => {
