@@ -410,16 +410,54 @@ export default function DevotionalTab({ devotionals, aprilCalendar, aprilThemes,
 
       {/* ── MINIMAL ACTIONS ── */}
       <div className="px-6 py-4 animate-fade-in" style={{ animationDelay: "450ms" }}>
-        <div className="flex items-center justify-center gap-8">
+        <div className="flex items-center justify-center gap-6">
           <ActionBtn icon={<PenLine size={18} strokeWidth={1.5} />} label="Refletir" onClick={() => setShowReflection(!showReflection)} />
+          <ActionBtn icon={<Send size={18} strokeWidth={1.5} />} label="Discipulador" onClick={() => setShowDisciplerNote(!showDisciplerNote)} />
           <ActionBtn icon={<Bookmark size={18} strokeWidth={1.5} />} label="Salvar" onClick={() => {
             onSaveNote(`# ${todayRef}\n\n> "${verseText || ""}"\n\n${todaySummary || ""}`);
             setSaved(true); setTimeout(() => setSaved(false), 2500);
           }} />
           <ActionBtn icon={speaking ? <VolumeX size={18} strokeWidth={1.5} /> : <Volume2 size={18} strokeWidth={1.5} />}
             label={speaking ? "Parar" : "Ouvir"} onClick={toggleSpeak} active={speaking} />
+          <ActionBtn icon={<BookOpenCheck size={18} strokeWidth={1.5} />} label="Ler" onClick={openVerseReader} />
         </div>
       </div>
+
+      {/* ── DISCIPLER NOTE ── */}
+      {showDisciplerNote && (
+        <div className="px-6 pb-6 animate-fade-in">
+          <div className="border-t border-border/30 pt-6">
+            <div className="flex items-center gap-2 mb-3">
+              <Send size={14} className="text-primary/60" />
+              <p className="text-[10px] text-muted-foreground font-medium tracking-[2px] uppercase">Nota para o Discipulador</p>
+            </div>
+            <p className="text-[11px] text-muted-foreground/60 mb-3 italic font-serif">
+              Escreva uma breve nota sobre o que aprendeu hoje para compartilhar com seu discipulador.
+            </p>
+            <textarea
+              value={disciplerNote}
+              onChange={(e) => setDisciplerNote(e.target.value)}
+              placeholder="O que Deus falou comigo hoje..."
+              className="w-full min-h-[80px] p-4 rounded-xl bg-card border border-border/30 text-[14px] leading-relaxed text-foreground/80 font-serif placeholder:text-muted-foreground/30 resize-none focus:outline-none focus:border-primary/30 transition-colors"
+              maxLength={500}
+            />
+            <div className="flex items-center justify-between mt-3">
+              <span className="text-[10px] text-muted-foreground/40">{disciplerNote.length}/500</span>
+              <button
+                onClick={saveDisciplerNote}
+                disabled={!disciplerNote.trim()}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-full text-[10px] tracking-[1.5px] uppercase font-medium transition-all disabled:opacity-20 active:scale-95 bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20"
+              >
+                <Send size={12} />
+                Salvar nota
+              </button>
+            </div>
+            {disciplerNoteSent && (
+              <p className="text-[11px] text-primary mt-2 animate-fade-in font-serif italic">✓ Nota salva com sucesso!</p>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── REFLECTION JOURNAL ── */}
       {showReflection && (
