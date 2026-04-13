@@ -217,6 +217,9 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
   const playerRef = useRef<HTMLIFrameElement>(null);
   const isMobile = useIsMobile();
 
+  // Reading focus mode
+  const [focusReading, setFocusReading] = useState<{ weekIdx: number; dayIdx: number; dayName: string; readings: string[] } | null>(null);
+
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
     try { localStorage.setItem(THEME_KEY, theme); } catch {}
