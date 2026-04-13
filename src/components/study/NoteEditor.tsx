@@ -365,9 +365,40 @@ export default function NoteEditor({ note, onUpdate, onBack, onDelete }: Props) 
         >
           ✨ IA Chat
         </button>
+        <button
+          onClick={isRecording ? stopRecording : startRecording}
+          disabled={isProcessingVoice}
+          className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-ui font-semibold transition-all border border-border/50"
+          style={{
+            color: isRecording ? '#ef4444' : isProcessingVoice ? 'hsl(var(--muted-foreground))' : 'hsl(var(--muted-foreground))',
+            background: isRecording ? 'rgba(239,68,68,0.1)' : isProcessingVoice ? 'hsl(var(--primary) / 0.05)' : 'transparent',
+            borderColor: isRecording ? 'rgba(239,68,68,0.3)' : undefined,
+          }}
+        >
+          {isProcessingVoice ? (
+            <><Loader2 size={14} className="animate-spin" /> Processando...</>
+          ) : isRecording ? (
+            <><MicOff size={14} /> Parar</>
+          ) : (
+            <><Mic size={14} /> Modo IA</>
+          )}
+        </button>
         <div className="flex-1" />
         <span className="text-[10px] text-muted-foreground font-ui">{wordCount} palavras</span>
       </div>
+
+      {/* Live transcript preview */}
+      {(isRecording || liveTranscript) && !isProcessingVoice && (
+        <div className="mx-4 mt-2 px-3 py-2.5 rounded-xl animate-fade-in" style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)' }}>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+            <span className="text-[10px] font-ui font-semibold uppercase tracking-wider text-red-400">Gravando</span>
+          </div>
+          <p className="text-[13px] text-foreground/80 leading-relaxed font-ui">
+            {liveTranscript || <span className="text-muted-foreground italic">Aguardando fala...</span>}
+          </p>
+        </div>
+      )}
 
       {/* Image resize toolbar */}
       {selectedImg && (
