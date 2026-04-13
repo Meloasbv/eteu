@@ -265,8 +265,23 @@ export default function NoteEditor({ note, onUpdate, onBack, onDelete }: Props) 
         <span className="text-[10px] text-muted-foreground font-ui">{wordCount} palavras</span>
       </div>
 
+      {/* Image resize toolbar */}
+      {selectedImg && (
+        <div className="flex items-center gap-2 px-4 py-2 border-b border-border/30 animate-fade-in">
+          <span className="text-[10px] font-ui text-muted-foreground uppercase tracking-wider">Tamanho:</span>
+          {[["25%","P"],["50%","M"],["75%","G"],["100%","Full"]].map(([w,label]) => (
+            <button key={w} onClick={() => resizeImage(w)}
+              className="px-2.5 py-1 rounded-lg text-[11px] font-ui font-semibold transition-all active:scale-95"
+              style={{ background: 'hsl(var(--primary) / 0.08)', border: '1px solid hsl(var(--primary) / 0.2)', color: 'hsl(var(--primary))' }}>
+              {label}
+            </button>
+          ))}
+          <button onClick={() => setSelectedImg(null)} className="ml-auto text-[11px] text-muted-foreground">✕</button>
+        </div>
+      )}
+
       {/* Editor */}
-      <div className={`${showChat ? 'flex-[2]' : 'flex-1'} mt-2 overflow-hidden min-h-0`}>
+      <div className={`${showChat ? 'flex-[2]' : 'flex-1'} mt-2 overflow-hidden min-h-0`} onClick={handleEditorClick}>
         <RichTextEditor
           content={content}
           onChange={setContent}
