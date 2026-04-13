@@ -210,6 +210,7 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
   });
   const [titleFading, setTitleFading] = useState(false);
   const [displayTitle, setDisplayTitle] = useState("Estudo Tudo Em Um");
+  const [musicPlaying, setMusicPlaying] = useState(false);
   const playerRef = useRef<HTMLIFrameElement>(null);
 
   // Apply theme to html element
