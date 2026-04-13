@@ -259,7 +259,7 @@ export default function AssistantChat({ userCodeId }: { userCodeId: string }) {
       )}
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 pb-48 scroll-smooth">
+      <div className="flex-1 overflow-y-auto px-4 pb-4 scroll-smooth">
         {messages.length === 0 ? (
           <SuggestionCards onSelect={sendMessage} />
         ) : (
@@ -285,8 +285,8 @@ export default function AssistantChat({ userCodeId }: { userCodeId: string }) {
         )}
       </div>
 
-      {/* Input area — fixed at bottom */}
-      <div className="fixed bottom-[var(--tab-bar-height)] left-0 right-0 z-20 backdrop-blur-xl border-t px-4 pt-2 pb-[env(safe-area-inset-bottom,8px)]"
+      {/* Input area — sticky at bottom, respects parent width */}
+      <div className="sticky bottom-0 z-20 backdrop-blur-xl border-t px-4 pt-2 pb-[env(safe-area-inset-bottom,8px)] lg:pb-3"
         style={{ background: 'hsl(var(--background) / 0.92)', borderColor: 'hsl(var(--border) / 0.5)' }}>
         {/* Shortcuts */}
         <div className="flex gap-2 mb-2 overflow-x-auto no-scrollbar pl-1">
@@ -327,16 +327,14 @@ export default function AssistantChat({ userCodeId }: { userCodeId: string }) {
             onFocus={(e) => { e.target.style.borderColor = 'hsl(var(--primary))'; e.target.style.boxShadow = '0 0 0 3px hsl(var(--primary) / 0.1)'; }}
             onBlur={(e) => { e.target.style.borderColor = 'hsl(var(--border))'; e.target.style.boxShadow = 'none'; }}
           />
-          {input.trim() && (
-            <button
-              onClick={() => sendMessage(input)}
-              disabled={isLoading}
-              className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-all active:scale-90"
-              style={{ background: 'hsl(var(--primary))' }}
-            >
-              <Send size={18} className="text-primary-foreground" />
-            </button>
-          )}
+          <button
+            onClick={() => sendMessage(input)}
+            disabled={isLoading || !input.trim()}
+            className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-all active:scale-90 disabled:opacity-30"
+            style={{ background: 'hsl(var(--primary))' }}
+          >
+            <Send size={18} className="text-primary-foreground" />
+          </button>
         </div>
       </div>
     </div>
