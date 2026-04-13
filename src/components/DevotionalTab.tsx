@@ -144,6 +144,16 @@ export default function DevotionalTab({ devotionals, aprilCalendar, aprilThemes,
   const [showUpcoming, setShowUpcoming] = useState(false);
   const [showFullCalendar, setShowFullCalendar] = useState(false);
 
+  // Discipler note
+  const [disciplerNote, setDisciplerNote] = useState("");
+  const [showDisciplerNote, setShowDisciplerNote] = useState(false);
+  const [disciplerNoteSent, setDisciplerNoteSent] = useState(false);
+
+  // Verse reader
+  const [showVerseReader, setShowVerseReader] = useState(false);
+  const [readerBook, setReaderBook] = useState("");
+  const [readerChapter, setReaderChapter] = useState(1);
+
   // ── Selected "upcoming" day to view details ──
   const [selectedDay, setSelectedDay] = useState<{ date: number; ref: string } | null>(null);
   const [selectedVerseText, setSelectedVerseText] = useState<string | null>(null);
