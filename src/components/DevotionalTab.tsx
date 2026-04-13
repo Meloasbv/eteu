@@ -3,9 +3,11 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   ChevronDown, ChevronRight, Bookmark, PenLine, Volume2, VolumeX,
   X, Sparkles, BookOpen, Eye, EyeOff, Calendar, Clock, Star,
+  Send, BookOpenCheck,
 } from "lucide-react";
 import RichTextEditor from "@/components/RichTextEditor";
 import ReactMarkdown from "react-markdown";
+import VerseReader from "@/components/VerseReader";
 
 // ── Types ──
 
