@@ -338,7 +338,7 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
             <p className="header-brand text-[9px] tracking-[3px] uppercase text-muted-foreground font-medium font-ui mb-0.5">
               Fascinação · 2026A
             </p>
-            <h1 className="text-[17px] font-semibold text-foreground leading-tight font-ui">
+            <h1 className={`text-[18px] font-bold text-foreground leading-tight font-display tracking-[1px] transition-all duration-500 ${titleFading ? "opacity-0 translate-y-1 scale-95" : "opacity-100 translate-y-0 scale-100"}`}>
               {displayTitle}
             </h1>
           </div>
