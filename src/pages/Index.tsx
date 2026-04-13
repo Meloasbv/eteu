@@ -507,7 +507,10 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
                         : '1px solid hsl(var(--border))',
                     }}>
                     <div
-                      onClick={() => { toggle(activeWeek, di); haptic("light"); }}
+                      onClick={() => {
+                        haptic("medium");
+                        setFocusReading({ weekIdx: activeWeek, dayIdx: di, dayName: DAY_NAMES[di], readings: day.r });
+                      }}
                       className="p-4 flex items-center justify-between cursor-pointer active:scale-[0.97] transition-transform">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
@@ -515,6 +518,7 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
                           <span className="text-xs text-muted-foreground font-ui">
                             {day.r.length} {day.r.length === 1 ? "leitura" : "leituras"}
                           </span>
+                          <BookOpen size={12} className="text-primary/40" />
                         </div>
                         <div className="flex gap-1.5 mt-2 flex-wrap">
                           {day.r.map((r, ri) => (
@@ -528,7 +532,9 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
                           ))}
                         </div>
                       </div>
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 ml-3 transition-all"
+                      <div
+                        onClick={(e) => { e.stopPropagation(); toggle(activeWeek, di); haptic("light"); }}
+                        className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 ml-3 transition-all cursor-pointer"
                         style={{
                           background: isDone ? 'hsl(var(--success))' : 'transparent',
                           border: isDone ? 'none' : '2px solid hsl(var(--border))',
