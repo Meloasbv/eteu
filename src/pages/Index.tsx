@@ -221,7 +221,6 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
 
   // Animate title changes
   const prevTab = useRef(tab);
-  const prevNotesTitle = useRef(notesTitle);
   useEffect(() => {
     const newTitle = tab === "leitura" ? "Plano de Leitura"
       : tab === "devocional" ? "Devocionais"
@@ -235,8 +234,7 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
       }, 280);
     }
     prevTab.current = tab;
-    prevNotesTitle.current = notesTitle;
-  }, [tab, notesTitle]);
+  }, [tab]);
 
   useEffect(() => {
     try { const d = localStorage.getItem(STORAGE_KEY); if (d) setChecked(JSON.parse(d)); } catch {}
