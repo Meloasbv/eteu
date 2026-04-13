@@ -7,6 +7,7 @@ import RichTextEditor from "@/components/RichTextEditor";
 import Library from "@/components/Library";
 import Flashcards from "@/components/Flashcards";
 import DevotionalTab from "@/components/DevotionalTab";
+import ReadingFocusView from "@/components/ReadingFocusView";
 import DesktopSidebar from "@/components/desktop/DesktopSidebar";
 import DesktopRightPanel from "@/components/desktop/DesktopRightPanel";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -215,6 +216,9 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
   const [musicPlaying, setMusicPlaying] = useState(false);
   const playerRef = useRef<HTMLIFrameElement>(null);
   const isMobile = useIsMobile();
+
+  // Reading focus mode
+  const [focusReading, setFocusReading] = useState<{ weekIdx: number; dayIdx: number; dayName: string; readings: string[] } | null>(null);
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
@@ -503,7 +507,10 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
                         : '1px solid hsl(var(--border))',
                     }}>
                     <div
-                      onClick={() => { toggle(activeWeek, di); haptic("light"); }}
+                      onClick={() => {
+                        haptic("medium");
+                        setFocusReading({ weekIdx: activeWeek, dayIdx: di, dayName: DAY_NAMES[di], readings: day.r });
+                      }}
                       className="p-4 flex items-center justify-between cursor-pointer active:scale-[0.97] transition-transform">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
@@ -511,6 +518,7 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
                           <span className="text-xs text-muted-foreground font-ui">
                             {day.r.length} {day.r.length === 1 ? "leitura" : "leituras"}
                           </span>
+                          <BookOpen size={12} className="text-primary/40" />
                         </div>
                         <div className="flex gap-1.5 mt-2 flex-wrap">
                           {day.r.map((r, ri) => (
@@ -524,7 +532,9 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
                           ))}
                         </div>
                       </div>
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 ml-3 transition-all"
+                      <div
+                        onClick={(e) => { e.stopPropagation(); toggle(activeWeek, di); haptic("light"); }}
+                        className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 ml-3 transition-all cursor-pointer"
                         style={{
                           background: isDone ? 'hsl(var(--success))' : 'transparent',
                           border: isDone ? 'none' : '2px solid hsl(var(--border))',
@@ -615,6 +625,22 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
           streakDays={streakDays}
         />
 
+        {/* Focus reading view */}
+        {focusReading && (
+          <ReadingFocusView
+            weekIdx={focusReading.weekIdx}
+            dayIdx={focusReading.dayIdx}
+            dayName={focusReading.dayName}
+            readings={focusReading.readings}
+            isDone={!!checked[`${focusReading.weekIdx}-${focusReading.dayIdx}`]}
+            onToggleDone={() => toggle(focusReading.weekIdx, focusReading.dayIdx)}
+            onClose={() => setFocusReading(null)}
+            contextText={readingContext[`${focusReading.weekIdx}-${focusReading.dayIdx}`]}
+            onFetchContext={() => fetchReadingContext(focusReading.weekIdx, focusReading.dayIdx, focusReading.readings)}
+            contextLoading={contextLoading === `${focusReading.weekIdx}-${focusReading.dayIdx}`}
+          />
+        )}
+
         {/* Save toast */}
         {saved && (
           <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-success text-white py-2.5 px-5 rounded-full text-[13px] z-[110] shadow-lg animate-fade-in font-ui">
@@ -683,6 +709,22 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
           );
         })}
       </nav>
+
+      {/* Focus reading view */}
+      {focusReading && (
+        <ReadingFocusView
+          weekIdx={focusReading.weekIdx}
+          dayIdx={focusReading.dayIdx}
+          dayName={focusReading.dayName}
+          readings={focusReading.readings}
+          isDone={!!checked[`${focusReading.weekIdx}-${focusReading.dayIdx}`]}
+          onToggleDone={() => toggle(focusReading.weekIdx, focusReading.dayIdx)}
+          onClose={() => setFocusReading(null)}
+          contextText={readingContext[`${focusReading.weekIdx}-${focusReading.dayIdx}`]}
+          onFetchContext={() => fetchReadingContext(focusReading.weekIdx, focusReading.dayIdx, focusReading.readings)}
+          contextLoading={contextLoading === `${focusReading.weekIdx}-${focusReading.dayIdx}`}
+        />
+      )}
 
       {/* Save toast */}
       {saved && (
