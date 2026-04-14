@@ -88,7 +88,7 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
 
   if (mode === "ai-canvas" && analysis) {
     return (
-      <div className="h-[calc(100vh-120px)] lg:h-screen w-full">
+      <div className="h-full w-full">
         <Suspense fallback={fallback}>
           <MindMapCanvas analysis={analysis} onClose={() => { setAnalysis(null); setMode("select"); }} />
         </Suspense>
@@ -98,7 +98,7 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
 
   if (mode === "manual") {
     return (
-      <div className="h-[calc(100vh-120px)] lg:h-screen w-full">
+      <div className="h-full w-full">
         <Suspense fallback={fallback}>
           <ManualMindMapCanvas
             userCodeId={userCodeId}

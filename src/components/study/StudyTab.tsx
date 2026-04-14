@@ -65,12 +65,12 @@ export default function StudyTab({ userCodeId }: { userCodeId: string }) {
         {/* Split panels */}
         <div className="flex-1 min-h-0 mt-2">
           <ResizablePanelGroup direction="horizontal" className="h-full">
-            <ResizablePanel defaultSize={50} minSize={25}>
+            <ResizablePanel defaultSize={35} minSize={20}>
               <div className="h-full overflow-y-auto">{notebookContent}</div>
             </ResizablePanel>
             <ResizableHandle withHandle />
-            <ResizablePanel defaultSize={50} minSize={25}>
-              <div className="h-full overflow-hidden">{mindMapContent}</div>
+            <ResizablePanel defaultSize={65} minSize={30}>
+              <div className="h-full">{mindMapContent}</div>
             </ResizablePanel>
           </ResizablePanelGroup>
         </div>
