@@ -534,7 +534,7 @@ function ManualCanvas({ userCodeId, mapId, onClose }: ManualCanvasProps) {
         id: `edge-${selectedNode}-${id}`,
         source: selectedNode,
         target: id,
-        type: "smoothstep",
+        type: edgeType,
         style: edgeStyle,
         markerEnd: edgeMarker,
       });
@@ -620,7 +620,7 @@ function ManualCanvas({ userCodeId, mapId, onClose }: ManualCanvasProps) {
       id: `edge-${parentId}-${id}`,
       source: parentId,
       target: id,
-      type: "smoothstep",
+      type: edgeType,
       style: edgeStyle,
       markerEnd: edgeMarker,
     }]);
@@ -807,6 +807,8 @@ function ManualCanvas({ userCodeId, mapId, onClose }: ManualCanvasProps) {
           <ToolbarBtn icon={Plus} label="Card" onClick={() => addNode("simpleNode")} />
           <ToolbarBtn icon={StickyNote} label="Nota" onClick={() => addNode("noteCard")} />
           <div className="w-px h-5" style={{ background: "rgba(196,164,106,0.15)" }} />
+          <ToolbarBtn icon={Link2} label={edgeType === "smoothstep" ? "Curva" : edgeType === "straight" ? "Reta" : "Bézier"}
+            onClick={() => changeEdgeType(edgeType === "smoothstep" ? "straight" : edgeType === "straight" ? "default" : "smoothstep")} />
           <ToolbarBtn icon={Palette} label="Cor" onClick={() => setShowColorPicker(!showColorPicker)} active={showColorPicker} />
         </div>
 
