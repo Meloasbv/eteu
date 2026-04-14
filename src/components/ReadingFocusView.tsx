@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 import {
   X, Check, Play, Pause, SkipBack, SkipForward, Repeat,
-  Volume2, ChevronDown, Sparkles, Loader2,
+  Volume2, ChevronDown, Sparkles, Loader2, Heart,
 } from "lucide-react";
 
 interface Props {
@@ -16,6 +17,7 @@ interface Props {
   contextText?: string;
   onFetchContext?: () => void;
   contextLoading?: boolean;
+  userCodeId: string;
 }
 
 interface ParsedVerse {
@@ -59,7 +61,7 @@ function parseBibleText(raw: string): ParsedVerse[] {
 
 export default function ReadingFocusView({
   weekIdx, dayIdx, dayName, readings, isDone, onToggleDone, onClose,
-  contextText, onFetchContext, contextLoading,
+  contextText, onFetchContext, contextLoading, userCodeId,
 }: Props) {
   const [bibleText, setBibleText] = useState("");
   const [loading, setLoading] = useState(true);
