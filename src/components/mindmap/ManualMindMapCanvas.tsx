@@ -273,9 +273,14 @@ const nodeTypes = {
   noteCard: NoteCardNode,
 };
 
+const edgeStyle = { stroke: "rgba(196,164,106,0.35)", strokeWidth: 2 };
+const edgeMarker = { type: MarkerType.ArrowClosed, width: 14, height: 14, color: "rgba(196,164,106,0.5)" };
+
 const defaultEdgeOptions = {
   type: "smoothstep" as const,
-  style: { stroke: "rgba(196,164,106,0.2)", strokeWidth: 1.5 },
+  style: edgeStyle,
+  markerEnd: edgeMarker,
+  animated: false,
 };
 
 // ── Undo/Redo ──
