@@ -328,10 +328,21 @@ export default function ReadingFocusView({
               </p>
             )}
 
-            {/* Verse badge */}
-            <span className="inline-block px-3 py-1 rounded-full bg-primary/10 text-primary text-[11px] font-bold font-ui mb-6">
-              Versículo {currentVerse.number}
-            </span>
+            {/* Verse badge + favorite */}
+            <div className="flex items-center justify-center gap-3 mb-6">
+              <span className="inline-block px-3 py-1 rounded-full bg-primary/10 text-primary text-[11px] font-bold font-ui">
+                Versículo {currentVerse.number}
+              </span>
+              <button
+                onClick={() => toggleFavorite(currentVerse)}
+                className="p-1.5 rounded-full transition-all active:scale-90"
+              >
+                <Heart
+                  size={18}
+                  className={favorites.has(currentRef) ? "fill-red-500 text-red-500" : "text-muted-foreground"}
+                />
+              </button>
+            </div>
 
             {/* Verse text */}
             <blockquote className="font-serif text-[22px] lg:text-[26px] leading-[2] text-foreground/85 italic tracking-wide">
