@@ -393,7 +393,7 @@ function ManualCanvas({ onClose }: { onClose: () => void }) {
 
   const onConnect: OnConnect = useCallback((connection: Connection) => {
     saveHistory();
-    setEdges(eds => addEdge({ ...connection, type: "smoothstep", style: { stroke: "rgba(196,164,106,0.25)", strokeWidth: 1.5 } }, eds));
+    setEdges(eds => addEdge({ ...connection, type: "smoothstep", style: edgeStyle, markerEnd: edgeMarker }, eds));
   }, [setEdges, saveHistory]);
 
   // Add node
@@ -411,6 +411,7 @@ function ManualCanvas({ onClose }: { onClose: () => void }) {
         content: "",
         color: "#c4a46a",
         colorMode: "border",
+        level: "subtitle" as NodeLevel,
         isExpanded: true,
         onLabelChange: (_id: string, label: string) => {
           setNodes(prev => prev.map(nd => nd.id === _id ? { ...nd, data: { ...nd.data, label } } : nd));
@@ -429,7 +430,8 @@ function ManualCanvas({ onClose }: { onClose: () => void }) {
         source: selectedNode,
         target: id,
         type: "smoothstep",
-        style: { stroke: "rgba(196,164,106,0.25)", strokeWidth: 1.5 },
+        style: edgeStyle,
+        markerEnd: edgeMarker,
       });
     }
 
