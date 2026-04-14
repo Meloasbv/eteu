@@ -43,9 +43,10 @@ const manualColors = [
 ];
 
 const handleStyle = {
-  width: 8, height: 8,
-  background: "rgba(196,164,106,0.3)",
-  border: "none",
+  width: 12, height: 12,
+  background: "rgba(196,164,106,0.5)",
+  border: "2px solid rgba(196,164,106,0.7)",
+  borderRadius: "50%",
   opacity: 0,
   transition: "all 0.15s ease",
 };
@@ -360,15 +361,20 @@ function ManualCanvas({ userCodeId, mapId, onClose }: ManualCanvasProps) {
   const { fitView, screenToFlowPosition } = useReactFlow();
 
   const rootId = useRef(nextId());
-  const initialNodes: Node[] = [
-    {
-      id: rootId.current,
-      type: "manualRoot",
-      position: { x: 0, y: 0 },
-      data: { label: "Clique para nomear" },
+  const makeRootNode = useCallback((): Node[] => [{
+    id: rootId.current,
+    type: "manualRoot",
+    position: { x: 0, y: 0 },
+    data: {
+      label: "Clique para nomear",
+      onLabelChange: (_id: string, label: string) => {
+        setNodes(prev => prev.map(nd => nd.id === _id ? { ...nd, data: { ...nd.data, label } } : nd));
+        dirtyRef.current = true;
+      },
     },
-  ];
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  }], []);
+
+  const [nodes, setNodes, onNodesChange] = useNodesState([] as Node[]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [showColorPicker, setShowColorPicker] = useState(false);
@@ -376,6 +382,7 @@ function ManualCanvas({ userCodeId, mapId, onClose }: ManualCanvasProps) {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; nodeId: string } | null>(null);
   const [mapTitle, setMapTitle] = useState("Meu Mapa Mental");
   const [editingTitle, setEditingTitle] = useState(false);
+  const [edgeType, setEdgeType] = useState<"smoothstep" | "straight" | "default">("smoothstep");
   const [direction, setDirection] = useState<"TB" | "LR">("TB");
   const [currentMapId, setCurrentMapId] = useState<string | null>(mapId);
   const [saving, setSaving] = useState(false);
@@ -403,6 +410,13 @@ function ManualCanvas({ userCodeId, mapId, onClose }: ManualCanvasProps) {
     }));
   }, [setNodes]);
 
+  // Initialize nodes for new maps
+  useEffect(() => {
+    if (mapId) return; // will be loaded below
+    setNodes(makeRootNode());
+    setLoaded(true);
+  }, []);
+
   // Load existing map
   useEffect(() => {
     if (!mapId) return;
@@ -417,7 +431,6 @@ function ManualCanvas({ userCodeId, mapId, onClose }: ManualCanvasProps) {
         const loadedNodes = injectCallbacks((data.nodes as any) || []);
         setNodes(loadedNodes);
         setEdges((data.edges as any) || []);
-        // Update idCounter to avoid collisions
         const maxId = loadedNodes.reduce((max, n) => {
           const match = n.id.match(/manual-(\d+)/);
           return match ? Math.max(max, parseInt(match[1])) : max;
@@ -478,8 +491,14 @@ function ManualCanvas({ userCodeId, mapId, onClose }: ManualCanvasProps) {
 
   const onConnect: OnConnect = useCallback((connection: Connection) => {
     saveHistory();
-    setEdges(eds => addEdge({ ...connection, type: "smoothstep", style: edgeStyle, markerEnd: edgeMarker }, eds));
-  }, [setEdges, saveHistory]);
+    setEdges(eds => addEdge({ ...connection, type: edgeType, style: edgeStyle, markerEnd: edgeMarker }, eds));
+  }, [setEdges, saveHistory, edgeType]);
+
+  // Update all edges when edge type changes
+  const changeEdgeType = useCallback((newType: "smoothstep" | "straight" | "default") => {
+    setEdgeType(newType);
+    setEdges(eds => eds.map(e => ({ ...e, type: newType })));
+  }, [setEdges]);
 
   // Add node
   const addNode = useCallback((type: "simpleNode" | "noteCard") => {
@@ -515,7 +534,7 @@ function ManualCanvas({ userCodeId, mapId, onClose }: ManualCanvasProps) {
         id: `edge-${selectedNode}-${id}`,
         source: selectedNode,
         target: id,
-        type: "smoothstep",
+        type: edgeType,
         style: edgeStyle,
         markerEnd: edgeMarker,
       });
@@ -524,7 +543,7 @@ function ManualCanvas({ userCodeId, mapId, onClose }: ManualCanvasProps) {
     setNodes(ns => [...ns, newNode]);
     setEdges(es => [...es, ...newEdges]);
     setSelectedNode(id);
-  }, [screenToFlowPosition, selectedNode, setNodes, setEdges, saveHistory]);
+  }, [screenToFlowPosition, selectedNode, setNodes, setEdges, saveHistory, edgeType]);
 
   const changeLevel = useCallback((nodeId: string, level: NodeLevel) => {
     saveHistory();
@@ -601,13 +620,13 @@ function ManualCanvas({ userCodeId, mapId, onClose }: ManualCanvasProps) {
       id: `edge-${parentId}-${id}`,
       source: parentId,
       target: id,
-      type: "smoothstep",
+      type: edgeType,
       style: edgeStyle,
       markerEnd: edgeMarker,
     }]);
     setSelectedNode(id);
     setContextMenu(null);
-  }, [nodes, setNodes, setEdges, saveHistory]);
+  }, [nodes, setNodes, setEdges, saveHistory, edgeType]);
 
   const convertToNote = useCallback((nodeId: string) => {
     saveHistory();
@@ -788,6 +807,8 @@ function ManualCanvas({ userCodeId, mapId, onClose }: ManualCanvasProps) {
           <ToolbarBtn icon={Plus} label="Card" onClick={() => addNode("simpleNode")} />
           <ToolbarBtn icon={StickyNote} label="Nota" onClick={() => addNode("noteCard")} />
           <div className="w-px h-5" style={{ background: "rgba(196,164,106,0.15)" }} />
+          <ToolbarBtn icon={Link2} label={edgeType === "smoothstep" ? "Curva" : edgeType === "straight" ? "Reta" : "Bézier"}
+            onClick={() => changeEdgeType(edgeType === "smoothstep" ? "straight" : edgeType === "straight" ? "default" : "smoothstep")} />
           <ToolbarBtn icon={Palette} label="Cor" onClick={() => setShowColorPicker(!showColorPicker)} active={showColorPicker} />
         </div>
 
