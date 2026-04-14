@@ -72,6 +72,9 @@ export default function ReadingFocusView({
   const [speed, setSpeed] = useState(1);
   const [showSpeedMenu, setShowSpeedMenu] = useState(false);
   const [showContext, setShowContext] = useState(false);
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
+
+  const readingDay = `Semana ${weekIdx + 1} · ${dayName}`;
 
   const uttRef = useRef<SpeechSynthesisUtterance | null>(null);
   const touchStartX = useRef(0);

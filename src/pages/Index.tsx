@@ -651,6 +651,7 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
             contextText={readingContext[`${focusReading.weekIdx}-${focusReading.dayIdx}`]}
             onFetchContext={() => fetchReadingContext(focusReading.weekIdx, focusReading.dayIdx, focusReading.readings)}
             contextLoading={contextLoading === `${focusReading.weekIdx}-${focusReading.dayIdx}`}
+            userCodeId={userCodeId}
           />
         )}
 
@@ -736,6 +737,7 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
           contextText={readingContext[`${focusReading.weekIdx}-${focusReading.dayIdx}`]}
           onFetchContext={() => fetchReadingContext(focusReading.weekIdx, focusReading.dayIdx, focusReading.readings)}
           contextLoading={contextLoading === `${focusReading.weekIdx}-${focusReading.dayIdx}`}
+          userCodeId={userCodeId}
         />
       )}
 
