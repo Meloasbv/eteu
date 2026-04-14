@@ -137,9 +137,43 @@ export default function ReadingFocusView({
     return () => { cancelled = true; };
   }, [readings]);
 
+  // Load favorites from DB
+  useEffect(() => {
+    const loadFavs = async () => {
+      const { data } = await supabase
+        .from("favorite_verses")
+        .select("verse_reference")
+        .eq("user_code_id", userCodeId)
+        .eq("reading_day", readingDay);
+      if (data) setFavorites(new Set(data.map(r => r.verse_reference)));
+    };
+    loadFavs();
+  }, [userCodeId, readingDay]);
+
+  const toggleFavorite = useCallback(async (verse: ParsedVerse) => {
+    const ref = `${verse.header || ""} ${verse.number}`.trim();
+    const isFav = favorites.has(ref);
+    if (isFav) {
+      setFavorites(prev => { const n = new Set(prev); n.delete(ref); return n; });
+      await supabase.from("favorite_verses").delete()
+        .eq("user_code_id", userCodeId)
+        .eq("verse_reference", ref)
+        .eq("reading_day", readingDay);
+    } else {
+      setFavorites(prev => new Set(prev).add(ref));
+      await supabase.from("favorite_verses").insert({
+        user_code_id: userCodeId,
+        verse_reference: ref,
+        verse_text: verse.text,
+        reading_day: readingDay,
+      });
+    }
+  }, [favorites, userCodeId, readingDay]);
+
   const verses = useMemo(() => parseBibleText(bibleText), [bibleText]);
   const currentVerse = verses[currentIdx];
   const progress = verses.length ? ((currentIdx + 1) / verses.length) * 100 : 0;
+  const currentRef = currentVerse ? `${currentVerse.header || ""} ${currentVerse.number}`.trim() : "";
 
   // TTS
   const speakVerse = useCallback((idx: number) => {
