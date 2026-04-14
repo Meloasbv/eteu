@@ -17,12 +17,13 @@ import {
   useReactFlow,
   ReactFlowProvider,
   type NodeProps,
+  MarkerType,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import {
   Plus, StickyNote, Link2, Palette, X, Undo2, Redo2,
   Maximize, Trash2, Copy, PlusCircle, Pencil, ChevronDown, ChevronUp,
-  ArrowUpDown, ArrowLeftRight,
+  ArrowUpDown, ArrowLeftRight, Type, Heading1, Heading2, AlignLeft,
 } from "lucide-react";
 import dagre from "dagre";
 
@@ -99,6 +100,16 @@ function ManualRootNode({ data, id }: NodeProps) {
   );
 }
 
+type NodeLevel = "title" | "subtitle" | "text";
+
+const levelStyles: Record<NodeLevel, { fontSize: string; fontWeight: string; opacity: string; padding: string; minW: string; maxW: string }> = {
+  title: { fontSize: "text-[17px]", fontWeight: "font-bold", opacity: "1", padding: "18px 22px", minW: "200px", maxW: "300px" },
+  subtitle: { fontSize: "text-[14px]", fontWeight: "font-semibold", opacity: "0.9", padding: "14px 18px", minW: "170px", maxW: "260px" },
+  text: { fontSize: "text-[12px]", fontWeight: "font-normal", opacity: "0.75", padding: "10px 14px", minW: "140px", maxW: "220px" },
+};
+
+const levelLabels: Record<NodeLevel, string> = { title: "Título", subtitle: "Subtítulo", text: "Texto" };
+
 function SimpleNode({ data, id }: NodeProps) {
   const d = data as Record<string, any>;
   const [editing, setEditing] = useState(false);
@@ -107,6 +118,8 @@ function SimpleNode({ data, id }: NodeProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const color = (d.color as string) || "#c4a46a";
   const colorMode = (d.colorMode as string) || "border";
+  const level: NodeLevel = (d.level as NodeLevel) || "subtitle";
+  const ls = levelStyles[level];
 
   useEffect(() => {
     if (editing) inputRef.current?.focus();
@@ -117,15 +130,20 @@ function SimpleNode({ data, id }: NodeProps) {
     d.onDataChange?.(id, { title: title || "Novo card", description: desc });
   };
 
+  const borderWidth = level === "title" ? 4 : level === "subtitle" ? 3 : 2;
+  const shadow = level === "title" ? "0 4px 16px rgba(0,0,0,0.4)" : level === "subtitle" ? "0 2px 8px rgba(0,0,0,0.3)" : "0 1px 4px rgba(0,0,0,0.2)";
+
   return (
     <div
-      className="rounded-[14px] min-w-[180px] max-w-[260px] relative group cursor-grab active:cursor-grabbing transition-all"
+      className="rounded-[14px] relative group cursor-grab active:cursor-grabbing transition-all"
       style={{
         background: colorMode === "fill" ? `${color}0F` : "hsl(var(--card))",
         border: `1px solid ${colorMode === "fill" ? `${color}40` : "hsl(var(--border))"}`,
-        borderLeft: `3px solid ${color}`,
-        padding: "14px 18px",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+        borderLeft: `${borderWidth}px solid ${color}`,
+        padding: ls.padding,
+        minWidth: ls.minW,
+        maxWidth: ls.maxW,
+        boxShadow: shadow,
       }}
       onDoubleClick={() => setEditing(true)}
     >
@@ -137,23 +155,28 @@ function SimpleNode({ data, id }: NodeProps) {
       <Handle type="target" position={Position.Bottom} className="group-hover:!opacity-100" style={{ ...handleStyle, bottom: -4 }} />
       <Handle type="target" position={Position.Left} className="group-hover:!opacity-100" style={{ ...handleStyle, left: -4 }} />
       <Handle type="target" position={Position.Right} className="group-hover:!opacity-100" style={{ ...handleStyle, right: -4 }} />
+      {/* Level badge */}
+      <span className="absolute -top-2 right-2 px-1.5 py-0.5 rounded text-[8px] font-ui uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-opacity"
+        style={{ background: `${color}20`, color, border: `1px solid ${color}30` }}>
+        {levelLabels[level]}
+      </span>
       {editing ? (
         <div className="space-y-1">
           <input ref={inputRef} value={title} onChange={e => setTitle(e.target.value)}
             onKeyDown={e => { if (e.key === "Enter") commit(); if (e.key === "Escape") { setTitle(d.title as string); setEditing(false); } }}
-            className="bg-transparent text-[15px] font-display font-semibold text-foreground w-full outline-none border-b border-primary/20 pb-1"
+            className={`bg-transparent ${ls.fontSize} font-display ${ls.fontWeight} text-foreground w-full outline-none border-b border-primary/20 pb-1`}
             placeholder="Título" />
           <input value={desc} onChange={e => setDesc(e.target.value)}
             onBlur={commit}
             onKeyDown={e => { if (e.key === "Enter") commit(); }}
-            className="bg-transparent text-[12px] font-ui text-muted-foreground w-full outline-none"
+            className="bg-transparent text-[11px] font-ui text-muted-foreground w-full outline-none"
             placeholder="Descrição (opcional)" />
         </div>
       ) : (
         <>
-          <p className="font-display text-[15px] font-semibold text-foreground">{d.title as string}</p>
+          <p className={`font-display ${ls.fontSize} ${ls.fontWeight} text-foreground`} style={{ opacity: ls.opacity }}>{d.title as string}</p>
           {d.description && (
-            <p className="font-ui text-[12px] text-muted-foreground mt-1 leading-relaxed">{d.description as string}</p>
+            <p className="font-ui text-[11px] text-muted-foreground mt-1 leading-relaxed">{d.description as string}</p>
           )}
         </>
       )}
@@ -250,9 +273,14 @@ const nodeTypes = {
   noteCard: NoteCardNode,
 };
 
+const edgeStyle = { stroke: "rgba(196,164,106,0.35)", strokeWidth: 2 };
+const edgeMarker = { type: MarkerType.ArrowClosed, width: 14, height: 14, color: "rgba(196,164,106,0.5)" };
+
 const defaultEdgeOptions = {
   type: "smoothstep" as const,
-  style: { stroke: "rgba(196,164,106,0.2)", strokeWidth: 1.5 },
+  style: edgeStyle,
+  markerEnd: edgeMarker,
+  animated: false,
 };
 
 // ── Undo/Redo ──
@@ -365,7 +393,7 @@ function ManualCanvas({ onClose }: { onClose: () => void }) {
 
   const onConnect: OnConnect = useCallback((connection: Connection) => {
     saveHistory();
-    setEdges(eds => addEdge({ ...connection, type: "smoothstep", style: { stroke: "rgba(196,164,106,0.25)", strokeWidth: 1.5 } }, eds));
+    setEdges(eds => addEdge({ ...connection, type: "smoothstep", style: edgeStyle, markerEnd: edgeMarker }, eds));
   }, [setEdges, saveHistory]);
 
   // Add node
@@ -383,6 +411,7 @@ function ManualCanvas({ onClose }: { onClose: () => void }) {
         content: "",
         color: "#c4a46a",
         colorMode: "border",
+        level: "subtitle" as NodeLevel,
         isExpanded: true,
         onLabelChange: (_id: string, label: string) => {
           setNodes(prev => prev.map(nd => nd.id === _id ? { ...nd, data: { ...nd.data, label } } : nd));
@@ -401,7 +430,8 @@ function ManualCanvas({ onClose }: { onClose: () => void }) {
         source: selectedNode,
         target: id,
         type: "smoothstep",
-        style: { stroke: "rgba(196,164,106,0.25)", strokeWidth: 1.5 },
+        style: edgeStyle,
+        markerEnd: edgeMarker,
       });
     }
 
@@ -410,28 +440,14 @@ function ManualCanvas({ onClose }: { onClose: () => void }) {
     setSelectedNode(id);
   }, [screenToFlowPosition, selectedNode, setNodes, setEdges, saveHistory]);
 
-  // Double click on pane to create node
-  const onPaneDoubleClick = useCallback((event: React.MouseEvent) => {
+  // Change node level
+  const changeLevel = useCallback((nodeId: string, level: NodeLevel) => {
     saveHistory();
-    const id = nextId();
-    const position = screenToFlowPosition({ x: event.clientX, y: event.clientY });
-    const newNode: Node = {
-      id,
-      type: "simpleNode",
-      position,
-      data: {
-        title: "Novo Card",
-        description: "",
-        color: "#c4a46a",
-        colorMode: "border",
-        onDataChange: (_id: string, updates: Record<string, any>) => {
-          setNodes(prev => prev.map(nd => nd.id === _id ? { ...nd, data: { ...nd.data, ...updates } } : nd));
-        },
-      },
-    };
-    setNodes(ns => [...ns, newNode]);
-    setSelectedNode(id);
-  }, [screenToFlowPosition, setNodes, saveHistory]);
+    setNodes(ns => ns.map(n =>
+      n.id === nodeId ? { ...n, data: { ...n.data, level } } : n
+    ));
+    setContextMenu(null);
+  }, [setNodes, saveHistory]);
 
   // Apply color
   const applyColor = useCallback((color: string) => {
@@ -488,6 +504,7 @@ function ManualCanvas({ onClose }: { onClose: () => void }) {
         description: "",
         color: "#c4a46a",
         colorMode: "border",
+        level: "text" as NodeLevel,
         onDataChange: (_id: string, updates: Record<string, any>) => {
           setNodes(prev => prev.map(nd => nd.id === _id ? { ...nd, data: { ...nd.data, ...updates } } : nd));
         },
@@ -499,7 +516,8 @@ function ManualCanvas({ onClose }: { onClose: () => void }) {
       source: parentId,
       target: id,
       type: "smoothstep",
-      style: { stroke: "rgba(196,164,106,0.25)", strokeWidth: 1.5 },
+      style: edgeStyle,
+      markerEnd: edgeMarker,
     }]);
     setSelectedNode(id);
     setContextMenu(null);
@@ -648,7 +666,7 @@ function ManualCanvas({ onClose }: { onClose: () => void }) {
             setContextMenu({ x: event.clientX, y: event.clientY, nodeId: node.id });
             setSelectedNode(node.id);
           }}
-          onDoubleClick={onPaneDoubleClick}
+          
           className="bg-background"
           proOptions={{ hideAttribution: true }}
         >
@@ -737,7 +755,15 @@ function ManualCanvas({ onClose }: { onClose: () => void }) {
             <CtxItem icon={Pencil} label="Editar" onClick={() => { setContextMenu(null); /* node handles edit via double click */ }} />
             <CtxItem icon={Palette} label="Mudar cor" onClick={() => { setContextMenu(null); setShowColorPicker(true); }} />
             {nodes.find(n => n.id === contextMenu.nodeId)?.type === "simpleNode" && (
-              <CtxItem icon={StickyNote} label="Converter em Nota" onClick={() => convertToNote(contextMenu.nodeId)} />
+              <>
+                <div className="h-px mx-2 my-1" style={{ background: "rgba(196,164,106,0.1)" }} />
+                <p className="px-3 py-1 text-[9px] font-ui uppercase tracking-wider text-muted-foreground/50">Importância</p>
+                <CtxItem icon={Heading1} label="Título (principal)" onClick={() => changeLevel(contextMenu.nodeId, "title")} />
+                <CtxItem icon={Heading2} label="Subtítulo" onClick={() => changeLevel(contextMenu.nodeId, "subtitle")} />
+                <CtxItem icon={AlignLeft} label="Texto (detalhe)" onClick={() => changeLevel(contextMenu.nodeId, "text")} />
+                <div className="h-px mx-2 my-1" style={{ background: "rgba(196,164,106,0.1)" }} />
+                <CtxItem icon={StickyNote} label="Converter em Nota" onClick={() => convertToNote(contextMenu.nodeId)} />
+              </>
             )}
             <CtxItem icon={PlusCircle} label="Adicionar filho" onClick={() => addChildNode(contextMenu.nodeId)} />
             <CtxItem icon={Copy} label="Duplicar" onClick={() => duplicateNode(contextMenu.nodeId)} />
