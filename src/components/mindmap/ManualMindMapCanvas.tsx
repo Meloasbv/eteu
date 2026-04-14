@@ -410,6 +410,13 @@ function ManualCanvas({ userCodeId, mapId, onClose }: ManualCanvasProps) {
     }));
   }, [setNodes]);
 
+  // Initialize nodes for new maps
+  useEffect(() => {
+    if (mapId) return; // will be loaded below
+    setNodes(makeRootNode());
+    setLoaded(true);
+  }, []);
+
   // Load existing map
   useEffect(() => {
     if (!mapId) return;
@@ -424,7 +431,6 @@ function ManualCanvas({ userCodeId, mapId, onClose }: ManualCanvasProps) {
         const loadedNodes = injectCallbacks((data.nodes as any) || []);
         setNodes(loadedNodes);
         setEdges((data.edges as any) || []);
-        // Update idCounter to avoid collisions
         const maxId = loadedNodes.reduce((max, n) => {
           const match = n.id.match(/manual-(\d+)/);
           return match ? Math.max(max, parseInt(match[1])) : max;
