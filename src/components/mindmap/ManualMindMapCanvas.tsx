@@ -361,15 +361,20 @@ function ManualCanvas({ userCodeId, mapId, onClose }: ManualCanvasProps) {
   const { fitView, screenToFlowPosition } = useReactFlow();
 
   const rootId = useRef(nextId());
-  const initialNodes: Node[] = [
-    {
-      id: rootId.current,
-      type: "manualRoot",
-      position: { x: 0, y: 0 },
-      data: { label: "Clique para nomear" },
+  const makeRootNode = useCallback((): Node[] => [{
+    id: rootId.current,
+    type: "manualRoot",
+    position: { x: 0, y: 0 },
+    data: {
+      label: "Clique para nomear",
+      onLabelChange: (_id: string, label: string) => {
+        setNodes(prev => prev.map(nd => nd.id === _id ? { ...nd, data: { ...nd.data, label } } : nd));
+        dirtyRef.current = true;
+      },
     },
-  ];
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  }], []);
+
+  const [nodes, setNodes, onNodesChange] = useNodesState([] as Node[]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [showColorPicker, setShowColorPicker] = useState(false);
@@ -377,6 +382,7 @@ function ManualCanvas({ userCodeId, mapId, onClose }: ManualCanvasProps) {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; nodeId: string } | null>(null);
   const [mapTitle, setMapTitle] = useState("Meu Mapa Mental");
   const [editingTitle, setEditingTitle] = useState(false);
+  const [edgeType, setEdgeType] = useState<"smoothstep" | "straight" | "default">("smoothstep");
   const [direction, setDirection] = useState<"TB" | "LR">("TB");
   const [currentMapId, setCurrentMapId] = useState<string | null>(mapId);
   const [saving, setSaving] = useState(false);
