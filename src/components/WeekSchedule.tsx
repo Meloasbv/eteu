@@ -62,6 +62,16 @@ export default function WeekSchedule({ userCodeId }: { userCodeId: string }) {
   const [form, setForm] = useState(emptyForm(formatDate(today)));
   const [view, setView] = useState<"month" | "week">("month");
 
+  // Voice mode state
+  const [voiceRecording, setVoiceRecording] = useState(false);
+  const [voiceProcessing, setVoiceProcessing] = useState(false);
+  const [voiceTranscript, setVoiceTranscript] = useState("");
+  const [voiceParsedEvents, setVoiceParsedEvents] = useState<any[] | null>(null);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recognitionRef = useRef<any>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+
   // Load events
   useEffect(() => {
     try {
@@ -74,6 +84,101 @@ export default function WeekSchedule({ userCodeId }: { userCodeId: string }) {
     setEvents(updated);
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(updated)); } catch {}
   };
+
+  // Voice recording
+  const startVoice = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      setVoiceTranscript("");
+      setVoiceError(null);
+      setVoiceParsedEvents(null);
+
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        const recognition = new SpeechRecognition();
+        recognition.lang = "pt-BR";
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        let finalT = "";
+        recognition.onresult = (event: any) => {
+          let interim = "";
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            if (event.results[i].isFinal) finalT += event.results[i][0].transcript + " ";
+            else interim += event.results[i][0].transcript;
+          }
+          setVoiceTranscript(finalT + interim);
+        };
+        recognition.onerror = () => {};
+        recognition.start();
+        recognitionRef.current = recognition;
+      }
+      setVoiceRecording(true);
+    } catch {
+      setVoiceError("Não foi possível acessar o microfone.");
+    }
+  }, []);
+
+  const stopVoice = useCallback(async () => {
+    recognitionRef.current?.stop();
+    streamRef.current?.getTracks().forEach(t => t.stop());
+    setVoiceRecording(false);
+
+    const transcript = voiceTranscript.trim();
+    if (!transcript || transcript.length < 5) {
+      setVoiceError("Não foi possível transcrever. Tente novamente.");
+      return;
+    }
+
+    setVoiceProcessing(true);
+    try {
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-voice-events`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({ text: transcript, date: selectedDate }),
+      });
+      const data = await res.json();
+      if (!res.ok || data?.error) {
+        setVoiceError(data?.error || "Erro ao processar.");
+      } else if (data?.result?.events?.length) {
+        setVoiceParsedEvents(data.result.events);
+      } else {
+        setVoiceError("Nenhum evento identificado. Tente ser mais específico.");
+      }
+    } catch {
+      setVoiceError("Erro de conexão.");
+    } finally {
+      setVoiceProcessing(false);
+    }
+  }, [voiceTranscript, selectedDate]);
+
+  const addParsedEvents = useCallback(() => {
+    if (!voiceParsedEvents) return;
+    const newEvents: Evt[] = voiceParsedEvents.map(ev => ({
+      id: `evt-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      name: ev.name,
+      date: ev.date || selectedDate,
+      start: ev.start || "08:00",
+      end: ev.end || "09:00",
+      location: ev.location || "",
+      icon: ev.icon || "📌",
+      color: COLOR_OPTIONS[Math.floor(Math.random() * COLOR_OPTIONS.length)].bg,
+      textColor: "#ffffff",
+      repeat: ev.repeat || "none",
+    }));
+    const updated = [...events, ...newEvents].sort((a, b) => {
+      if (a.date !== b.date) return a.date.localeCompare(b.date);
+      return a.start.localeCompare(b.start);
+    });
+    saveEvents(updated);
+    setVoiceParsedEvents(null);
+    setVoiceTranscript("");
+  }, [voiceParsedEvents, events, selectedDate]);
 
   const addEvent = () => {
     if (!form.name.trim()) return;
