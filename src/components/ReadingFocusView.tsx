@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { supabase } from "@/integrations/supabase/client";
+
 import {
   X, Check, Play, Pause, SkipBack, SkipForward, Repeat,
   Volume2, ChevronDown, Sparkles, Loader2,
@@ -75,7 +75,7 @@ export default function ReadingFocusView({
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
 
-  // Fetch
+  // Fetch with retry
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -83,21 +83,52 @@ export default function ReadingFocusView({
     setBibleText("");
     setCurrentIdx(0);
 
-    (async () => {
+    const fetchText = async (attempt = 0): Promise<void> => {
       try {
-        const { data, error: fnError } = await supabase.functions.invoke("fetch-reading-text", {
-          body: { readings },
+        // Use direct fetch for better error handling
+        const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fetch-reading-text`;
+        const res = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({ readings }),
         });
+
         if (cancelled) return;
-        if (fnError) throw fnError;
-        if (data?.error) setError(data.error);
-        else setBibleText(data?.result || "");
+
+        const data = await res.json();
+
+        if (!res.ok || data?.error) {
+          const msg = data?.error || `Erro ${res.status}`;
+          // Retry once on server errors
+          if (attempt < 1 && res.status >= 500) {
+            await new Promise(r => setTimeout(r, 2000));
+            if (!cancelled) return fetchText(attempt + 1);
+            return;
+          }
+          setError(msg);
+          return;
+        }
+
+        setBibleText(data?.result || "");
       } catch (e: any) {
-        if (!cancelled) setError(e?.message || "Erro ao carregar texto.");
+        if (cancelled) return;
+        // Retry once on network errors
+        if (attempt < 1) {
+          await new Promise(r => setTimeout(r, 2000));
+          if (!cancelled) return fetchText(attempt + 1);
+          return;
+        }
+        setError("Erro de conexão. Verifique sua internet e tente novamente.");
       } finally {
         if (!cancelled) setLoading(false);
       }
-    })();
+    };
+
+    fetchText();
     return () => { cancelled = true; };
   }, [readings]);
 
