@@ -319,19 +319,15 @@ function ManualCanvas({ onClose }: { onClose: () => void }) {
   const { fitView, screenToFlowPosition } = useReactFlow();
 
   const rootId = useRef(nextId());
-  const [nodes, setNodes, onNodesChange] = useNodesState([
+  const initialNodes: Node[] = [
     {
       id: rootId.current,
       type: "manualRoot",
       position: { x: 0, y: 0 },
-      data: {
-        label: "Clique para nomear",
-        onLabelChange: (_id: string, label: string) => {
-          setNodes(ns => ns.map(n => n.id === _id ? { ...n, data: { ...n.data, label } } : n));
-        },
-      },
+      data: { label: "Clique para nomear" },
     },
-  ]);
+  ];
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [showColorPicker, setShowColorPicker] = useState(false);
