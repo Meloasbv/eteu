@@ -863,7 +863,11 @@ function ManualCanvas({ userCodeId, mapId, onClose }: ManualCanvasProps) {
             }}
             onClick={e => e.stopPropagation()}
           >
-            <CtxItem icon={Pencil} label="Editar" onClick={() => { setContextMenu(null); }} />
+            <CtxItem icon={Pencil} label="Editar" onClick={() => {
+              const node = nodes.find(n => n.id === contextMenu.nodeId);
+              if (node?.type === "noteCard") setEditingCard(contextMenu.nodeId);
+              setContextMenu(null);
+            }} />
             <CtxItem icon={Palette} label="Mudar cor" onClick={() => { setContextMenu(null); setShowColorPicker(true); }} />
             {nodes.find(n => n.id === contextMenu.nodeId)?.type === "simpleNode" && (
               <>
