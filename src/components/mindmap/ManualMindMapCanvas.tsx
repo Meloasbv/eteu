@@ -394,6 +394,9 @@ function ManualCanvas({ userCodeId, mapId, onClose }: ManualCanvasProps) {
           setNodes(prev => prev.map(nd => nd.id === _id ? { ...nd, data: { ...nd.data, ...updates } } : nd));
           dirtyRef.current = true;
         },
+        onEditCard: (_id: string) => {
+          setEditingCard(_id);
+        },
       },
     }));
   }, [setNodes]);
