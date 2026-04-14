@@ -89,11 +89,11 @@ function ManualRootNode({ data, id }: NodeProps) {
           value={value}
           onChange={e => setValue(e.target.value)}
           onBlur={commit}
-          onKeyDown={e => { if (e.key === "Enter") commit(); if (e.key === "Escape") { setValue(data.label as string); setEditing(false); } }}
+          onKeyDown={e => { if (e.key === "Enter") commit(); if (e.key === "Escape") { setValue(d.label as string); setEditing(false); } }}
           className="bg-transparent text-center text-xl font-bold font-display text-foreground w-full outline-none border-b border-primary/30"
         />
       ) : (
-        <p className="font-display text-xl font-bold text-foreground tracking-wide">{data.label as string}</p>
+        <p className="font-display text-xl font-bold text-foreground tracking-wide">{d.label as string}</p>
       )}
     </div>
   );
@@ -140,7 +140,7 @@ function SimpleNode({ data, id }: NodeProps) {
       {editing ? (
         <div className="space-y-1">
           <input ref={inputRef} value={title} onChange={e => setTitle(e.target.value)}
-            onKeyDown={e => { if (e.key === "Enter") commit(); if (e.key === "Escape") { setTitle(data.title as string); setEditing(false); } }}
+            onKeyDown={e => { if (e.key === "Enter") commit(); if (e.key === "Escape") { setTitle(d.title as string); setEditing(false); } }}
             className="bg-transparent text-[15px] font-display font-semibold text-foreground w-full outline-none border-b border-primary/20 pb-1"
             placeholder="Título" />
           <input value={desc} onChange={e => setDesc(e.target.value)}
@@ -205,13 +205,13 @@ function NoteCardNode({ data, id }: NodeProps) {
       <div className="flex items-center justify-between px-4 pt-3 pb-2">
         {editing ? (
           <input ref={titleRef} value={title} onChange={e => setTitle(e.target.value)}
-            onKeyDown={e => { if (e.key === "Enter") commit(); if (e.key === "Escape") { setTitle(data.title as string); setEditing(false); } }}
+            onKeyDown={e => { if (e.key === "Enter") commit(); if (e.key === "Escape") { setTitle(d.title as string); setEditing(false); } }}
             className="bg-transparent text-[15px] font-display font-semibold text-foreground flex-1 outline-none border-b border-primary/20"
             placeholder="Título" />
         ) : (
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <StickyNote size={14} style={{ color, flexShrink: 0 }} />
-            <p className="font-display text-[15px] font-semibold text-foreground truncate">{data.title as string}</p>
+            <p className="font-display text-[15px] font-semibold text-foreground truncate">{d.title as string}</p>
           </div>
         )}
         <button onClick={() => setExpanded(!expanded)} className="ml-2 text-muted-foreground/50 hover:text-primary transition-colors flex-shrink-0">
@@ -229,14 +229,14 @@ function NoteCardNode({ data, id }: NodeProps) {
           ) : (
             <p className="text-[13px] font-body leading-relaxed whitespace-pre-wrap"
               style={{ color: "hsl(var(--foreground) / 0.75)" }}>
-              {(data.content as string) || <span className="italic text-muted-foreground/40">Duplo clique para escrever...</span>}
+              {(d.content as string) || <span className="italic text-muted-foreground/40">Duplo clique para escrever...</span>}
             </p>
           )}
         </div>
       ) : (
         <div className="px-4 pb-3">
           <p className="text-[12px] font-body text-muted-foreground line-clamp-2">
-            {(data.content as string) || "Sem conteúdo"}
+            {(d.content as string) || "Sem conteúdo"}
           </p>
         </div>
       )}
