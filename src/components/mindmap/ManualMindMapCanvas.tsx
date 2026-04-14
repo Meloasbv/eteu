@@ -100,12 +100,13 @@ function ManualRootNode({ data, id }: NodeProps) {
 }
 
 function SimpleNode({ data, id }: NodeProps) {
+  const d = data as Record<string, any>;
   const [editing, setEditing] = useState(false);
-  const [title, setTitle] = useState(data.title as string);
-  const [desc, setDesc] = useState((data.description as string) || "");
+  const [title, setTitle] = useState(d.title as string);
+  const [desc, setDesc] = useState((d.description as string) || "");
   const inputRef = useRef<HTMLInputElement>(null);
-  const color = (data.color as string) || "#c4a46a";
-  const colorMode = (data.colorMode as string) || "border";
+  const color = (d.color as string) || "#c4a46a";
+  const colorMode = (d.colorMode as string) || "border";
 
   useEffect(() => {
     if (editing) inputRef.current?.focus();
