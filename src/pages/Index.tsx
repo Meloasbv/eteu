@@ -589,6 +589,13 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
 
         {/* ── ESTUDO TAB ── */}
         {tab === "anotacoes" && <StudyTab userCodeId={userCodeId} />}
+
+        {/* ── MAPA MENTAL TAB ── */}
+        {tab === "mapamental" && (
+          <Suspense fallback={<div className="flex justify-center py-20"><div className="w-8 h-8 border-2 border-primary/20 border-t-primary/60 rounded-full animate-spin" /></div>}>
+            <MindMapTab />
+          </Suspense>
+        )}
       </div>
     </div>
   );
