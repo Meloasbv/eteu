@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
-import { Plus, Trash2, ChevronLeft, ChevronRight, Clock, MapPin } from "lucide-react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { Plus, Trash2, ChevronLeft, ChevronRight, Clock, MapPin, Mic, Square, Loader2, Check, X } from "lucide-react";
 import Reminders from "@/components/Reminders";
 
 type Evt = {
