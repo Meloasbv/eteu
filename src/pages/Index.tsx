@@ -360,7 +360,7 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
         </div>
       )}
 
-      <div className={!isMobile ? "px-6 py-4 max-w-3xl mx-auto" : ""}>
+      <div className={!isMobile ? (tab === "mapamental" ? "h-[calc(100vh-57px)]" : "px-6 py-4 max-w-3xl mx-auto") : (tab === "mapamental" ? "h-[calc(100dvh-120px)]" : "")}>
         {/* ── LEITURA TAB ── */}
         {tab === "leitura" && (
           <>
