@@ -514,7 +514,7 @@ function ManualCanvas({ onClose }: { onClose: () => void }) {
         type: "noteCard",
         data: {
           ...n.data,
-          content: n.data.description || "",
+          content: (n.data as any).description || "",
           isExpanded: true,
         },
       };
