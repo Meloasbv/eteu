@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspense } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import WeekSchedule from "@/components/WeekSchedule";
 import StudyTab from "@/components/study/StudyTab";
@@ -13,7 +13,9 @@ import DesktopRightPanel from "@/components/desktop/DesktopRightPanel";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useScrollDirection } from "@/hooks/useScrollDirection";
 import { haptic } from "@/hooks/useHaptic";
-import { BookOpen, Flame, Calendar, PenLine, Check, Sun, Moon, LogOut, Sparkles, CheckCheck } from "lucide-react";
+import { BookOpen, Flame, Calendar, PenLine, Check, Sun, Moon, LogOut, Sparkles, CheckCheck, Brain } from "lucide-react";
+
+const MindMapTab = lazy(() => import("@/components/mindmap/MindMapTab"));
 
 // ── DATA ──────────────────────────────────────────────────────────────────────
 
@@ -202,7 +204,7 @@ export default function BiblePlan() {
 }
 
 function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string; accessCode: string | null; onLogout: () => void }) {
-  const [tab, setTab] = useState<"leitura" | "devocional" | "agenda" | "anotacoes" | "biblioteca">("leitura");
+  const [tab, setTab] = useState<"leitura" | "devocional" | "agenda" | "anotacoes" | "biblioteca" | "mapamental">("leitura");
   const [activeWeek, setActiveWeek] = useState(0);
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [saved, setSaved] = useState(false);
@@ -230,6 +232,7 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
     const newTitle = tab === "leitura" ? "Plano de Leitura"
       : tab === "devocional" ? "Devocionais"
       : tab === "agenda" ? "Agenda"
+      : tab === "mapamental" ? "Mapa Mental"
       : "Estudo";
     if (newTitle !== displayTitle) {
       setTitleFading(true);
@@ -340,6 +343,7 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
   const TABS: { key: typeof tab; icon: React.ReactNode; label: string }[] = [
     { key: "leitura", icon: <BookOpen size={22} />, label: "Leitura" },
     { key: "devocional", icon: <Flame size={22} />, label: "Devocional" },
+    { key: "mapamental", icon: <Brain size={22} />, label: "Mapa" },
     { key: "agenda", icon: <Calendar size={22} />, label: "Agenda" },
     { key: "anotacoes", icon: <PenLine size={22} />, label: "Estudo" },
   ];
