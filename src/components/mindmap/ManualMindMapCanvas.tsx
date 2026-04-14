@@ -491,8 +491,14 @@ function ManualCanvas({ userCodeId, mapId, onClose }: ManualCanvasProps) {
 
   const onConnect: OnConnect = useCallback((connection: Connection) => {
     saveHistory();
-    setEdges(eds => addEdge({ ...connection, type: "smoothstep", style: edgeStyle, markerEnd: edgeMarker }, eds));
-  }, [setEdges, saveHistory]);
+    setEdges(eds => addEdge({ ...connection, type: edgeType, style: edgeStyle, markerEnd: edgeMarker }, eds));
+  }, [setEdges, saveHistory, edgeType]);
+
+  // Update all edges when edge type changes
+  const changeEdgeType = useCallback((newType: "smoothstep" | "straight" | "default") => {
+    setEdgeType(newType);
+    setEdges(eds => eds.map(e => ({ ...e, type: newType })));
+  }, [setEdges]);
 
   // Add node
   const addNode = useCallback((type: "simpleNode" | "noteCard") => {
