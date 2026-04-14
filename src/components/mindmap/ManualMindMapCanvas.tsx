@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import dagre from "dagre";
 import { supabase } from "@/integrations/supabase/client";
+import MindMapCardEditor from "./MindMapCardEditor";
 
 // ── Colors ──
 
