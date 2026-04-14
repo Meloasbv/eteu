@@ -1,4 +1,5 @@
-import { Trophy, Flame, BookOpen, Clock, Star, TrendingUp } from "lucide-react";
+import { Trophy, Flame, BookOpen, Star, TrendingUp, PanelRightClose, PanelRightOpen } from "lucide-react";
+import { useState } from "react";
 
 interface Props {
   totalProgress: number;
@@ -14,12 +15,37 @@ interface Props {
 export default function DesktopRightPanel({
   totalProgress, weekProgress, activeWeek, totalWeeks, checked, todayVerse, todayRef, streakDays,
 }: Props) {
-  // Count completed days
+  const [collapsed, setCollapsed] = useState(false);
   const completedDays = Object.values(checked).filter(Boolean).length;
+
+  if (collapsed) {
+    return (
+      <aside className="hidden xl:flex flex-col items-center h-screen sticky top-0 w-10 border-l border-border/40 bg-card/30 backdrop-blur-sm">
+        <button
+          onClick={() => setCollapsed(false)}
+          className="mt-3 p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all"
+          title="Expandir painel"
+        >
+          <PanelRightOpen size={16} />
+        </button>
+      </aside>
+    );
+  }
 
   return (
     <aside className="hidden xl:flex flex-col h-screen sticky top-0 w-[280px] border-l border-border/40 bg-card/30 backdrop-blur-sm overflow-y-auto no-scrollbar">
       <div className="p-5 space-y-5">
+        {/* Collapse button */}
+        <div className="flex justify-end">
+          <button
+            onClick={() => setCollapsed(true)}
+            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all"
+            title="Minimizar painel"
+          >
+            <PanelRightClose size={16} />
+          </button>
+        </div>
+
         {/* Weekly Progress */}
         <div className="rounded-2xl p-4" style={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border)/0.4)' }}>
           <div className="flex items-center gap-2 mb-3">
