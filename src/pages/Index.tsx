@@ -13,9 +13,7 @@ import DesktopRightPanel from "@/components/desktop/DesktopRightPanel";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useScrollDirection } from "@/hooks/useScrollDirection";
 import { haptic } from "@/hooks/useHaptic";
-import { BookOpen, Flame, Calendar, PenLine, Check, Sun, Moon, LogOut, Sparkles, CheckCheck, Brain } from "lucide-react";
-
-const MindMapTab = lazy(() => import("@/components/mindmap/MindMapTab"));
+import { BookOpen, Flame, Calendar, PenLine, Check, Sun, Moon, LogOut, Sparkles, CheckCheck } from "lucide-react";
 
 // ── DATA ──────────────────────────────────────────────────────────────────────
 
@@ -204,7 +202,7 @@ export default function BiblePlan() {
 }
 
 function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string; accessCode: string | null; onLogout: () => void }) {
-  const [tab, setTab] = useState<"leitura" | "devocional" | "agenda" | "anotacoes" | "biblioteca" | "mapamental">("leitura");
+  const [tab, setTab] = useState<"leitura" | "devocional" | "agenda" | "anotacoes" | "biblioteca">("leitura");
   const [activeWeek, setActiveWeek] = useState(0);
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [saved, setSaved] = useState(false);
@@ -232,7 +230,6 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
     const newTitle = tab === "leitura" ? "Plano de Leitura"
       : tab === "devocional" ? "Devocionais"
       : tab === "agenda" ? "Agenda"
-      : tab === "mapamental" ? "Mapa Mental"
       : "Estudo";
     if (newTitle !== displayTitle) {
       setTitleFading(true);
@@ -343,16 +340,15 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
   const TABS: { key: typeof tab; icon: React.ReactNode; label: string }[] = [
     { key: "leitura", icon: <BookOpen size={22} />, label: "Leitura" },
     { key: "devocional", icon: <Flame size={22} />, label: "Devocional" },
-    { key: "mapamental", icon: <Brain size={22} />, label: "Mapa" },
     { key: "agenda", icon: <Calendar size={22} />, label: "Agenda" },
     { key: "anotacoes", icon: <PenLine size={22} />, label: "Estudo" },
   ];
 
   // ── CONTENT (shared between mobile & desktop) ──
   const renderContent = () => (
-    <div className={isMobile ? "main-content" : (tab === "mapamental" ? "flex-1 h-screen" : "flex-1 overflow-y-auto h-screen")}>
+    <div className={isMobile ? "main-content" : "flex-1 overflow-y-auto h-screen"}>
       {/* Desktop header for content area */}
-      {!isMobile && tab !== "mapamental" && (
+      {!isMobile && (
         <div className="sticky top-0 z-30 px-6 py-4 border-b border-border/30 bg-background/80 backdrop-blur-md">
           <h1 className={`text-[20px] font-bold text-foreground font-display tracking-wide transition-all duration-500 ${titleFading ? "opacity-0" : "opacity-100"}`}>
             {displayTitle}
@@ -360,7 +356,7 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
         </div>
       )}
 
-      <div className={!isMobile ? (tab === "mapamental" ? "h-[calc(100vh-57px)]" : "px-6 py-4 max-w-3xl mx-auto") : (tab === "mapamental" ? "h-[calc(100dvh-120px)]" : "")}>
+      <div className={!isMobile ? "px-6 py-4 max-w-3xl mx-auto" : ""}>
         {/* ── LEITURA TAB ── */}
         {tab === "leitura" && (
           <>
@@ -590,12 +586,6 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
         {/* ── ESTUDO TAB ── */}
         {tab === "anotacoes" && <StudyTab userCodeId={userCodeId} />}
 
-        {/* ── MAPA MENTAL TAB ── */}
-        {tab === "mapamental" && (
-          <Suspense fallback={<div className="flex justify-center py-20"><div className="w-8 h-8 border-2 border-primary/20 border-t-primary/60 rounded-full animate-spin" /></div>}>
-            <MindMapTab userCodeId={userCodeId} />
-          </Suspense>
-        )}
       </div>
     </div>
   );
@@ -624,19 +614,17 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
         {/* Center content */}
         {renderContent()}
 
-        {/* Right panel — hidden on mind map tab */}
-        {tab !== "mapamental" && (
-          <DesktopRightPanel
-            totalProgress={prog}
-            weekProgress={wp}
-            activeWeek={activeWeek}
-            totalWeeks={WEEKS.length}
-            checked={checked}
-            todayVerse={todayDevotional?.verse}
-            todayRef={todayDevotional?.ref}
-            streakDays={streakDays}
-          />
-        )}
+        {/* Right panel */}
+        <DesktopRightPanel
+          totalProgress={prog}
+          weekProgress={wp}
+          activeWeek={activeWeek}
+          totalWeeks={WEEKS.length}
+          checked={checked}
+          todayVerse={todayDevotional?.verse}
+          todayRef={todayDevotional?.ref}
+          streakDays={streakDays}
+        />
 
         {/* Focus reading view */}
         {focusReading && (

@@ -1,7 +1,7 @@
-import { BookOpen, Flame, Calendar, PenLine, Sun, Moon, LogOut, Brain, ChevronLeft, ChevronRight } from "lucide-react";
+import { BookOpen, Flame, Calendar, PenLine, Sun, Moon, LogOut, ChevronLeft, ChevronRight } from "lucide-react";
 import { useState } from "react";
 
-type Tab = "leitura" | "devocional" | "agenda" | "anotacoes" | "biblioteca" | "mapamental";
+type Tab = "leitura" | "devocional" | "agenda" | "anotacoes" | "biblioteca";
 
 interface Props {
   tab: Tab;
