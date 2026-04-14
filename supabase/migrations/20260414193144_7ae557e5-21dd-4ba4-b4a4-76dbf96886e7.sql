@@ -1,0 +1,1 @@
+ALTER TABLE public.favorite_verses ADD COLUMN comment text DEFAULT '';

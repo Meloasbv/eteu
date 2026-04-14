@@ -34,6 +34,7 @@ export type Database = {
       }
       favorite_verses: {
         Row: {
+          comment: string | null
           created_at: string
           id: string
           reading_day: string
@@ -42,6 +43,7 @@ export type Database = {
           verse_text: string
         }
         Insert: {
+          comment?: string | null
           created_at?: string
           id?: string
           reading_day?: string
@@ -50,6 +52,7 @@ export type Database = {
           verse_text: string
         }
         Update: {
+          comment?: string | null
           created_at?: string
           id?: string
           reading_day?: string
