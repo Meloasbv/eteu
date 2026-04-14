@@ -114,7 +114,7 @@ function SimpleNode({ data, id }: NodeProps) {
 
   const commit = () => {
     setEditing(false);
-    data.onDataChange?.(id, { title: title || "Novo card", description: desc });
+    d.onDataChange?.(id, { title: title || "Novo card", description: desc });
   };
 
   return (
@@ -151,9 +151,9 @@ function SimpleNode({ data, id }: NodeProps) {
         </div>
       ) : (
         <>
-          <p className="font-display text-[15px] font-semibold text-foreground">{data.title as string}</p>
-          {data.description && (
-            <p className="font-ui text-[12px] text-muted-foreground mt-1 leading-relaxed">{data.description as string}</p>
+          <p className="font-display text-[15px] font-semibold text-foreground">{d.title as string}</p>
+          {d.description && (
+            <p className="font-ui text-[12px] text-muted-foreground mt-1 leading-relaxed">{d.description as string}</p>
           )}
         </>
       )}
@@ -162,12 +162,13 @@ function SimpleNode({ data, id }: NodeProps) {
 }
 
 function NoteCardNode({ data, id }: NodeProps) {
+  const d = data as Record<string, any>;
   const [editing, setEditing] = useState(false);
-  const [title, setTitle] = useState(data.title as string);
-  const [content, setContent] = useState((data.content as string) || "");
-  const [expanded, setExpanded] = useState((data.isExpanded as boolean) ?? true);
-  const color = (data.color as string) || "#c4a46a";
-  const colorMode = (data.colorMode as string) || "border";
+  const [title, setTitle] = useState(d.title as string);
+  const [content, setContent] = useState((d.content as string) || "");
+  const [expanded, setExpanded] = useState((d.isExpanded as boolean) ?? true);
+  const color = (d.color as string) || "#c4a46a";
+  const colorMode = (d.colorMode as string) || "border";
   const titleRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -176,7 +177,7 @@ function NoteCardNode({ data, id }: NodeProps) {
 
   const commit = () => {
     setEditing(false);
-    data.onDataChange?.(id, { title: title || "Nota", content });
+    d.onDataChange?.(id, { title: title || "Nota", content });
   };
 
   return (
