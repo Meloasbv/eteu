@@ -543,7 +543,7 @@ function ManualCanvas({ userCodeId, mapId, onClose }: ManualCanvasProps) {
     setNodes(ns => [...ns, newNode]);
     setEdges(es => [...es, ...newEdges]);
     setSelectedNode(id);
-  }, [screenToFlowPosition, selectedNode, setNodes, setEdges, saveHistory]);
+  }, [screenToFlowPosition, selectedNode, setNodes, setEdges, saveHistory, edgeType]);
 
   const changeLevel = useCallback((nodeId: string, level: NodeLevel) => {
     saveHistory();
