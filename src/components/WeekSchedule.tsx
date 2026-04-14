@@ -262,19 +262,118 @@ export default function WeekSchedule({ userCodeId }: { userCodeId: string }) {
             <h2 className="text-[22px] font-body font-bold text-foreground">Agenda</h2>
             <p className="text-[12px] text-muted-foreground font-ui mt-0.5">Organize sua semana</p>
           </div>
-          <button
-            onClick={() => { setForm(emptyForm(selectedDate)); setShowModal(true); }}
-            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-ui text-[11px] tracking-wider uppercase font-semibold transition-all active:scale-95"
-            style={{
-              background: 'hsl(var(--primary) / 0.12)',
-              border: '1px solid hsl(var(--primary) / 0.3)',
-              color: 'hsl(var(--primary))',
-            }}
-          >
-            <Plus size={14} /> Novo
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={startVoice}
+              className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl font-ui text-[11px] tracking-wider uppercase font-semibold transition-all active:scale-95"
+              style={{
+                background: 'hsl(var(--fire) / 0.12)',
+                border: '1px solid hsl(var(--fire) / 0.3)',
+                color: 'hsl(var(--fire))',
+              }}
+              aria-label="Adicionar por voz"
+            >
+              <Mic size={14} /> Voz
+            </button>
+            <button
+              onClick={() => { setForm(emptyForm(selectedDate)); setShowModal(true); }}
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-ui text-[11px] tracking-wider uppercase font-semibold transition-all active:scale-95"
+              style={{
+                background: 'hsl(var(--primary) / 0.12)',
+                border: '1px solid hsl(var(--primary) / 0.3)',
+                color: 'hsl(var(--primary))',
+              }}
+            >
+              <Plus size={14} /> Novo
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* Voice recording overlay */}
+      {(voiceRecording || voiceProcessing || voiceParsedEvents || voiceError) && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-card border border-border rounded-2xl p-6 animate-scale-in">
+            {voiceRecording && (
+              <div className="text-center space-y-4">
+                <div className="w-16 h-16 rounded-full bg-destructive/20 flex items-center justify-center mx-auto animate-pulse">
+                  <Mic size={28} className="text-destructive" />
+                </div>
+                <h3 className="text-lg font-bold text-foreground font-display">Gravando...</h3>
+                <p className="text-xs text-muted-foreground font-ui">Diga seus compromissos. Ex: "Amanhã tenho culto às 19h na igreja e quarta almoço às 12h"</p>
+                {voiceTranscript && (
+                  <p className="text-sm text-foreground/70 font-body italic bg-background/50 rounded-xl p-3 text-left">
+                    "{voiceTranscript}"
+                  </p>
+                )}
+                <button onClick={stopVoice}
+                  className="w-14 h-14 rounded-full bg-destructive flex items-center justify-center mx-auto text-white transition-all active:scale-95">
+                  <Square size={18} />
+                </button>
+                <p className="text-[10px] text-muted-foreground/50 font-ui">Clique para parar e processar</p>
+              </div>
+            )}
+
+            {voiceProcessing && (
+              <div className="text-center space-y-4">
+                <Loader2 size={32} className="text-primary animate-spin mx-auto" />
+                <h3 className="text-lg font-bold text-foreground font-display">Analisando...</h3>
+                <p className="text-xs text-muted-foreground font-ui">IA identificando eventos na sua fala</p>
+              </div>
+            )}
+
+            {voiceError && (
+              <div className="text-center space-y-4">
+                <p className="text-sm text-destructive font-ui">{voiceError}</p>
+                <div className="flex gap-2 justify-center">
+                  <button onClick={() => { setVoiceError(null); setVoiceTranscript(""); }}
+                    className="px-5 py-2.5 rounded-xl text-sm font-ui border border-border text-muted-foreground transition-all active:scale-95">
+                    Fechar
+                  </button>
+                  <button onClick={() => { setVoiceError(null); startVoice(); }}
+                    className="px-5 py-2.5 rounded-xl text-sm font-ui transition-all active:scale-95"
+                    style={{ background: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}>
+                    Tentar novamente
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {voiceParsedEvents && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-bold text-foreground font-display">Eventos identificados</h3>
+                  <button onClick={() => { setVoiceParsedEvents(null); setVoiceTranscript(""); }}
+                    className="text-muted-foreground hover:text-foreground">
+                    <X size={18} />
+                  </button>
+                </div>
+                <div className="space-y-2 max-h-[40vh] overflow-y-auto">
+                  {voiceParsedEvents.map((ev, i) => (
+                    <div key={i} className="flex items-center gap-3 p-3 rounded-xl"
+                      style={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))" }}>
+                      <span className="text-lg">{ev.icon || "📌"}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-foreground truncate">{ev.name}</p>
+                        <p className="text-[11px] text-muted-foreground font-ui">
+                          {ev.date} · {ev.start} – {ev.end}
+                          {ev.location ? ` · ${ev.location}` : ""}
+                        </p>
+                      </div>
+                      <Check size={16} className="text-success shrink-0" />
+                    </div>
+                  ))}
+                </div>
+                <button onClick={addParsedEvents}
+                  className="w-full py-3 rounded-xl text-sm font-ui font-semibold transition-all active:scale-95"
+                  style={{ background: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}>
+                  Adicionar {voiceParsedEvents.length} {voiceParsedEvents.length === 1 ? "evento" : "eventos"}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Calendar */}
       <div className="mx-4 rounded-2xl border border-border bg-card overflow-hidden">
