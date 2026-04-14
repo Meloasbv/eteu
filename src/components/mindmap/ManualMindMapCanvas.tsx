@@ -666,7 +666,7 @@ function ManualCanvas({ onClose }: { onClose: () => void }) {
             setContextMenu({ x: event.clientX, y: event.clientY, nodeId: node.id });
             setSelectedNode(node.id);
           }}
-          onDoubleClick={onPaneDoubleClick}
+          
           className="bg-background"
           proOptions={{ hideAttribution: true }}
         >
