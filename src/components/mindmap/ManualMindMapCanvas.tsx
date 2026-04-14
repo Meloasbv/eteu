@@ -51,8 +51,9 @@ const handleStyle = {
 // ── Custom Nodes ──
 
 function ManualRootNode({ data, id }: NodeProps) {
+  const d = data as Record<string, any>;
   const [editing, setEditing] = useState(false);
-  const [value, setValue] = useState(data.label as string);
+  const [value, setValue] = useState(d.label as string);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -61,7 +62,7 @@ function ManualRootNode({ data, id }: NodeProps) {
 
   const commit = () => {
     setEditing(false);
-    data.onLabelChange?.(id, value || "Tema Central");
+    d.onLabelChange?.(id, value || "Tema Central");
   };
 
   return (
