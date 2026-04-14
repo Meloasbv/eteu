@@ -755,7 +755,15 @@ function ManualCanvas({ onClose }: { onClose: () => void }) {
             <CtxItem icon={Pencil} label="Editar" onClick={() => { setContextMenu(null); /* node handles edit via double click */ }} />
             <CtxItem icon={Palette} label="Mudar cor" onClick={() => { setContextMenu(null); setShowColorPicker(true); }} />
             {nodes.find(n => n.id === contextMenu.nodeId)?.type === "simpleNode" && (
-              <CtxItem icon={StickyNote} label="Converter em Nota" onClick={() => convertToNote(contextMenu.nodeId)} />
+              <>
+                <div className="h-px mx-2 my-1" style={{ background: "rgba(196,164,106,0.1)" }} />
+                <p className="px-3 py-1 text-[9px] font-ui uppercase tracking-wider text-muted-foreground/50">Importância</p>
+                <CtxItem icon={Heading1} label="Título (principal)" onClick={() => changeLevel(contextMenu.nodeId, "title")} />
+                <CtxItem icon={Heading2} label="Subtítulo" onClick={() => changeLevel(contextMenu.nodeId, "subtitle")} />
+                <CtxItem icon={AlignLeft} label="Texto (detalhe)" onClick={() => changeLevel(contextMenu.nodeId, "text")} />
+                <div className="h-px mx-2 my-1" style={{ background: "rgba(196,164,106,0.1)" }} />
+                <CtxItem icon={StickyNote} label="Converter em Nota" onClick={() => convertToNote(contextMenu.nodeId)} />
+              </>
             )}
             <CtxItem icon={PlusCircle} label="Adicionar filho" onClick={() => addChildNode(contextMenu.nodeId)} />
             <CtxItem icon={Copy} label="Duplicar" onClick={() => duplicateNode(contextMenu.nodeId)} />
