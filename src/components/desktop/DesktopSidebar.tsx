@@ -1,7 +1,7 @@
-import { BookOpen, Flame, Calendar, PenLine, Sun, Moon, LogOut, BookMarked, History, Settings, ChevronLeft, ChevronRight } from "lucide-react";
+import { BookOpen, Flame, Calendar, PenLine, Sun, Moon, LogOut, Brain, ChevronLeft, ChevronRight } from "lucide-react";
 import { useState } from "react";
 
-type Tab = "leitura" | "devocional" | "agenda" | "anotacoes" | "biblioteca";
+type Tab = "leitura" | "devocional" | "agenda" | "anotacoes" | "biblioteca" | "mapamental";
 
 interface Props {
   tab: Tab;
@@ -14,6 +14,7 @@ interface Props {
 const NAV_ITEMS: { key: Tab; icon: React.ElementType; label: string }[] = [
   { key: "leitura", icon: BookOpen, label: "Plano de Leitura" },
   { key: "devocional", icon: Flame, label: "Devocionais" },
+  { key: "mapamental", icon: Brain, label: "Mapa Mental" },
   { key: "agenda", icon: Calendar, label: "Agenda" },
   { key: "anotacoes", icon: PenLine, label: "Estudo" },
 ];
