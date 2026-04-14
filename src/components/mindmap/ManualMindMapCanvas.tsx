@@ -24,8 +24,10 @@ import {
   Plus, StickyNote, Link2, Palette, X, Undo2, Redo2,
   Maximize, Trash2, Copy, PlusCircle, Pencil, ChevronDown, ChevronUp,
   ArrowUpDown, ArrowLeftRight, Type, Heading1, Heading2, AlignLeft,
+  Save, Loader2,
 } from "lucide-react";
 import dagre from "dagre";
+import { supabase } from "@/integrations/supabase/client";
 
 // ── Colors ──
 
@@ -40,7 +42,6 @@ const manualColors = [
   { name: "Neutro", value: "#8a7d6a" },
 ];
 
-// ── Handle styles ──
 const handleStyle = {
   width: 8, height: 8,
   background: "rgba(196,164,106,0.3)",
@@ -57,9 +58,8 @@ function ManualRootNode({ data, id }: NodeProps) {
   const [value, setValue] = useState(d.label as string);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (editing) inputRef.current?.focus();
-  }, [editing]);
+  useEffect(() => { setValue(d.label as string); }, [d.label]);
+  useEffect(() => { if (editing) inputRef.current?.focus(); }, [editing]);
 
   const commit = () => {
     setEditing(false);
@@ -121,9 +121,8 @@ function SimpleNode({ data, id }: NodeProps) {
   const level: NodeLevel = (d.level as NodeLevel) || "subtitle";
   const ls = levelStyles[level];
 
-  useEffect(() => {
-    if (editing) inputRef.current?.focus();
-  }, [editing]);
+  useEffect(() => { setTitle(d.title as string); setDesc((d.description as string) || ""); }, [d.title, d.description]);
+  useEffect(() => { if (editing) inputRef.current?.focus(); }, [editing]);
 
   const commit = () => {
     setEditing(false);
@@ -155,7 +154,6 @@ function SimpleNode({ data, id }: NodeProps) {
       <Handle type="target" position={Position.Bottom} className="group-hover:!opacity-100" style={{ ...handleStyle, bottom: -4 }} />
       <Handle type="target" position={Position.Left} className="group-hover:!opacity-100" style={{ ...handleStyle, left: -4 }} />
       <Handle type="target" position={Position.Right} className="group-hover:!opacity-100" style={{ ...handleStyle, right: -4 }} />
-      {/* Level badge */}
       <span className="absolute -top-2 right-2 px-1.5 py-0.5 rounded text-[8px] font-ui uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-opacity"
         style={{ background: `${color}20`, color, border: `1px solid ${color}30` }}>
         {levelLabels[level]}
@@ -194,9 +192,8 @@ function NoteCardNode({ data, id }: NodeProps) {
   const colorMode = (d.colorMode as string) || "border";
   const titleRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (editing) titleRef.current?.focus();
-  }, [editing]);
+  useEffect(() => { setTitle(d.title as string); setContent((d.content as string) || ""); }, [d.title, d.content]);
+  useEffect(() => { if (editing) titleRef.current?.focus(); }, [editing]);
 
   const commit = () => {
     setEditing(false);
@@ -224,7 +221,6 @@ function NoteCardNode({ data, id }: NodeProps) {
       <Handle type="target" position={Position.Bottom} className="group-hover:!opacity-100" style={{ ...handleStyle, bottom: -4 }} />
       <Handle type="target" position={Position.Left} className="group-hover:!opacity-100" style={{ ...handleStyle, left: -4 }} />
       <Handle type="target" position={Position.Right} className="group-hover:!opacity-100" style={{ ...handleStyle, right: -4 }} />
-      {/* Header */}
       <div className="flex items-center justify-between px-4 pt-3 pb-2">
         {editing ? (
           <input ref={titleRef} value={title} onChange={e => setTitle(e.target.value)}
@@ -241,7 +237,6 @@ function NoteCardNode({ data, id }: NodeProps) {
           {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
         </button>
       </div>
-      {/* Body */}
       {expanded ? (
         <div className="px-4 pb-4">
           {editing ? (
@@ -341,12 +336,27 @@ function autoLayout(nodes: Node[], edges: Edge[], direction = "TB") {
   };
 }
 
+// ── Serialization helpers ──
+
+function stripCallbacks(nodes: Node[]): any[] {
+  return nodes.map(n => {
+    const { onLabelChange, onDataChange, ...cleanData } = n.data as any;
+    return { ...n, data: cleanData };
+  });
+}
+
 // ── Main ──
 
 let idCounter = 1;
 const nextId = () => `manual-${idCounter++}`;
 
-function ManualCanvas({ onClose }: { onClose: () => void }) {
+interface ManualCanvasProps {
+  userCodeId: string;
+  mapId: string | null;
+  onClose: () => void;
+}
+
+function ManualCanvas({ userCodeId, mapId, onClose }: ManualCanvasProps) {
   const { fitView, screenToFlowPosition } = useReactFlow();
 
   const rootId = useRef(nextId());
@@ -367,6 +377,11 @@ function ManualCanvas({ onClose }: { onClose: () => void }) {
   const [mapTitle, setMapTitle] = useState("Meu Mapa Mental");
   const [editingTitle, setEditingTitle] = useState(false);
   const [direction, setDirection] = useState<"TB" | "LR">("TB");
+  const [currentMapId, setCurrentMapId] = useState<string | null>(mapId);
+  const [saving, setSaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [loaded, setLoaded] = useState(!mapId);
+  const dirtyRef = useRef(false);
 
   const history = useUndoRedo();
 
@@ -378,13 +393,83 @@ function ManualCanvas({ onClose }: { onClose: () => void }) {
         ...n.data,
         onLabelChange: (_id: string, label: string) => {
           setNodes(prev => prev.map(nd => nd.id === _id ? { ...nd, data: { ...nd.data, label } } : nd));
+          dirtyRef.current = true;
         },
         onDataChange: (_id: string, updates: Record<string, any>) => {
           setNodes(prev => prev.map(nd => nd.id === _id ? { ...nd, data: { ...nd.data, ...updates } } : nd));
+          dirtyRef.current = true;
         },
       },
     }));
   }, [setNodes]);
+
+  // Load existing map
+  useEffect(() => {
+    if (!mapId) return;
+    (async () => {
+      const { data } = await supabase
+        .from("mind_maps")
+        .select("*")
+        .eq("id", mapId)
+        .single();
+      if (data) {
+        setMapTitle(data.title);
+        const loadedNodes = injectCallbacks((data.nodes as any) || []);
+        setNodes(loadedNodes);
+        setEdges((data.edges as any) || []);
+        // Update idCounter to avoid collisions
+        const maxId = loadedNodes.reduce((max, n) => {
+          const match = n.id.match(/manual-(\d+)/);
+          return match ? Math.max(max, parseInt(match[1])) : max;
+        }, 0);
+        idCounter = maxId + 1;
+        setTimeout(() => fitView({ padding: 0.2 }), 100);
+      }
+      setLoaded(true);
+    })();
+  }, [mapId]);
+
+  // Save function
+  const saveMap = useCallback(async () => {
+    setSaving(true);
+    const cleanNodes = stripCallbacks(nodes);
+    if (currentMapId) {
+      await supabase
+        .from("mind_maps")
+        .update({ title: mapTitle, nodes: cleanNodes, edges, updated_at: new Date().toISOString() })
+        .eq("id", currentMapId);
+    } else {
+      const { data } = await supabase
+        .from("mind_maps")
+        .insert({ user_code_id: userCodeId, title: mapTitle, nodes: cleanNodes, edges })
+        .select("id")
+        .single();
+      if (data) setCurrentMapId(data.id);
+    }
+    dirtyRef.current = false;
+    setLastSaved(new Date());
+    setSaving(false);
+  }, [nodes, edges, mapTitle, currentMapId, userCodeId]);
+
+  // Auto-save every 5 seconds when dirty
+  useEffect(() => {
+    if (!loaded) return;
+    const interval = setInterval(() => {
+      if (dirtyRef.current) saveMap();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [saveMap, loaded]);
+
+  // Mark dirty on node/edge changes
+  useEffect(() => {
+    if (loaded) dirtyRef.current = true;
+  }, [nodes, edges, mapTitle]);
+
+  // Save on close
+  const handleClose = useCallback(async () => {
+    if (dirtyRef.current) await saveMap();
+    onClose();
+  }, [saveMap, onClose]);
 
   // Save history on meaningful changes
   const saveHistory = useCallback(() => {
@@ -415,14 +500,15 @@ function ManualCanvas({ onClose }: { onClose: () => void }) {
         isExpanded: true,
         onLabelChange: (_id: string, label: string) => {
           setNodes(prev => prev.map(nd => nd.id === _id ? { ...nd, data: { ...nd.data, label } } : nd));
+          dirtyRef.current = true;
         },
         onDataChange: (_id: string, updates: Record<string, any>) => {
           setNodes(prev => prev.map(nd => nd.id === _id ? { ...nd, data: { ...nd.data, ...updates } } : nd));
+          dirtyRef.current = true;
         },
       },
     };
 
-    // Auto-connect to selected node
     const newEdges: Edge[] = [];
     if (selectedNode) {
       newEdges.push({
@@ -440,7 +526,6 @@ function ManualCanvas({ onClose }: { onClose: () => void }) {
     setSelectedNode(id);
   }, [screenToFlowPosition, selectedNode, setNodes, setEdges, saveHistory]);
 
-  // Change node level
   const changeLevel = useCallback((nodeId: string, level: NodeLevel) => {
     saveHistory();
     setNodes(ns => ns.map(n =>
@@ -449,7 +534,6 @@ function ManualCanvas({ onClose }: { onClose: () => void }) {
     setContextMenu(null);
   }, [setNodes, saveHistory]);
 
-  // Apply color
   const applyColor = useCallback((color: string) => {
     if (!selectedNode) return;
     saveHistory();
@@ -459,7 +543,6 @@ function ManualCanvas({ onClose }: { onClose: () => void }) {
     setShowColorPicker(false);
   }, [selectedNode, colorMode, setNodes, saveHistory]);
 
-  // Context menu actions
   const deleteNode = useCallback((nodeId: string) => {
     saveHistory();
     setNodes(ns => ns.filter(n => n.id !== nodeId));
@@ -481,9 +564,11 @@ function ManualCanvas({ onClose }: { onClose: () => void }) {
         ...node.data,
         onLabelChange: (_id: string, label: string) => {
           setNodes(prev => prev.map(nd => nd.id === _id ? { ...nd, data: { ...nd.data, label } } : nd));
+          dirtyRef.current = true;
         },
         onDataChange: (_id: string, updates: Record<string, any>) => {
           setNodes(prev => prev.map(nd => nd.id === _id ? { ...nd, data: { ...nd.data, ...updates } } : nd));
+          dirtyRef.current = true;
         },
       },
     };
@@ -507,6 +592,7 @@ function ManualCanvas({ onClose }: { onClose: () => void }) {
         level: "text" as NodeLevel,
         onDataChange: (_id: string, updates: Record<string, any>) => {
           setNodes(prev => prev.map(nd => nd.id === _id ? { ...nd, data: { ...nd.data, ...updates } } : nd));
+          dirtyRef.current = true;
         },
       },
     };
@@ -530,34 +616,22 @@ function ManualCanvas({ onClose }: { onClose: () => void }) {
       return {
         ...n,
         type: "noteCard",
-        data: {
-          ...n.data,
-          content: (n.data as any).description || "",
-          isExpanded: true,
-        },
+        data: { ...n.data, content: (n.data as any).description || "", isExpanded: true },
       };
     }));
     setContextMenu(null);
   }, [setNodes, saveHistory]);
 
-  // Undo/Redo
   const handleUndo = useCallback(() => {
     const prev = history.undo({ nodes, edges });
-    if (prev) {
-      setNodes(injectCallbacks(prev.nodes));
-      setEdges(prev.edges);
-    }
+    if (prev) { setNodes(injectCallbacks(prev.nodes)); setEdges(prev.edges); }
   }, [history, nodes, edges, setNodes, setEdges, injectCallbacks]);
 
   const handleRedo = useCallback(() => {
     const next = history.redo({ nodes, edges });
-    if (next) {
-      setNodes(injectCallbacks(next.nodes));
-      setEdges(next.edges);
-    }
+    if (next) { setNodes(injectCallbacks(next.nodes)); setEdges(next.edges); }
   }, [history, nodes, edges, setNodes, setEdges, injectCallbacks]);
 
-  // Auto-layout
   const onAutoLayout = useCallback((dir: "TB" | "LR") => {
     saveHistory();
     setDirection(dir);
@@ -577,12 +651,12 @@ function ManualCanvas({ onClose }: { onClose: () => void }) {
       if (e.key === "z" && (e.ctrlKey || e.metaKey) && !e.shiftKey) { e.preventDefault(); handleUndo(); }
       if (e.key === "z" && (e.ctrlKey || e.metaKey) && e.shiftKey) { e.preventDefault(); handleRedo(); }
       if (e.key === "0" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); fitView({ padding: 0.2 }); }
+      if (e.key === "s" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); saveMap(); }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [selectedNode, addChildNode, deleteNode, duplicateNode, handleUndo, handleRedo, fitView]);
+  }, [selectedNode, addChildNode, deleteNode, duplicateNode, handleUndo, handleRedo, fitView, saveMap]);
 
-  // Close context on click away
   useEffect(() => {
     if (!contextMenu) return;
     const handler = () => setContextMenu(null);
@@ -590,13 +664,21 @@ function ManualCanvas({ onClose }: { onClose: () => void }) {
     return () => window.removeEventListener("click", handler);
   }, [contextMenu]);
 
+  if (!loaded) {
+    return (
+      <div className="h-full w-full flex items-center justify-center">
+        <Loader2 className="animate-spin text-primary" size={24} />
+      </div>
+    );
+  }
+
   return (
     <div className="h-full w-full flex flex-col relative">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-2 shrink-0 z-10"
         style={{ background: "hsl(var(--background))", borderBottom: "1px solid hsl(var(--border) / 0.2)" }}>
         <div className="flex items-center gap-3">
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors text-xs font-ui">
+          <button onClick={handleClose} className="text-muted-foreground hover:text-foreground transition-colors text-xs font-ui">
             ← Voltar
           </button>
           <div className="w-px h-4" style={{ background: "hsl(var(--border) / 0.3)" }} />
@@ -616,6 +698,21 @@ function ManualCanvas({ onClose }: { onClose: () => void }) {
           )}
         </div>
         <div className="flex items-center gap-1">
+          {/* Save status */}
+          <div className="flex items-center gap-1.5 mr-2">
+            {saving ? (
+              <span className="text-[10px] font-ui text-primary/60 flex items-center gap-1">
+                <Loader2 size={10} className="animate-spin" /> Salvando...
+              </span>
+            ) : lastSaved ? (
+              <span className="text-[10px] font-ui text-muted-foreground/40">
+                Salvo {lastSaved.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+              </span>
+            ) : null}
+          </div>
+          <button onClick={() => saveMap()} className="p-2 rounded-lg text-muted-foreground hover:text-primary transition-all" title="Salvar (Ctrl+S)">
+            <Save size={14} />
+          </button>
           <button onClick={handleUndo} disabled={!history.canUndo}
             className="p-2 rounded-lg text-muted-foreground hover:text-foreground disabled:opacity-20 transition-all">
             <Undo2 size={14} />
@@ -666,7 +763,6 @@ function ManualCanvas({ onClose }: { onClose: () => void }) {
             setContextMenu({ x: event.clientX, y: event.clientY, nodeId: node.id });
             setSelectedNode(node.id);
           }}
-          
           className="bg-background"
           proOptions={{ hideAttribution: true }}
         >
@@ -752,7 +848,7 @@ function ManualCanvas({ onClose }: { onClose: () => void }) {
             }}
             onClick={e => e.stopPropagation()}
           >
-            <CtxItem icon={Pencil} label="Editar" onClick={() => { setContextMenu(null); /* node handles edit via double click */ }} />
+            <CtxItem icon={Pencil} label="Editar" onClick={() => { setContextMenu(null); }} />
             <CtxItem icon={Palette} label="Mudar cor" onClick={() => { setContextMenu(null); setShowColorPicker(true); }} />
             {nodes.find(n => n.id === contextMenu.nodeId)?.type === "simpleNode" && (
               <>
@@ -810,11 +906,10 @@ function CtxItem({ icon: Icon, label, onClick, danger }: { icon: React.ElementTy
   );
 }
 
-// Wrap with provider
-export default function ManualMindMapCanvas({ onClose }: { onClose: () => void }) {
+export default function ManualMindMapCanvas({ userCodeId, mapId, onClose }: ManualCanvasProps) {
   return (
     <ReactFlowProvider>
-      <ManualCanvas onClose={onClose} />
+      <ManualCanvas userCodeId={userCodeId} mapId={mapId} onClose={onClose} />
     </ReactFlowProvider>
   );
 }
