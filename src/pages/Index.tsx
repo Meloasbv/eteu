@@ -624,6 +624,7 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
           todayVerse={todayDevotional?.verse}
           todayRef={todayDevotional?.ref}
           streakDays={streakDays}
+          userCodeId={userCodeId}
         />
 
         {/* Focus reading view */}

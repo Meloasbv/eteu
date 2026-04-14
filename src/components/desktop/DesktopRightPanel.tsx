@@ -1,5 +1,42 @@
-import { Trophy, Flame, BookOpen, Star, TrendingUp, PanelRightClose, PanelRightOpen } from "lucide-react";
-import { useState } from "react";
+import { Trophy, Flame, BookOpen, Star, TrendingUp, PanelRightClose, PanelRightOpen, Heart, MessageSquare, X, Check } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { supabase } from "@/integrations/supabase/client";
+
+interface FavoriteVerse {
+  id: string;
+  verse_reference: string;
+  verse_text: string;
+  reading_day: string;
+  comment: string;
+  created_at: string;
+}
+
+// Bible book order for sorting
+const BOOK_ORDER: Record<string, number> = {
+  "Gn": 1, "Gênesis": 1, "Ex": 2, "Êxodo": 2, "Lv": 3, "Levítico": 3, "Nm": 4, "Números": 4, "Dt": 5, "Deuteronômio": 5,
+  "Js": 6, "Josué": 6, "Jz": 7, "Juízes": 7, "Rt": 8, "Rute": 8, "I Sm": 9, "1 Samuel": 9, "II Sm": 10, "2 Samuel": 10,
+  "I Rs": 11, "1 Reis": 11, "II Rs": 12, "2 Reis": 12, "I Cr": 13, "1 Crônicas": 13, "II Cr": 14, "2 Crônicas": 14,
+  "Ed": 15, "Esdras": 15, "Ne": 16, "Neemias": 16, "Et": 17, "Ester": 17, "Jó": 18,
+  "Sl": 19, "Salmos": 19, "Salmo": 19, "Pv": 20, "Provérbios": 20, "Ec": 21, "Eclesiastes": 21, "Ct": 22, "Cantares": 22,
+  "Is": 23, "Isaías": 23, "Jr": 24, "Jeremias": 24, "Lm": 25, "Lamentações": 25, "Ez": 26, "Ezequiel": 26, "Dn": 27, "Daniel": 27,
+  "Os": 28, "Oséias": 28, "Jl": 29, "Joel": 29, "Am": 30, "Amós": 30, "Ob": 31, "Obadias": 31, "Jn": 32, "Jonas": 32,
+  "Mq": 33, "Miquéias": 33, "Na": 34, "Naum": 34, "Hc": 35, "Habacuque": 35, "Sf": 36, "Sofonias": 36, "Ag": 37, "Ageu": 37,
+  "Zc": 38, "Zacarias": 38, "Ml": 39, "Malaquias": 39,
+  "Mt": 40, "Mateus": 40, "Mc": 41, "Marcos": 41, "Lc": 42, "Lucas": 42, "Jo": 43, "João": 43,
+  "At": 44, "Atos": 44, "Rm": 45, "Romanos": 45, "I Co": 46, "1 Coríntios": 46, "II Co": 47, "2 Coríntios": 47,
+  "Gl": 48, "Gálatas": 48, "Ef": 49, "Efésios": 49, "Fp": 50, "Filipenses": 50, "Cl": 51, "Colossenses": 51,
+  "I Ts": 52, "1 Tessalonicenses": 52, "II Ts": 53, "2 Tessalonicenses": 53, "I Tm": 54, "1 Timóteo": 54, "II Tm": 55, "2 Timóteo": 55,
+  "Tt": 56, "Tito": 56, "Fm": 57, "Filemom": 57, "Hb": 58, "Hebreus": 58, "Tg": 59, "Tiago": 59,
+  "I Pe": 60, "1 Pedro": 60, "II Pe": 61, "2 Pedro": 61, "I Jo": 62, "1 João": 62, "II Jo": 63, "2 João": 63, "III Jo": 64, "3 João": 64,
+  "Jd": 65, "Judas": 65, "Ap": 66, "Apocalipse": 66,
+};
+
+function getBookOrder(ref: string): number {
+  for (const [key, order] of Object.entries(BOOK_ORDER)) {
+    if (ref.startsWith(key)) return order;
+  }
+  return 999;
+}
 
 interface Props {
   totalProgress: number;
@@ -10,13 +47,42 @@ interface Props {
   todayVerse?: string;
   todayRef?: string;
   streakDays: number;
+  userCodeId: string;
 }
 
 export default function DesktopRightPanel({
-  totalProgress, weekProgress, activeWeek, totalWeeks, checked, todayVerse, todayRef, streakDays,
+  totalProgress, weekProgress, activeWeek, totalWeeks, checked, todayVerse, todayRef, streakDays, userCodeId,
 }: Props) {
   const [collapsed, setCollapsed] = useState(false);
+  const [favorites, setFavorites] = useState<FavoriteVerse[]>([]);
+  const [editingComment, setEditingComment] = useState<string | null>(null);
+  const [commentText, setCommentText] = useState("");
   const completedDays = Object.values(checked).filter(Boolean).length;
+
+  const fetchFavorites = useCallback(async () => {
+    const { data } = await supabase
+      .from("favorite_verses")
+      .select("*")
+      .eq("user_code_id", userCodeId);
+    if (data) {
+      const sorted = (data as FavoriteVerse[]).sort((a, b) => getBookOrder(a.verse_reference) - getBookOrder(b.verse_reference));
+      setFavorites(sorted);
+    }
+  }, [userCodeId]);
+
+  useEffect(() => { fetchFavorites(); }, [fetchFavorites]);
+
+  const saveComment = async (id: string) => {
+    await supabase.from("favorite_verses").update({ comment: commentText } as any).eq("id", id);
+    setFavorites(prev => prev.map(f => f.id === id ? { ...f, comment: commentText } : f));
+    setEditingComment(null);
+    setCommentText("");
+  };
+
+  const startEditComment = (fav: FavoriteVerse) => {
+    setEditingComment(fav.id);
+    setCommentText(fav.comment || "");
+  };
 
   if (collapsed) {
     return (
@@ -109,6 +175,70 @@ export default function DesktopRightPanel({
             )}
           </div>
         )}
+
+        {/* Favorite Verses */}
+        <div className="rounded-2xl p-4" style={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border)/0.4)' }}>
+          <div className="flex items-center gap-2 mb-3">
+            <Heart size={14} className="text-destructive/60" />
+            <p className="text-[10px] tracking-[2px] uppercase text-muted-foreground font-ui font-medium">Versículos Favoritos</p>
+          </div>
+
+          {favorites.length === 0 ? (
+            <p className="text-[12px] text-muted-foreground/50 font-body text-center py-3">
+              Nenhum versículo favoritado ainda
+            </p>
+          ) : (
+            <div className="space-y-3 max-h-[400px] overflow-y-auto no-scrollbar">
+              {favorites.map(fav => (
+                <div key={fav.id} className="rounded-xl p-3 transition-all hover:bg-muted/20"
+                  style={{ border: '1px solid hsl(var(--border)/0.3)' }}>
+                  <p className="text-[11px] font-semibold text-primary font-ui mb-1">
+                    {fav.verse_reference}
+                  </p>
+                  <p className="text-[12px] leading-relaxed text-foreground/70 italic font-serif line-clamp-3">
+                    "{fav.verse_text}"
+                  </p>
+
+                  {/* Comment section */}
+                  {editingComment === fav.id ? (
+                    <div className="mt-2 space-y-1.5">
+                      <textarea
+                        value={commentText}
+                        onChange={e => setCommentText(e.target.value)}
+                        placeholder="Escreva seu comentário..."
+                        className="w-full text-[11px] bg-background/50 border border-border/50 rounded-lg p-2 resize-none focus:outline-none focus:ring-1 focus:ring-primary/30 font-body text-foreground"
+                        rows={2}
+                        autoFocus
+                      />
+                      <div className="flex gap-1 justify-end">
+                        <button onClick={() => setEditingComment(null)}
+                          className="p-1 rounded text-muted-foreground hover:text-foreground transition-colors">
+                          <X size={12} />
+                        </button>
+                        <button onClick={() => saveComment(fav.id)}
+                          className="p-1 rounded text-primary hover:text-primary/80 transition-colors">
+                          <Check size={12} />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => startEditComment(fav)}
+                      className="mt-1.5 flex items-center gap-1 text-[10px] text-muted-foreground/50 hover:text-primary/70 font-ui transition-colors"
+                    >
+                      <MessageSquare size={10} />
+                      {fav.comment ? (
+                        <span className="text-foreground/50 italic line-clamp-1">{fav.comment}</span>
+                      ) : (
+                        <span>Adicionar comentário</span>
+                      )}
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </aside>
   );
