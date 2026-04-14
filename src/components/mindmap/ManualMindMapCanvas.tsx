@@ -626,7 +626,7 @@ function ManualCanvas({ userCodeId, mapId, onClose }: ManualCanvasProps) {
     }]);
     setSelectedNode(id);
     setContextMenu(null);
-  }, [nodes, setNodes, setEdges, saveHistory]);
+  }, [nodes, setNodes, setEdges, saveHistory, edgeType]);
 
   const convertToNote = useCallback((nodeId: string) => {
     saveHistory();
