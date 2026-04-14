@@ -350,9 +350,9 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
 
   // ── CONTENT (shared between mobile & desktop) ──
   const renderContent = () => (
-    <div className={isMobile ? "main-content" : "flex-1 overflow-y-auto h-screen"}>
+    <div className={isMobile ? "main-content" : (tab === "mapamental" ? "flex-1 h-screen" : "flex-1 overflow-y-auto h-screen")}>
       {/* Desktop header for content area */}
-      {!isMobile && (
+      {!isMobile && tab !== "mapamental" && (
         <div className="sticky top-0 z-30 px-6 py-4 border-b border-border/30 bg-background/80 backdrop-blur-md">
           <h1 className={`text-[20px] font-bold text-foreground font-display tracking-wide transition-all duration-500 ${titleFading ? "opacity-0" : "opacity-100"}`}>
             {displayTitle}
@@ -360,7 +360,7 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
         </div>
       )}
 
-      <div className={!isMobile ? "px-6 py-4 max-w-3xl mx-auto" : ""}>
+      <div className={!isMobile ? (tab === "mapamental" ? "h-[calc(100vh-57px)]" : "px-6 py-4 max-w-3xl mx-auto") : (tab === "mapamental" ? "h-[calc(100dvh-120px)]" : "")}>
         {/* ── LEITURA TAB ── */}
         {tab === "leitura" && (
           <>
@@ -624,17 +624,19 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
         {/* Center content */}
         {renderContent()}
 
-        {/* Right panel */}
-        <DesktopRightPanel
-          totalProgress={prog}
-          weekProgress={wp}
-          activeWeek={activeWeek}
-          totalWeeks={WEEKS.length}
-          checked={checked}
-          todayVerse={todayDevotional?.verse}
-          todayRef={todayDevotional?.ref}
-          streakDays={streakDays}
-        />
+        {/* Right panel — hidden on mind map tab */}
+        {tab !== "mapamental" && (
+          <DesktopRightPanel
+            totalProgress={prog}
+            weekProgress={wp}
+            activeWeek={activeWeek}
+            totalWeeks={WEEKS.length}
+            checked={checked}
+            todayVerse={todayDevotional?.verse}
+            todayRef={todayDevotional?.ref}
+            streakDays={streakDays}
+          />
+        )}
 
         {/* Focus reading view */}
         {focusReading && (
