@@ -17,12 +17,13 @@ import {
   useReactFlow,
   ReactFlowProvider,
   type NodeProps,
+  MarkerType,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import {
   Plus, StickyNote, Link2, Palette, X, Undo2, Redo2,
   Maximize, Trash2, Copy, PlusCircle, Pencil, ChevronDown, ChevronUp,
-  ArrowUpDown, ArrowLeftRight,
+  ArrowUpDown, ArrowLeftRight, Type, Heading1, Heading2, AlignLeft,
 } from "lucide-react";
 import dagre from "dagre";
 
