@@ -32,6 +32,33 @@ export type Database = {
         }
         Relationships: []
       }
+      favorite_verses: {
+        Row: {
+          created_at: string
+          id: string
+          reading_day: string
+          user_code_id: string
+          verse_reference: string
+          verse_text: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          reading_day?: string
+          user_code_id: string
+          verse_reference: string
+          verse_text: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          reading_day?: string
+          user_code_id?: string
+          verse_reference?: string
+          verse_text?: string
+        }
+        Relationships: []
+      }
       flashcards: {
         Row: {
           answer: string

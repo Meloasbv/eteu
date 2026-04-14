@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 import {
   X, Check, Play, Pause, SkipBack, SkipForward, Repeat,
-  Volume2, ChevronDown, Sparkles, Loader2,
+  Volume2, ChevronDown, Sparkles, Loader2, Heart,
 } from "lucide-react";
 
 interface Props {
@@ -16,6 +17,7 @@ interface Props {
   contextText?: string;
   onFetchContext?: () => void;
   contextLoading?: boolean;
+  userCodeId: string;
 }
 
 interface ParsedVerse {
@@ -59,7 +61,7 @@ function parseBibleText(raw: string): ParsedVerse[] {
 
 export default function ReadingFocusView({
   weekIdx, dayIdx, dayName, readings, isDone, onToggleDone, onClose,
-  contextText, onFetchContext, contextLoading,
+  contextText, onFetchContext, contextLoading, userCodeId,
 }: Props) {
   const [bibleText, setBibleText] = useState("");
   const [loading, setLoading] = useState(true);
@@ -70,6 +72,9 @@ export default function ReadingFocusView({
   const [speed, setSpeed] = useState(1);
   const [showSpeedMenu, setShowSpeedMenu] = useState(false);
   const [showContext, setShowContext] = useState(false);
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
+
+  const readingDay = `Semana ${weekIdx + 1} · ${dayName}`;
 
   const uttRef = useRef<SpeechSynthesisUtterance | null>(null);
   const touchStartX = useRef(0);
@@ -132,9 +137,43 @@ export default function ReadingFocusView({
     return () => { cancelled = true; };
   }, [readings]);
 
+  // Load favorites from DB
+  useEffect(() => {
+    const loadFavs = async () => {
+      const { data } = await supabase
+        .from("favorite_verses")
+        .select("verse_reference")
+        .eq("user_code_id", userCodeId)
+        .eq("reading_day", readingDay);
+      if (data) setFavorites(new Set(data.map(r => r.verse_reference)));
+    };
+    loadFavs();
+  }, [userCodeId, readingDay]);
+
+  const toggleFavorite = useCallback(async (verse: ParsedVerse) => {
+    const ref = `${verse.header || ""} ${verse.number}`.trim();
+    const isFav = favorites.has(ref);
+    if (isFav) {
+      setFavorites(prev => { const n = new Set(prev); n.delete(ref); return n; });
+      await supabase.from("favorite_verses").delete()
+        .eq("user_code_id", userCodeId)
+        .eq("verse_reference", ref)
+        .eq("reading_day", readingDay);
+    } else {
+      setFavorites(prev => new Set(prev).add(ref));
+      await supabase.from("favorite_verses").insert({
+        user_code_id: userCodeId,
+        verse_reference: ref,
+        verse_text: verse.text,
+        reading_day: readingDay,
+      });
+    }
+  }, [favorites, userCodeId, readingDay]);
+
   const verses = useMemo(() => parseBibleText(bibleText), [bibleText]);
   const currentVerse = verses[currentIdx];
   const progress = verses.length ? ((currentIdx + 1) / verses.length) * 100 : 0;
+  const currentRef = currentVerse ? `${currentVerse.header || ""} ${currentVerse.number}`.trim() : "";
 
   // TTS
   const speakVerse = useCallback((idx: number) => {
@@ -289,10 +328,21 @@ export default function ReadingFocusView({
               </p>
             )}
 
-            {/* Verse badge */}
-            <span className="inline-block px-3 py-1 rounded-full bg-primary/10 text-primary text-[11px] font-bold font-ui mb-6">
-              Versículo {currentVerse.number}
-            </span>
+            {/* Verse badge + favorite */}
+            <div className="flex items-center justify-center gap-3 mb-6">
+              <span className="inline-block px-3 py-1 rounded-full bg-primary/10 text-primary text-[11px] font-bold font-ui">
+                Versículo {currentVerse.number}
+              </span>
+              <button
+                onClick={() => toggleFavorite(currentVerse)}
+                className="p-1.5 rounded-full transition-all active:scale-90"
+              >
+                <Heart
+                  size={18}
+                  className={favorites.has(currentRef) ? "fill-red-500 text-red-500" : "text-muted-foreground"}
+                />
+              </button>
+            </div>
 
             {/* Verse text */}
             <blockquote className="font-serif text-[22px] lg:text-[26px] leading-[2] text-foreground/85 italic tracking-wide">
