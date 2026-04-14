@@ -375,6 +375,7 @@ function ManualCanvas({ userCodeId, mapId, onClose }: ManualCanvasProps) {
   const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [loaded, setLoaded] = useState(!mapId);
+  const [editingCard, setEditingCard] = useState<string | null>(null);
   const dirtyRef = useRef(false);
 
   const history = useUndoRedo();
