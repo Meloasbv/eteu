@@ -88,7 +88,7 @@ export default function NotebookList({ userCodeId }: { userCodeId: string }) {
   });
 
   return (
-    <div className="flex flex-col flex-1 px-4 pb-24">
+    <div className="flex flex-col flex-1 px-4 pb-24 overflow-y-auto">
       {/* Search */}
       <div className="relative mt-3">
         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />

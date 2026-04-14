@@ -34,7 +34,7 @@ export default function StudyTab({ userCodeId }: { userCodeId: string }) {
   // Split mode (desktop only)
   if (splitMode && !isMobile) {
     return (
-      <div className="flex flex-col h-full">
+      <div className="flex flex-col h-full overflow-hidden">
         {/* Toggle bar */}
         <div className="flex items-center gap-2 mx-4 mt-3">
           <div className="flex-1 flex gap-0.5 p-1 rounded-xl"
