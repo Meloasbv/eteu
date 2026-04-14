@@ -14,7 +14,6 @@ interface Props {
 const NAV_ITEMS: { key: Tab; icon: React.ElementType; label: string }[] = [
   { key: "leitura", icon: BookOpen, label: "Plano de Leitura" },
   { key: "devocional", icon: Flame, label: "Devocionais" },
-  { key: "mapamental", icon: Brain, label: "Mapa Mental" },
   { key: "agenda", icon: Calendar, label: "Agenda" },
   { key: "anotacoes", icon: PenLine, label: "Estudo" },
 ];
