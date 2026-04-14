@@ -328,7 +328,7 @@ function autoLayout(nodes: Node[], edges: Edge[], direction = "TB") {
 
 function stripCallbacks(nodes: Node[]): any[] {
   return nodes.map(n => {
-    const { onLabelChange, onDataChange, ...cleanData } = n.data as any;
+    const { onLabelChange, onDataChange, onEditCard, ...cleanData } = n.data as any;
     return { ...n, data: cleanData };
   });
 }
