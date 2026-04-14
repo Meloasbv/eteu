@@ -516,6 +516,7 @@ function ManualCanvas({ userCodeId, mapId, onClose }: ManualCanvasProps) {
           setNodes(prev => prev.map(nd => nd.id === _id ? { ...nd, data: { ...nd.data, ...updates } } : nd));
           dirtyRef.current = true;
         },
+        onEditCard: (_id: string) => { setEditingCard(_id); },
       },
     };
 
@@ -879,6 +880,27 @@ function ManualCanvas({ userCodeId, mapId, onClose }: ManualCanvasProps) {
             <CtxItem icon={Trash2} label="Excluir" danger onClick={() => deleteNode(contextMenu.nodeId)} />
           </div>
         )}
+
+        {/* Card Editor Overlay */}
+        {editingCard && (() => {
+          const node = nodes.find(n => n.id === editingCard);
+          if (!node) return null;
+          const d = node.data as Record<string, any>;
+          return (
+            <MindMapCardEditor
+              nodeId={editingCard}
+              title={(d.title as string) || "Nota"}
+              content={(d.content as string) || ""}
+              onSave={(nid, newTitle, newContent) => {
+                setNodes(prev => prev.map(nd =>
+                  nd.id === nid ? { ...nd, data: { ...nd.data, title: newTitle, content: newContent } } : nd
+                ));
+                dirtyRef.current = true;
+              }}
+              onClose={() => setEditingCard(null)}
+            />
+          );
+        })()}
       </div>
     </div>
   );
