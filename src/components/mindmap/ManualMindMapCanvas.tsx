@@ -185,21 +185,13 @@ function SimpleNode({ data, id }: NodeProps) {
 
 function NoteCardNode({ data, id }: NodeProps) {
   const d = data as Record<string, any>;
-  const [editing, setEditing] = useState(false);
-  const [title, setTitle] = useState(d.title as string);
-  const [content, setContent] = useState((d.content as string) || "");
   const [expanded, setExpanded] = useState((d.isExpanded as boolean) ?? true);
   const color = (d.color as string) || "#c4a46a";
   const colorMode = (d.colorMode as string) || "border";
-  const titleRef = useRef<HTMLInputElement>(null);
+  const contentHtml = (d.content as string) || "";
 
-  useEffect(() => { setTitle(d.title as string); setContent((d.content as string) || ""); }, [d.title, d.content]);
-  useEffect(() => { if (editing) titleRef.current?.focus(); }, [editing]);
-
-  const commit = () => {
-    setEditing(false);
-    d.onDataChange?.(id, { title: title || "Nota", content });
-  };
+  // Strip HTML for preview
+  const plainPreview = contentHtml.replace(/<[^>]+>/g, "").slice(0, 120);
 
   return (
     <div
@@ -212,7 +204,7 @@ function NoteCardNode({ data, id }: NodeProps) {
         boxShadow: expanded ? "0 8px 32px rgba(0,0,0,0.5)" : "0 2px 12px rgba(0,0,0,0.3)",
         overflow: "hidden",
       }}
-      onDoubleClick={() => setEditing(true)}
+      onDoubleClick={() => d.onEditCard?.(id)}
     >
       <Handle type="source" position={Position.Top} className="group-hover:!opacity-100" style={handleStyle} />
       <Handle type="source" position={Position.Bottom} className="group-hover:!opacity-100" style={handleStyle} />
@@ -223,39 +215,33 @@ function NoteCardNode({ data, id }: NodeProps) {
       <Handle type="target" position={Position.Left} className="group-hover:!opacity-100" style={{ ...handleStyle, left: -4 }} />
       <Handle type="target" position={Position.Right} className="group-hover:!opacity-100" style={{ ...handleStyle, right: -4 }} />
       <div className="flex items-center justify-between px-4 pt-3 pb-2">
-        {editing ? (
-          <input ref={titleRef} value={title} onChange={e => setTitle(e.target.value)}
-            onKeyDown={e => { if (e.key === "Enter") commit(); if (e.key === "Escape") { setTitle(d.title as string); setEditing(false); } }}
-            className="bg-transparent text-[15px] font-display font-semibold text-foreground flex-1 outline-none border-b border-primary/20"
-            placeholder="Título" />
-        ) : (
-          <div className="flex items-center gap-2 flex-1 min-w-0">
-            <StickyNote size={14} style={{ color, flexShrink: 0 }} />
-            <p className="font-display text-[15px] font-semibold text-foreground truncate">{d.title as string}</p>
-          </div>
-        )}
-        <button onClick={() => setExpanded(!expanded)} className="ml-2 text-muted-foreground/50 hover:text-primary transition-colors flex-shrink-0">
-          {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-        </button>
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <StickyNote size={14} style={{ color, flexShrink: 0 }} />
+          <p className="font-display text-[15px] font-semibold text-foreground truncate">{d.title as string}</p>
+        </div>
+        <div className="flex items-center gap-1 ml-2">
+          <button onClick={() => d.onEditCard?.(id)} className="text-muted-foreground/50 hover:text-primary transition-colors flex-shrink-0" title="Editar">
+            <Pencil size={13} />
+          </button>
+          <button onClick={() => setExpanded(!expanded)} className="text-muted-foreground/50 hover:text-primary transition-colors flex-shrink-0">
+            {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          </button>
+        </div>
       </div>
       {expanded ? (
         <div className="px-4 pb-4">
-          {editing ? (
-            <textarea value={content} onChange={e => setContent(e.target.value)}
-              onBlur={commit}
-              className="w-full min-h-[120px] max-h-[300px] bg-transparent text-[13px] font-body text-foreground/75 leading-relaxed outline-none resize-none"
-              placeholder="Escreva suas anotações..." />
+          {contentHtml ? (
+            <div className="text-[13px] font-body leading-relaxed prose prose-sm prose-invert max-w-none"
+              style={{ color: "hsl(var(--foreground) / 0.75)" }}
+              dangerouslySetInnerHTML={{ __html: contentHtml }} />
           ) : (
-            <p className="text-[13px] font-body leading-relaxed whitespace-pre-wrap"
-              style={{ color: "hsl(var(--foreground) / 0.75)" }}>
-              {(d.content as string) || <span className="italic text-muted-foreground/40">Duplo clique para escrever...</span>}
-            </p>
+            <p className="text-[13px] font-body italic text-muted-foreground/40">Duplo clique para escrever...</p>
           )}
         </div>
       ) : (
         <div className="px-4 pb-3">
           <p className="text-[12px] font-body text-muted-foreground line-clamp-2">
-            {(d.content as string) || "Sem conteúdo"}
+            {plainPreview || "Sem conteúdo"}
           </p>
         </div>
       )}
