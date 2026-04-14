@@ -440,28 +440,14 @@ function ManualCanvas({ onClose }: { onClose: () => void }) {
     setSelectedNode(id);
   }, [screenToFlowPosition, selectedNode, setNodes, setEdges, saveHistory]);
 
-  // Double click on pane to create node
-  const onPaneDoubleClick = useCallback((event: React.MouseEvent) => {
+  // Change node level
+  const changeLevel = useCallback((nodeId: string, level: NodeLevel) => {
     saveHistory();
-    const id = nextId();
-    const position = screenToFlowPosition({ x: event.clientX, y: event.clientY });
-    const newNode: Node = {
-      id,
-      type: "simpleNode",
-      position,
-      data: {
-        title: "Novo Card",
-        description: "",
-        color: "#c4a46a",
-        colorMode: "border",
-        onDataChange: (_id: string, updates: Record<string, any>) => {
-          setNodes(prev => prev.map(nd => nd.id === _id ? { ...nd, data: { ...nd.data, ...updates } } : nd));
-        },
-      },
-    };
-    setNodes(ns => [...ns, newNode]);
-    setSelectedNode(id);
-  }, [screenToFlowPosition, setNodes, saveHistory]);
+    setNodes(ns => ns.map(n =>
+      n.id === nodeId ? { ...n, data: { ...n.data, level } } : n
+    ));
+    setContextMenu(null);
+  }, [setNodes, saveHistory]);
 
   // Apply color
   const applyColor = useCallback((color: string) => {
