@@ -504,6 +504,7 @@ function ManualCanvas({ onClose }: { onClose: () => void }) {
         description: "",
         color: "#c4a46a",
         colorMode: "border",
+        level: "text" as NodeLevel,
         onDataChange: (_id: string, updates: Record<string, any>) => {
           setNodes(prev => prev.map(nd => nd.id === _id ? { ...nd, data: { ...nd.data, ...updates } } : nd));
         },
@@ -515,7 +516,8 @@ function ManualCanvas({ onClose }: { onClose: () => void }) {
       source: parentId,
       target: id,
       type: "smoothstep",
-      style: { stroke: "rgba(196,164,106,0.25)", strokeWidth: 1.5 },
+      style: edgeStyle,
+      markerEnd: edgeMarker,
     }]);
     setSelectedNode(id);
     setContextMenu(null);
