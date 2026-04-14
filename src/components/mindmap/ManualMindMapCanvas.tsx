@@ -43,9 +43,10 @@ const manualColors = [
 ];
 
 const handleStyle = {
-  width: 8, height: 8,
-  background: "rgba(196,164,106,0.3)",
-  border: "none",
+  width: 12, height: 12,
+  background: "rgba(196,164,106,0.5)",
+  border: "2px solid rgba(196,164,106,0.7)",
+  borderRadius: "50%",
   opacity: 0,
   transition: "all 0.15s ease",
 };
