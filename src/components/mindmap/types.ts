@@ -5,6 +5,11 @@ export interface KeyConcept {
   category: "teologia" | "contexto" | "aplicação" | "personagem" | "lugar" | "evento";
   icon_suggestion?: string;
   bible_refs?: string[];
+  // StudyNote fields
+  coreIdea?: string;
+  keyPoints?: string[];
+  practicalApplication?: string;
+  impactPhrase?: string;
 }
 
 export interface HierarchyNode {
