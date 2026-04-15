@@ -412,7 +412,52 @@ export default function MindMapCanvas({ analysis, onClose }: Props) {
             <h3 className="font-display text-lg font-bold text-foreground mb-2 leading-tight">{analysis.main_theme}</h3>
             <p className="text-[13px] text-muted-foreground font-body leading-relaxed mb-6">{analysis.summary}</p>
 
-            {/* Sections */}
+            {/* Study Notes from concepts */}
+            {analysis.key_concepts?.some(c => c.coreIdea) && (
+              <>
+                <p className="text-[10px] uppercase tracking-[2px] text-primary/60 font-ui mb-3">📖 Notas de Estudo</p>
+                {analysis.key_concepts.filter(c => c.coreIdea).map((concept, i) => {
+                  const cat = categoryColors[concept.category] || categoryColors.teologia;
+                  return (
+                    <div key={i} className="mb-4 rounded-xl p-4"
+                      style={{ background: "hsl(var(--card))", borderLeft: `3px solid ${cat.border}` }}>
+                      <p className="font-display text-[14px] font-semibold mb-2" style={{ color: cat.text }}>
+                        {concept.title}
+                      </p>
+                      {concept.coreIdea && (
+                        <p className="font-body text-[13px] italic mb-2 py-1.5 px-3 rounded-r-lg"
+                          style={{ background: `${cat.border}08`, borderLeft: `2px solid ${cat.border}40`, color: "hsl(var(--foreground) / 0.9)" }}>
+                          💡 {concept.coreIdea}
+                        </p>
+                      )}
+                      {concept.keyPoints && concept.keyPoints.length > 0 && (
+                        <ul className="space-y-0.5 mb-2">
+                          {concept.keyPoints.map((pt, j) => (
+                            <li key={j} className="text-[12.5px] font-ui pl-3 relative" style={{ color: "hsl(var(--foreground) / 0.75)" }}>
+                              <span className="absolute left-0" style={{ color: cat.border }}>•</span>
+                              {pt}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      {concept.practicalApplication && (
+                        <p className="text-[12px] font-ui mb-2" style={{ color: "#8b9e7a" }}>
+                          ⚡ {concept.practicalApplication}
+                        </p>
+                      )}
+                      {concept.impactPhrase && (
+                        <p className="font-body text-[13px] font-semibold text-center pt-2"
+                          style={{ color: cat.border, borderTop: `1px solid ${cat.border}15` }}>
+                          🔥 "{concept.impactPhrase}"
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </>
+            )}
+
+            {/* Structured Sections */}
             {analysis.structured_notes?.map((section, i) => (
               <NoteSection key={i} title={section.section_title} points={section.points} />
             ))}
