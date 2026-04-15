@@ -392,6 +392,7 @@ function ManualCanvas({ userCodeId, mapId, onClose }: ManualCanvasProps) {
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [showColorPicker, setShowColorPicker] = useState(false);
+  const [showIconPicker, setShowIconPicker] = useState(false);
   const [colorMode, setColorMode] = useState<"border" | "fill">("border");
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; nodeId: string } | null>(null);
   const [mapTitle, setMapTitle] = useState("Meu Mapa Mental");
