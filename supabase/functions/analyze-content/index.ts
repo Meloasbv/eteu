@@ -26,53 +26,24 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    const systemPrompt = `Você é um assistente especializado em análise de conteúdo bíblico e teológico. Analise o texto fornecido e retorne APENAS um JSON válido (sem markdown, sem backticks, sem explicação) com esta estrutura exata:
+    const systemPrompt = `Você é um assistente especializado em análise de conteúdo bíblico e teológico. Analise o texto fornecido e retorne APENAS um JSON válido com a estrutura solicitada.
 
-{
-  "main_theme": "Tema principal em uma frase",
-  "summary": "Resumo de 2-3 parágrafos",
-  "key_concepts": [
-    {
-      "id": "concept_1",
-      "title": "Nome do conceito",
-      "description": "Explicação em 1-2 frases",
-      "category": "teologia|contexto|aplicação|personagem|lugar|evento",
-      "icon_suggestion": "nome de ícone Lucide sugerido (ex: book-open, heart, flame, crown, shield, cross, users, scroll, star, sword, mountain, waves, sun, anchor, scale, lightbulb)",
-      "bible_refs": ["Jo 3:16", "Rm 5:8"]
-    }
-  ],
-  "hierarchy": {
-    "root": {
-      "label": "Tema central",
-      "children": [
-        {
-          "label": "Tópico 1",
-          "children": [
-            { "label": "Subtópico 1.1", "children": [] },
-            { "label": "Subtópico 1.2", "children": [] }
-          ]
-        }
-      ]
-    }
-  },
-  "keywords": ["palavra1", "palavra2"],
-  "structured_notes": [
-    {
-      "section_title": "Título da seção",
-      "points": ["Ponto 1", "Ponto 2"]
-    }
-  ]
-}
-
-REGRAS:
+REGRAS GERAIS:
 - Identifique 6-12 conceitos-chave, extraindo o máximo possível do conteúdo fornecido
 - Crie uma hierarquia com 3-6 tópicos principais, cada um com 2-4 subtópicos — seja detalhista e abrangente
 - Notas estruturadas devem ter 3-6 seções cobrindo todo o conteúdo
 - Inclua TODAS as referências bíblicas mencionadas no texto
-- Cada conceito deve ter uma descrição detalhada de 2-3 frases
 - NÃO ignore nenhuma parte do texto — cubra TODO o conteúdo fornecido
 - O resumo deve ter 3-4 parágrafos completos
-- Retorne SOMENTE o JSON, nada mais`;
+
+REGRAS PARA OS CAMPOS DE ESTUDO (dentro de cada key_concept):
+- coreIdea: UMA frase que resume a essência (máximo 15 palavras). Deve ser escaneável em 2 segundos.
+- keyPoints: array de 3-5 pontos principais (cada um máximo 12 palavras). Curtos e diretos.
+- practicalApplication: como isso afeta a vida do cristão (1-2 frases de confronto espiritual)
+- bibleVerses: array de referências bíblicas relacionadas (formato "Livro capítulo:versículo"). Os mais relevantes, não genéricos.
+- impactPhrase: uma frase curta e poderosa para memorizar (máximo 10 palavras). Como um slogan espiritual.
+
+Seja CONCISO. Nenhum parágrafo longo. Cada ponto deve ser escaneável em 2 segundos.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -108,8 +79,12 @@ REGRAS:
                         category: { type: "string", enum: ["teologia", "contexto", "aplicação", "personagem", "lugar", "evento"] },
                         icon_suggestion: { type: "string" },
                         bible_refs: { type: "array", items: { type: "string" } },
+                        coreIdea: { type: "string", description: "Uma frase que resume a essência (max 15 palavras)" },
+                        keyPoints: { type: "array", items: { type: "string" }, description: "3-5 pontos principais (max 12 palavras cada)" },
+                        practicalApplication: { type: "string", description: "Aplicação prática ou confronto espiritual (1-2 frases)" },
+                        impactPhrase: { type: "string", description: "Frase memorizável de impacto (max 10 palavras)" },
                       },
-                      required: ["id", "title", "description", "category"],
+                      required: ["id", "title", "description", "category", "coreIdea", "keyPoints", "practicalApplication", "impactPhrase"],
                     },
                   },
                   hierarchy: {
@@ -189,7 +164,6 @@ REGRAS:
 
     const data = await response.json();
     
-    // Extract from tool call
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
     let result;
     
@@ -198,7 +172,6 @@ REGRAS:
         ? JSON.parse(toolCall.function.arguments)
         : toolCall.function.arguments;
     } else {
-      // Fallback: try parsing content as JSON
       const content = data.choices?.[0]?.message?.content || "";
       const cleaned = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
       result = JSON.parse(cleaned);
