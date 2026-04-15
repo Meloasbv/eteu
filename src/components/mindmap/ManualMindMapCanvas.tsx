@@ -844,7 +844,8 @@ function ManualCanvas({ userCodeId, mapId, onClose }: ManualCanvasProps) {
           <div className="w-px h-5" style={{ background: "rgba(196,164,106,0.15)" }} />
           <ToolbarBtn icon={Link2} label={edgeType === "smoothstep" ? "Curva" : edgeType === "straight" ? "Reta" : "Bézier"}
             onClick={() => changeEdgeType(edgeType === "smoothstep" ? "straight" : edgeType === "straight" ? "default" : "smoothstep")} />
-          <ToolbarBtn icon={Palette} label="Cor" onClick={() => setShowColorPicker(!showColorPicker)} active={showColorPicker} />
+          <ToolbarBtn icon={Palette} label="Cor" onClick={() => { setShowColorPicker(!showColorPicker); setShowIconPicker(false); }} active={showColorPicker} />
+          <ToolbarBtn icon={Smile} label="Ícone" onClick={() => { setShowIconPicker(!showIconPicker); setShowColorPicker(false); }} active={showIconPicker} />
         </div>
 
         {/* Color Picker Popover */}
