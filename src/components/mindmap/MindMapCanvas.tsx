@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useEffect, useState } from "react";
+import { useCallback, useMemo, useEffect, useState, lazy, Suspense } from "react";
 import {
   ReactFlow,
   MiniMap,
@@ -17,13 +17,17 @@ import {
 import "@xyflow/react/dist/style.css";
 import dagre from "dagre";
 import {
-  ArrowLeftRight, ArrowUpDown, X,
+  ArrowLeftRight, ArrowUpDown, X, Map, ClipboardList, Layers, Eye,
   BookOpen, Heart, Flame, Crown, Shield, Globe, Users,
   Scroll, Star, Sword, Mountain, Waves, Sun, Anchor,
   Scale, Lightbulb, Cross, ChevronDown, ChevronRight,
-  Maximize,
+  Maximize, Loader2,
 } from "lucide-react";
 import type { AnalysisResult } from "./types";
+
+const StudyFlashcardView = lazy(() => import("./StudyFlashcardView"));
+const StudyNotesListView = lazy(() => import("./StudyNotesListView"));
+const StudyRevealView = lazy(() => import("./StudyRevealView"));
 
 const iconMap: Record<string, React.ElementType> = {
   "book-open": BookOpen, heart: Heart, flame: Flame, crown: Crown,
@@ -368,8 +372,9 @@ interface Props {
 }
 
 export default function MindMapCanvas({ analysis, onClose }: Props) {
-  const [direction, setDirection] = useState<"TB" | "LR">("LR"); // LR default for desktop
-  const [showNotes, setShowNotes] = useState(true); // auto-open on desktop
+  const [direction, setDirection] = useState<"TB" | "LR">("LR");
+  const [showNotes, setShowNotes] = useState(true);
+  const [studyMode, setStudyMode] = useState<"map" | "notes" | "flashcards" | "review">("map");
 
   const { nodes: initialNodes, edges: initialEdges } = useMemo(() => buildFromAnalysis(analysis), [analysis]);
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
@@ -388,11 +393,119 @@ export default function MindMapCanvas({ analysis, onClose }: Props) {
     setEdges(le);
   }, [analysis]);
 
-  // Detect desktop
   const isDesktop = typeof window !== "undefined" && window.innerWidth >= 1024;
+  const flashcardCount = (analysis.key_concepts || []).length * 2; // approx
 
+  const fallbackLoader = (
+    <div className="flex items-center justify-center h-full">
+      <Loader2 className="animate-spin text-primary" size={24} />
+    </div>
+  );
+
+  // Study mode tabs component
+  const StudyModeTabs = () => (
+    <div className="flex gap-0.5 rounded-xl p-1"
+      style={{ background: "hsl(var(--background) / 0.9)", border: "1px solid hsl(var(--border) / 0.2)", backdropFilter: "blur(12px)" }}>
+      {[
+        { key: "map" as const, icon: Map, label: "Mapa" },
+        { key: "notes" as const, icon: ClipboardList, label: "Notas" },
+        { key: "flashcards" as const, icon: Layers, label: "Flashcards", badge: flashcardCount },
+        { key: "review" as const, icon: Eye, label: "Revisão" },
+      ].map(tab => (
+        <button
+          key={tab.key}
+          onClick={() => setStudyMode(tab.key)}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[12px] font-ui font-semibold transition-all whitespace-nowrap"
+          style={{
+            background: studyMode === tab.key ? "hsl(var(--primary) / 0.1)" : "transparent",
+            color: studyMode === tab.key ? "hsl(var(--primary))" : "hsl(var(--muted-foreground) / 0.6)",
+            border: studyMode === tab.key ? "1px solid hsl(var(--primary) / 0.2)" : "1px solid transparent",
+          }}
+        >
+          <tab.icon size={14} />
+          <span className="hidden sm:inline">{tab.label}</span>
+          {tab.badge && studyMode !== tab.key && (
+            <span className="px-1.5 py-0.5 rounded-md text-[9px] font-bold"
+              style={{ background: "#d4854a", color: "white", minWidth: 16, textAlign: "center" }}>
+              {tab.badge}
+            </span>
+          )}
+        </button>
+      ))}
+    </div>
+  );
+
+  // Non-map study modes
+  if (studyMode === "flashcards") {
+    return (
+      <div className="flex flex-col h-full w-full">
+        <div className="flex items-center justify-between px-4 py-2 shrink-0"
+          style={{ borderBottom: "1px solid hsl(var(--border) / 0.2)" }}>
+          <StudyModeTabs />
+          <button onClick={onClose} className="p-2 rounded-lg text-muted-foreground hover:text-foreground transition-colors">
+            <X size={16} />
+          </button>
+        </div>
+        <div className="flex-1 overflow-hidden">
+          <Suspense fallback={fallbackLoader}>
+            <StudyFlashcardView analysis={analysis} onBack={() => setStudyMode("map")} />
+          </Suspense>
+        </div>
+      </div>
+    );
+  }
+
+  if (studyMode === "notes") {
+    return (
+      <div className="flex flex-col h-full w-full">
+        <div className="flex items-center justify-between px-4 py-2 shrink-0"
+          style={{ borderBottom: "1px solid hsl(var(--border) / 0.2)" }}>
+          <StudyModeTabs />
+          <button onClick={onClose} className="p-2 rounded-lg text-muted-foreground hover:text-foreground transition-colors">
+            <X size={16} />
+          </button>
+        </div>
+        <div className="flex-1 overflow-hidden">
+          <Suspense fallback={fallbackLoader}>
+            <StudyNotesListView analysis={analysis} onBack={() => setStudyMode("map")} />
+          </Suspense>
+        </div>
+      </div>
+    );
+  }
+
+  if (studyMode === "review") {
+    return (
+      <div className="flex flex-col h-full w-full">
+        <div className="flex items-center justify-between px-4 py-2 shrink-0"
+          style={{ borderBottom: "1px solid hsl(var(--border) / 0.2)" }}>
+          <StudyModeTabs />
+          <button onClick={onClose} className="p-2 rounded-lg text-muted-foreground hover:text-foreground transition-colors">
+            <X size={16} />
+          </button>
+        </div>
+        <div className="flex-1 overflow-hidden">
+          <Suspense fallback={fallbackLoader}>
+            <StudyRevealView analysis={analysis} onBack={() => setStudyMode("map")} />
+          </Suspense>
+        </div>
+      </div>
+    );
+  }
+
+  // Map mode
   return (
-    <div className="flex h-full w-full animate-fade-in">
+    <div className="flex flex-col h-full w-full animate-fade-in">
+      {/* Study mode tabs */}
+      <div className="flex items-center justify-between px-4 py-2 shrink-0"
+        style={{ borderBottom: "1px solid hsl(var(--border) / 0.2)" }}>
+        <StudyModeTabs />
+        <button onClick={onClose} className="p-2 rounded-lg text-muted-foreground hover:text-foreground transition-colors">
+          <X size={16} />
+        </button>
+      </div>
+
+      <div className="flex flex-1 min-h-0">
       {/* Notes panel (desktop — always visible, richer) */}
       {showNotes && (
         <div className="hidden lg:flex lg:flex-col w-[340px] h-full overflow-y-auto border-r shrink-0"
@@ -611,6 +724,7 @@ export default function MindMapCanvas({ analysis, onClose }: Props) {
             </div>
           )}
         </div>
+      </div>
       </div>
     </div>
   );

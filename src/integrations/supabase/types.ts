@@ -104,6 +104,8 @@ export type Database = {
           edges: Json
           id: string
           nodes: Json
+          source_type: string | null
+          study_notes: Json | null
           title: string
           updated_at: string
           user_code_id: string
@@ -113,6 +115,8 @@ export type Database = {
           edges?: Json
           id?: string
           nodes?: Json
+          source_type?: string | null
+          study_notes?: Json | null
           title?: string
           updated_at?: string
           user_code_id: string
@@ -122,6 +126,8 @@ export type Database = {
           edges?: Json
           id?: string
           nodes?: Json
+          source_type?: string | null
+          study_notes?: Json | null
           title?: string
           updated_at?: string
           user_code_id?: string
@@ -274,6 +280,109 @@ export type Database = {
           user_code_id?: string
         }
         Relationships: []
+      }
+      study_flashcards: {
+        Row: {
+          back: string
+          created_at: string
+          difficulty: string
+          ease_factor: number
+          front: string
+          id: string
+          interval_days: number
+          last_review: string | null
+          mind_map_id: string | null
+          next_review: string
+          note_id: string
+          repetitions: number
+          type: string
+          user_code_id: string
+        }
+        Insert: {
+          back: string
+          created_at?: string
+          difficulty?: string
+          ease_factor?: number
+          front: string
+          id?: string
+          interval_days?: number
+          last_review?: string | null
+          mind_map_id?: string | null
+          next_review?: string
+          note_id: string
+          repetitions?: number
+          type?: string
+          user_code_id: string
+        }
+        Update: {
+          back?: string
+          created_at?: string
+          difficulty?: string
+          ease_factor?: number
+          front?: string
+          id?: string
+          interval_days?: number
+          last_review?: string | null
+          mind_map_id?: string | null
+          next_review?: string
+          note_id?: string
+          repetitions?: number
+          type?: string
+          user_code_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "study_flashcards_mind_map_id_fkey"
+            columns: ["mind_map_id"]
+            isOneToOne: false
+            referencedRelation: "mind_maps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      study_reviews: {
+        Row: {
+          cards_reviewed: number
+          cards_total: number
+          completed_at: string
+          duration_seconds: number
+          id: string
+          mind_map_id: string | null
+          review_type: string
+          self_rating: number | null
+          user_code_id: string
+        }
+        Insert: {
+          cards_reviewed?: number
+          cards_total?: number
+          completed_at?: string
+          duration_seconds?: number
+          id?: string
+          mind_map_id?: string | null
+          review_type?: string
+          self_rating?: number | null
+          user_code_id: string
+        }
+        Update: {
+          cards_reviewed?: number
+          cards_total?: number
+          completed_at?: string
+          duration_seconds?: number
+          id?: string
+          mind_map_id?: string | null
+          review_type?: string
+          self_rating?: number | null
+          user_code_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "study_reviews_mind_map_id_fkey"
+            columns: ["mind_map_id"]
+            isOneToOne: false
+            referencedRelation: "mind_maps"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
