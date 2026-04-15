@@ -25,6 +25,9 @@ import {
   Maximize, Trash2, Copy, PlusCircle, Pencil, ChevronDown, ChevronUp,
   ArrowUpDown, ArrowLeftRight, Type, Heading1, Heading2, AlignLeft,
   Save, Loader2,
+  BookOpen, Heart, Flame, Crown, Shield, Globe, Users,
+  Scroll, Star, Sword, Mountain, Waves, Sun, Anchor,
+  Scale, Lightbulb, Cross, Smile,
 } from "lucide-react";
 import dagre from "dagre";
 import { supabase } from "@/integrations/supabase/client";
