@@ -384,6 +384,126 @@ export type Database = {
           },
         ]
       }
+      thought_connections: {
+        Row: {
+          connection_type: string
+          created_at: string
+          explanation: string | null
+          id: string
+          strength: number | null
+          thought_a: string
+          thought_b: string
+          user_code_id: string
+        }
+        Insert: {
+          connection_type?: string
+          created_at?: string
+          explanation?: string | null
+          id?: string
+          strength?: number | null
+          thought_a: string
+          thought_b: string
+          user_code_id: string
+        }
+        Update: {
+          connection_type?: string
+          created_at?: string
+          explanation?: string | null
+          id?: string
+          strength?: number | null
+          thought_a?: string
+          thought_b?: string
+          user_code_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thought_connections_thought_a_fkey"
+            columns: ["thought_a"]
+            isOneToOne: false
+            referencedRelation: "thoughts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "thought_connections_thought_b_fkey"
+            columns: ["thought_b"]
+            isOneToOne: false
+            referencedRelation: "thoughts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      thought_patterns: {
+        Row: {
+          bible_refs: string[] | null
+          description: string | null
+          detected_at: string
+          id: string
+          pattern_name: string
+          thought_ids: string[] | null
+          user_code_id: string
+        }
+        Insert: {
+          bible_refs?: string[] | null
+          description?: string | null
+          detected_at?: string
+          id?: string
+          pattern_name: string
+          thought_ids?: string[] | null
+          user_code_id: string
+        }
+        Update: {
+          bible_refs?: string[] | null
+          description?: string | null
+          detected_at?: string
+          id?: string
+          pattern_name?: string
+          thought_ids?: string[] | null
+          user_code_id?: string
+        }
+        Relationships: []
+      }
+      thoughts: {
+        Row: {
+          analysis: Json | null
+          content: string
+          created_at: string
+          emotion_intensity: number | null
+          emotion_valence: number | null
+          id: string
+          is_favorite: boolean | null
+          keywords: string[] | null
+          type: string
+          updated_at: string
+          user_code_id: string
+        }
+        Insert: {
+          analysis?: Json | null
+          content: string
+          created_at?: string
+          emotion_intensity?: number | null
+          emotion_valence?: number | null
+          id?: string
+          is_favorite?: boolean | null
+          keywords?: string[] | null
+          type?: string
+          updated_at?: string
+          user_code_id: string
+        }
+        Update: {
+          analysis?: Json | null
+          content?: string
+          created_at?: string
+          emotion_intensity?: number | null
+          emotion_valence?: number | null
+          id?: string
+          is_favorite?: boolean | null
+          keywords?: string[] | null
+          type?: string
+          updated_at?: string
+          user_code_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
