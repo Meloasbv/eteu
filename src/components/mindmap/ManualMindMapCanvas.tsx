@@ -189,7 +189,19 @@ function SimpleNode({ data, id }: NodeProps) {
         </div>
       ) : (
         <>
-          <p className={`font-display ${ls.fontSize} ${ls.fontWeight} text-foreground`} style={{ opacity: ls.opacity }}>{d.title as string}</p>
+          <div className="flex items-center gap-2">
+            {(() => {
+              const nodeIcon = (d.icon as string) || "";
+              const NodeIcon = nodeIcon ? iconMap[nodeIcon] : null;
+              return NodeIcon ? (
+                <div className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0"
+                  style={{ background: `${color}15` }}>
+                  <NodeIcon size={13} style={{ color }} />
+                </div>
+              ) : null;
+            })()}
+            <p className={`font-display ${ls.fontSize} ${ls.fontWeight} text-foreground`} style={{ opacity: ls.opacity }}>{d.title as string}</p>
+          </div>
           {d.description && (
             <p className="font-ui text-[11px] text-muted-foreground mt-1 leading-relaxed">{d.description as string}</p>
           )}
