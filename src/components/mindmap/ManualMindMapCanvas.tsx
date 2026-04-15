@@ -33,6 +33,18 @@ import dagre from "dagre";
 import { supabase } from "@/integrations/supabase/client";
 import MindMapCardEditor from "./MindMapCardEditor";
 
+// ── Icons ──
+
+const iconMap: Record<string, React.ElementType> = {
+  "book-open": BookOpen, heart: Heart, flame: Flame, crown: Crown,
+  shield: Shield, globe: Globe, users: Users, scroll: Scroll,
+  star: Star, sword: Sword, mountain: Mountain, waves: Waves,
+  sun: Sun, anchor: Anchor, scale: Scale, lightbulb: Lightbulb,
+  cross: Cross, smile: Smile,
+};
+
+const iconList = Object.keys(iconMap);
+
 // ── Colors ──
 
 const manualColors = [
