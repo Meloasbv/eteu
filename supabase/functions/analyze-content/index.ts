@@ -65,10 +65,13 @@ serve(async (req) => {
 }
 
 REGRAS:
-- Identifique 4-8 conceitos-chave
-- Crie uma hierarquia com 2-4 tópicos principais, cada um com 1-3 subtópicos
-- Notas estruturadas devem ter 2-4 seções
-- Inclua referências bíblicas quando relevantes
+- Identifique 6-12 conceitos-chave, extraindo o máximo possível do conteúdo fornecido
+- Crie uma hierarquia com 3-6 tópicos principais, cada um com 2-4 subtópicos — seja detalhista e abrangente
+- Notas estruturadas devem ter 3-6 seções cobrindo todo o conteúdo
+- Inclua TODAS as referências bíblicas mencionadas no texto
+- Cada conceito deve ter uma descrição detalhada de 2-3 frases
+- NÃO ignore nenhuma parte do texto — cubra TODO o conteúdo fornecido
+- O resumo deve ter 3-4 parágrafos completos
 - Retorne SOMENTE o JSON, nada mais`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -78,10 +81,10 @@ REGRAS:
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: `Analise este texto:\n\n${text.slice(0, 15000)}` },
+          { role: "user", content: `Analise COMPLETAMENTE este texto, cobrindo TODOS os pontos e detalhes mencionados. Não resuma demais — extraia o máximo de informação possível:\n\n${text.slice(0, 30000)}` },
         ],
         tools: [
           {

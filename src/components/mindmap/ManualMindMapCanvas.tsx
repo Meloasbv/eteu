@@ -25,10 +25,25 @@ import {
   Maximize, Trash2, Copy, PlusCircle, Pencil, ChevronDown, ChevronUp,
   ArrowUpDown, ArrowLeftRight, Type, Heading1, Heading2, AlignLeft,
   Save, Loader2,
+  BookOpen, Heart, Flame, Crown, Shield, Globe, Users,
+  Scroll, Star, Sword, Mountain, Waves, Sun, Anchor,
+  Scale, Lightbulb, Cross, Smile,
 } from "lucide-react";
 import dagre from "dagre";
 import { supabase } from "@/integrations/supabase/client";
 import MindMapCardEditor from "./MindMapCardEditor";
+
+// ── Icons ──
+
+const iconMap: Record<string, React.ElementType> = {
+  "book-open": BookOpen, heart: Heart, flame: Flame, crown: Crown,
+  shield: Shield, globe: Globe, users: Users, scroll: Scroll,
+  star: Star, sword: Sword, mountain: Mountain, waves: Waves,
+  sun: Sun, anchor: Anchor, scale: Scale, lightbulb: Lightbulb,
+  cross: Cross, smile: Smile,
+};
+
+const iconList = Object.keys(iconMap);
 
 // ── Colors ──
 
@@ -174,7 +189,19 @@ function SimpleNode({ data, id }: NodeProps) {
         </div>
       ) : (
         <>
-          <p className={`font-display ${ls.fontSize} ${ls.fontWeight} text-foreground`} style={{ opacity: ls.opacity }}>{d.title as string}</p>
+          <div className="flex items-center gap-2">
+            {(() => {
+              const nodeIcon = (d.icon as string) || "";
+              const NodeIcon = nodeIcon ? iconMap[nodeIcon] : null;
+              return NodeIcon ? (
+                <div className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0"
+                  style={{ background: `${color}15` }}>
+                  <NodeIcon size={13} style={{ color }} />
+                </div>
+              ) : null;
+            })()}
+            <p className={`font-display ${ls.fontSize} ${ls.fontWeight} text-foreground`} style={{ opacity: ls.opacity }}>{d.title as string}</p>
+          </div>
           {d.description && (
             <p className="font-ui text-[11px] text-muted-foreground mt-1 leading-relaxed">{d.description as string}</p>
           )}
@@ -365,6 +392,7 @@ function ManualCanvas({ userCodeId, mapId, onClose }: ManualCanvasProps) {
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [showColorPicker, setShowColorPicker] = useState(false);
+  const [showIconPicker, setShowIconPicker] = useState(false);
   const [colorMode, setColorMode] = useState<"border" | "fill">("border");
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; nodeId: string } | null>(null);
   const [mapTitle, setMapTitle] = useState("Meu Mapa Mental");
@@ -554,6 +582,15 @@ function ManualCanvas({ userCodeId, mapId, onClose }: ManualCanvasProps) {
     setShowColorPicker(false);
   }, [selectedNode, colorMode, setNodes, saveHistory]);
 
+  const applyIcon = useCallback((icon: string) => {
+    if (!selectedNode) return;
+    saveHistory();
+    setNodes(ns => ns.map(n =>
+      n.id === selectedNode ? { ...n, data: { ...n.data, icon } } : n
+    ));
+    setShowIconPicker(false);
+  }, [selectedNode, setNodes, saveHistory]);
+
   const deleteNode = useCallback((nodeId: string) => {
     saveHistory();
     setNodes(ns => ns.filter(n => n.id !== nodeId));
@@ -659,7 +696,11 @@ function ManualCanvas({ userCodeId, mapId, onClose }: ManualCanvasProps) {
     const handler = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement).tagName === "INPUT" || (e.target as HTMLElement).tagName === "TEXTAREA") return;
       if (e.key === "Tab") { e.preventDefault(); if (selectedNode) addChildNode(selectedNode); }
-      if (e.key === "Delete" || e.key === "Backspace") { if (selectedNode) deleteNode(selectedNode); }
+      if (e.key === "Delete" || e.key === "Backspace") {
+        const el = e.target as HTMLElement;
+        const isEditable = el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable || el.closest?.("[contenteditable]") || el.closest?.(".tiptap-editor-content");
+        if (!isEditable && selectedNode) deleteNode(selectedNode);
+      }
       if (e.key === "d" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); if (selectedNode) duplicateNode(selectedNode); }
       if (e.key === "z" && (e.ctrlKey || e.metaKey) && !e.shiftKey) { e.preventDefault(); handleUndo(); }
       if (e.key === "z" && (e.ctrlKey || e.metaKey) && e.shiftKey) { e.preventDefault(); handleRedo(); }
@@ -803,7 +844,8 @@ function ManualCanvas({ userCodeId, mapId, onClose }: ManualCanvasProps) {
           <div className="w-px h-5" style={{ background: "rgba(196,164,106,0.15)" }} />
           <ToolbarBtn icon={Link2} label={edgeType === "smoothstep" ? "Curva" : edgeType === "straight" ? "Reta" : "Bézier"}
             onClick={() => changeEdgeType(edgeType === "smoothstep" ? "straight" : edgeType === "straight" ? "default" : "smoothstep")} />
-          <ToolbarBtn icon={Palette} label="Cor" onClick={() => setShowColorPicker(!showColorPicker)} active={showColorPicker} />
+          <ToolbarBtn icon={Palette} label="Cor" onClick={() => { setShowColorPicker(!showColorPicker); setShowIconPicker(false); }} active={showColorPicker} />
+          <ToolbarBtn icon={Smile} label="Ícone" onClick={() => { setShowIconPicker(!showIconPicker); setShowColorPicker(false); }} active={showIconPicker} />
         </div>
 
         {/* Color Picker Popover */}
@@ -845,6 +887,40 @@ function ManualCanvas({ userCodeId, mapId, onClose }: ManualCanvasProps) {
                 }}>
                 Fundo
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Icon Picker Popover */}
+        {showIconPicker && (
+          <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-50 rounded-2xl p-4 shadow-xl animate-fade-in"
+            style={{
+              background: "rgba(22,19,15,0.97)",
+              backdropFilter: "blur(16px)",
+              border: "1px solid rgba(196,164,106,0.2)",
+              minWidth: 240,
+            }}>
+            <p className="text-[11px] font-ui text-muted-foreground mb-3">
+              😊 Ícone do Card {!selectedNode && <span className="text-primary/40">(selecione um card)</span>}
+            </p>
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              <button onClick={() => applyIcon("")}
+                className="w-7 h-7 rounded-md flex items-center justify-center transition-all hover:scale-110 text-[11px] font-ui"
+                style={{ background: "rgba(196,164,106,0.08)", color: "#8a7d6a", border: "1px solid rgba(196,164,106,0.15)" }}
+                disabled={!selectedNode} title="Sem ícone">
+                <X size={12} />
+              </button>
+              {iconList.map(name => {
+                const Icon = iconMap[name];
+                return (
+                  <button key={name} onClick={() => applyIcon(name)}
+                    className="w-7 h-7 rounded-md flex items-center justify-center transition-all hover:scale-110 hover:bg-primary/10"
+                    style={{ color: "#c4a46a" }}
+                    disabled={!selectedNode} title={name}>
+                    <Icon size={14} />
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
