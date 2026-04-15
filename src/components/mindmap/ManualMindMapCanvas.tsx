@@ -659,7 +659,11 @@ function ManualCanvas({ userCodeId, mapId, onClose }: ManualCanvasProps) {
     const handler = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement).tagName === "INPUT" || (e.target as HTMLElement).tagName === "TEXTAREA") return;
       if (e.key === "Tab") { e.preventDefault(); if (selectedNode) addChildNode(selectedNode); }
-      if (e.key === "Delete" || e.key === "Backspace") { if (selectedNode) deleteNode(selectedNode); }
+      if (e.key === "Delete" || e.key === "Backspace") {
+        const el = e.target as HTMLElement;
+        const isEditable = el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable || el.closest?.("[contenteditable]") || el.closest?.(".tiptap-editor-content");
+        if (!isEditable && selectedNode) deleteNode(selectedNode);
+      }
       if (e.key === "d" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); if (selectedNode) duplicateNode(selectedNode); }
       if (e.key === "z" && (e.ctrlKey || e.metaKey) && !e.shiftKey) { e.preventDefault(); handleUndo(); }
       if (e.key === "z" && (e.ctrlKey || e.metaKey) && e.shiftKey) { e.preventDefault(); handleRedo(); }
