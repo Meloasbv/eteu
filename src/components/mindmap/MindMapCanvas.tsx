@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useEffect, useState } from "react";
+import { useCallback, useMemo, useEffect, useState, lazy, Suspense } from "react";
 import {
   ReactFlow,
   MiniMap,
@@ -17,13 +17,17 @@ import {
 import "@xyflow/react/dist/style.css";
 import dagre from "dagre";
 import {
-  ArrowLeftRight, ArrowUpDown, X,
+  ArrowLeftRight, ArrowUpDown, X, Map, ClipboardList, Layers, Eye,
   BookOpen, Heart, Flame, Crown, Shield, Globe, Users,
   Scroll, Star, Sword, Mountain, Waves, Sun, Anchor,
   Scale, Lightbulb, Cross, ChevronDown, ChevronRight,
-  Maximize,
+  Maximize, Loader2,
 } from "lucide-react";
 import type { AnalysisResult } from "./types";
+
+const StudyFlashcardView = lazy(() => import("./StudyFlashcardView"));
+const StudyNotesListView = lazy(() => import("./StudyNotesListView"));
+const StudyRevealView = lazy(() => import("./StudyRevealView"));
 
 const iconMap: Record<string, React.ElementType> = {
   "book-open": BookOpen, heart: Heart, flame: Flame, crown: Crown,
