@@ -316,6 +316,10 @@ function buildFromAnalysis(analysis: AnalysisResult) {
         category: concept.category,
         icon: concept.icon_suggestion,
         refs: concept.bible_refs,
+        coreIdea: concept.coreIdea,
+        keyPoints: concept.keyPoints,
+        practicalApplication: concept.practicalApplication,
+        impactPhrase: concept.impactPhrase,
       },
     });
 
