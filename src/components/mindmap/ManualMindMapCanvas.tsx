@@ -891,6 +891,40 @@ function ManualCanvas({ userCodeId, mapId, onClose }: ManualCanvasProps) {
           </div>
         )}
 
+        {/* Icon Picker Popover */}
+        {showIconPicker && (
+          <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-50 rounded-2xl p-4 shadow-xl animate-fade-in"
+            style={{
+              background: "rgba(22,19,15,0.97)",
+              backdropFilter: "blur(16px)",
+              border: "1px solid rgba(196,164,106,0.2)",
+              minWidth: 240,
+            }}>
+            <p className="text-[11px] font-ui text-muted-foreground mb-3">
+              😊 Ícone do Card {!selectedNode && <span className="text-primary/40">(selecione um card)</span>}
+            </p>
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              <button onClick={() => applyIcon("")}
+                className="w-7 h-7 rounded-md flex items-center justify-center transition-all hover:scale-110 text-[11px] font-ui"
+                style={{ background: "rgba(196,164,106,0.08)", color: "#8a7d6a", border: "1px solid rgba(196,164,106,0.15)" }}
+                disabled={!selectedNode} title="Sem ícone">
+                <X size={12} />
+              </button>
+              {iconList.map(name => {
+                const Icon = iconMap[name];
+                return (
+                  <button key={name} onClick={() => applyIcon(name)}
+                    className="w-7 h-7 rounded-md flex items-center justify-center transition-all hover:scale-110 hover:bg-primary/10"
+                    style={{ color: "#c4a46a" }}
+                    disabled={!selectedNode} title={name}>
+                    <Icon size={14} />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Context Menu */}
         {contextMenu && (
           <div
