@@ -582,6 +582,15 @@ function ManualCanvas({ userCodeId, mapId, onClose }: ManualCanvasProps) {
     setShowColorPicker(false);
   }, [selectedNode, colorMode, setNodes, saveHistory]);
 
+  const applyIcon = useCallback((icon: string) => {
+    if (!selectedNode) return;
+    saveHistory();
+    setNodes(ns => ns.map(n =>
+      n.id === selectedNode ? { ...n, data: { ...n.data, icon } } : n
+    ));
+    setShowIconPicker(false);
+  }, [selectedNode, setNodes, saveHistory]);
+
   const deleteNode = useCallback((nodeId: string) => {
     saveHistory();
     setNodes(ns => ns.filter(n => n.id !== nodeId));
