@@ -99,38 +99,137 @@ function LeafNode({ data }: { data: { label: string; category?: string } }) {
   );
 }
 
-function StudyCardNode({ data }: { data: { title: string; description: string; category: string; icon?: string; refs?: string[] } }) {
+function StudyCardNode({ data }: { data: { title: string; description: string; category: string; icon?: string; refs?: string[]; coreIdea?: string; keyPoints?: string[]; practicalApplication?: string; impactPhrase?: string } }) {
   const cat = categoryColors[data.category] || categoryColors.teologia;
   const Icon = iconMap[data.icon || "book-open"] || BookOpen;
+  const [expanded, setExpanded] = useState(false);
+  const hasStudyData = data.coreIdea || data.keyPoints?.length || data.impactPhrase;
+
   return (
-    <div className="w-[280px] min-h-[130px] rounded-[16px] p-5 transition-all hover:shadow-2xl cursor-grab active:cursor-grabbing relative"
+    <div
+      className={`rounded-[16px] transition-all hover:shadow-2xl cursor-grab active:cursor-grabbing relative ${expanded ? "w-[320px]" : "w-[280px]"}`}
       style={{
         background: "hsl(var(--card))",
         border: `1px solid ${cat.border}30`,
         borderLeft: `4px solid ${cat.border}`,
         boxShadow: `0 4px 16px rgba(0,0,0,0.15), 0 0 0 1px ${cat.border}10`,
-      }}>
+      }}
+      onClick={() => hasStudyData && setExpanded(!expanded)}
+    >
       <Handle type="target" position={Position.Top} style={{ background: cat.border, width: 6, height: 6 }} />
       <Handle type="target" position={Position.Left} style={{ background: cat.border, width: 6, height: 6 }} />
-      <div className="flex items-center gap-2.5 mb-3">
-        <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: cat.bg }}>
-          <Icon size={14} style={{ color: cat.text }} />
+
+      <div className="p-5">
+        {/* Header */}
+        <div className="flex items-center gap-2.5 mb-3">
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: cat.bg }}>
+            <Icon size={14} style={{ color: cat.text }} />
+          </div>
+          <p className="font-display text-[15px] font-semibold text-foreground flex-1">{data.title}</p>
+          {hasStudyData && (
+            <div className="flex-shrink-0">
+              {expanded ? <ChevronDown size={14} className="text-muted-foreground" /> : <ChevronRight size={14} className="text-muted-foreground" />}
+            </div>
+          )}
         </div>
-        <p className="font-display text-[15px] font-semibold text-foreground flex-1">{data.title}</p>
+
+        {/* Core Idea */}
+        {data.coreIdea ? (
+          <div className="mb-3 py-2 px-3 rounded-r-lg"
+            style={{
+              background: `${cat.border}08`,
+              borderLeft: `2px solid ${cat.border}50`,
+            }}>
+            <p className="font-body text-[13px] italic leading-relaxed" style={{ color: "hsl(var(--foreground) / 0.9)" }}>
+              💡 {data.coreIdea}
+            </p>
+          </div>
+        ) : (
+          <p className="font-ui text-[12.5px] leading-relaxed mb-3" style={{ color: "hsl(var(--muted-foreground))" }}>
+            {data.description}
+          </p>
+        )}
+
+        {/* Expanded content */}
+        {expanded && hasStudyData && (
+          <div className="animate-fade-in space-y-3">
+            {/* Key Points */}
+            {data.keyPoints && data.keyPoints.length > 0 && (
+              <div>
+                <p className="text-[9px] font-ui font-bold tracking-[2px] uppercase mb-1.5"
+                  style={{ color: "hsl(var(--muted-foreground) / 0.5)" }}>
+                  Pontos Principais
+                </p>
+                <div className="space-y-1">
+                  {data.keyPoints.map((point, i) => (
+                    <p key={i} className="font-ui text-[12.5px] leading-relaxed pl-3 relative"
+                      style={{ color: "hsl(var(--foreground) / 0.75)" }}>
+                      <span className="absolute left-0" style={{ color: cat.border }}>•</span>
+                      {point}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Practical Application */}
+            {data.practicalApplication && (
+              <div>
+                <p className="text-[9px] font-ui font-bold tracking-[2px] uppercase mb-1"
+                  style={{ color: "hsl(var(--muted-foreground) / 0.5)" }}>
+                  ⚡ Aplicação
+                </p>
+                <p className="font-ui text-[12.5px] leading-relaxed" style={{ color: "#8b9e7a" }}>
+                  {data.practicalApplication}
+                </p>
+              </div>
+            )}
+
+            {/* Bible Refs */}
+            {data.refs && data.refs.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {data.refs.map((ref, i) => (
+                  <span key={i} className="px-2 py-0.5 rounded-md text-[10.5px] italic font-body cursor-pointer transition-all hover:scale-105"
+                    style={{
+                      background: `${cat.border}0a`,
+                      color: cat.text,
+                      border: `1px solid ${cat.border}25`,
+                    }}>
+                    📌 {ref}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Impact Phrase */}
+            {data.impactPhrase && (
+              <div className="pt-2 mt-1" style={{ borderTop: `1px solid ${cat.border}15` }}>
+                <p className="font-body text-[14px] font-semibold text-center leading-snug"
+                  style={{ color: cat.border }}>
+                  🔥 "{data.impactPhrase}"
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Collapsed refs */}
+        {!expanded && data.refs && data.refs.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {data.refs.slice(0, 3).map((ref, i) => (
+              <span key={i} className="px-2 py-0.5 rounded-md text-[10px] font-ui"
+                style={{ background: cat.bg, color: cat.text, border: `1px solid ${cat.border}30` }}>
+                {ref}
+              </span>
+            ))}
+            {data.refs.length > 3 && (
+              <span className="px-2 py-0.5 rounded-md text-[10px] font-ui" style={{ color: "hsl(var(--muted-foreground))" }}>
+                +{data.refs.length - 3}
+              </span>
+            )}
+          </div>
+        )}
       </div>
-      <p className="font-ui text-[12.5px] leading-relaxed mb-3" style={{ color: "hsl(var(--muted-foreground))" }}>
-        {data.description}
-      </p>
-      {data.refs && data.refs.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {data.refs.map((ref, i) => (
-            <span key={i} className="px-2 py-0.5 rounded-md text-[10px] font-ui"
-              style={{ background: cat.bg, color: cat.text, border: `1px solid ${cat.border}30` }}>
-              {ref}
-            </span>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
