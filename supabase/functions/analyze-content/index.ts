@@ -133,6 +133,7 @@ RETORNE APENAS um JSON válido (sem markdown, sem \`\`\`), com esta estrutura ex
     }
     
     const finishReason = data.choices?.[0]?.finish_reason;
+    console.log("AI response received. finish_reason:", finishReason, "content length:", (data.choices?.[0]?.message?.content || "").length);
     let result;
     
     // Extract content from response (plain text JSON, no tool calls)
