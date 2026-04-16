@@ -531,3 +531,12 @@ mark.note-search-match-active {
 .animate-scale-in {
   animation: scale-in 0.2s ease-out;
 }
+
+@keyframes presentation-enter {
+  from { opacity: 0; transform: translateX(30px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes presentation-enter-prev {
+  from { opacity: 0; transform: translateX(-30px); }
+  to { opacity: 1; transform: translateX(0); }
+}

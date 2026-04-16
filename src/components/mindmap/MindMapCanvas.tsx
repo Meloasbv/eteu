@@ -16,7 +16,7 @@ import "@xyflow/react/dist/style.css";
 import dagre from "dagre";
 import {
   ArrowLeftRight, ArrowUpDown, X, Map, ClipboardList, Layers, Eye,
-  Loader2,
+  Loader2, Presentation, Share2,
 } from "lucide-react";
 import type { AnalysisResult, KeyConcept } from "./types";
 import { getCategoryColor } from "./types";
@@ -25,6 +25,8 @@ import TopicCardComp from "./nodes/TopicCard";
 import HighlightCardComp from "./nodes/HighlightCard";
 import VerseCardComp from "./nodes/VerseCard";
 import NotePanel from "./NotePanel";
+import PresentationMode from "./PresentationMode";
+import ShareDialog from "./ShareDialog";
 
 const StudyFlashcardView = lazy(() => import("./StudyFlashcardView"));
 const StudyNotesListView = lazy(() => import("./StudyNotesListView"));
@@ -211,6 +213,9 @@ export default function MindMapCanvas({ analysis, onClose }: Props) {
   const [direction, setDirection] = useState<"TB" | "LR">("LR");
   const [studyMode, setStudyMode] = useState<"map" | "notes" | "flashcards" | "review">("map");
   const [openNoteIndex, setOpenNoteIndex] = useState<number | null>(null);
+  const [showPresentation, setShowPresentation] = useState(false);
+  const [showShareDialog, setShowShareDialog] = useState(false);
+  const [shareState, setShareState] = useState<{ isPublic: boolean; slug: string | null }>({ isPublic: false, slug: null });
 
   const topicConcepts = useMemo(
     () => (analysis.key_concepts || []).filter(c => !c.type || c.type === "topic"),
