@@ -426,6 +426,23 @@ export default function MindMapCanvas({ analysis, onClose }: Props) {
           />
         )}
       </div>
+
+      {/* Presentation Mode */}
+      {showPresentation && (
+        <PresentationMode analysis={analysis} onExit={() => setShowPresentation(false)} />
+      )}
+
+      {/* Share Dialog */}
+      {showShareDialog && (
+        <ShareDialog
+          mapId=""
+          title={analysis.main_theme || "Mapa Mental"}
+          isPublic={shareState.isPublic}
+          publicSlug={shareState.slug}
+          onClose={() => setShowShareDialog(false)}
+          onUpdate={(isPublic, slug) => setShareState({ isPublic, slug })}
+        />
+      )}
     </div>
   );
 }
