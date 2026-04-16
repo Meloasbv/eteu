@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Index from "./pages/Index.tsx";
 import SharedNote from "./pages/SharedNote.tsx";
 import NotFound from "./pages/NotFound.tsx";
+import SharedMindMap from "./pages/SharedMindMap.tsx";
 
 const queryClient = new QueryClient();
 
@@ -18,6 +19,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/nota/:slug" element={<SharedNote />} />
+          <Route path="/m/:slug" element={<SharedMindMap />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

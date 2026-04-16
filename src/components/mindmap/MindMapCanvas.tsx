@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useEffect, useState, lazy, Suspense } from "react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   ReactFlow,
   MiniMap,
@@ -16,7 +17,7 @@ import "@xyflow/react/dist/style.css";
 import dagre from "dagre";
 import {
   ArrowLeftRight, ArrowUpDown, X, Map, ClipboardList, Layers, Eye,
-  Loader2,
+  Loader2, Presentation, Share2, Focus, MoreHorizontal,
 } from "lucide-react";
 import type { AnalysisResult, KeyConcept } from "./types";
 import { getCategoryColor } from "./types";
@@ -25,6 +26,8 @@ import TopicCardComp from "./nodes/TopicCard";
 import HighlightCardComp from "./nodes/HighlightCard";
 import VerseCardComp from "./nodes/VerseCard";
 import NotePanel from "./NotePanel";
+import PresentationMode from "./PresentationMode";
+import ShareDialog from "./ShareDialog";
 
 const StudyFlashcardView = lazy(() => import("./StudyFlashcardView"));
 const StudyNotesListView = lazy(() => import("./StudyNotesListView"));
@@ -208,9 +211,14 @@ interface Props {
 }
 
 export default function MindMapCanvas({ analysis, onClose }: Props) {
+  const isMobile = useIsMobile();
   const [direction, setDirection] = useState<"TB" | "LR">("LR");
   const [studyMode, setStudyMode] = useState<"map" | "notes" | "flashcards" | "review">("map");
   const [openNoteIndex, setOpenNoteIndex] = useState<number | null>(null);
+  const [showPresentation, setShowPresentation] = useState(false);
+  const [showShareDialog, setShowShareDialog] = useState(false);
+  const [shareState, setShareState] = useState<{ isPublic: boolean; slug: string | null }>({ isPublic: false, slug: null });
+  const [focusBranch, setFocusBranch] = useState<string | null>(null);
 
   const topicConcepts = useMemo(
     () => (analysis.key_concepts || []).filter(c => !c.type || c.type === "topic"),
@@ -402,6 +410,9 @@ export default function MindMapCanvas({ analysis, onClose }: Props) {
                 }}>
                 <ToolbarBtn icon={ArrowUpDown} label="Vertical" active={direction === "TB"} onClick={() => onLayout("TB")} />
                 <ToolbarBtn icon={ArrowLeftRight} label="Horizontal" active={direction === "LR"} onClick={() => onLayout("LR")} />
+                <div className="w-px h-4 mx-1" style={{ background: "rgba(196,164,106,0.15)" }} />
+                <ToolbarBtn icon={Presentation} label="Apresentar" onClick={() => setShowPresentation(true)} />
+                <ToolbarBtn icon={Share2} label="Compartilhar" onClick={() => setShowShareDialog(true)} />
               </div>
             </Panel>
           </ReactFlow>
@@ -418,6 +429,40 @@ export default function MindMapCanvas({ analysis, onClose }: Props) {
           />
         )}
       </div>
+
+      {/* Mobile Bottom Action Bar */}
+      {isMobile && studyMode === "map" && openNoteIndex === null && (
+        <div
+          className="flex items-center justify-around px-2 py-2 shrink-0"
+          style={{
+            background: "rgba(15,13,10,0.95)",
+            backdropFilter: "blur(12px)",
+            borderTop: "1px solid rgba(196,164,106,0.08)",
+            height: 56,
+          }}
+        >
+          <MobileBarBtn icon={Presentation} label="Apresentar" onClick={() => setShowPresentation(true)} />
+          <MobileBarBtn icon={Share2} label="Compartilhar" onClick={() => setShowShareDialog(true)} />
+          <MobileBarBtn icon={X} label="Fechar" onClick={onClose} />
+        </div>
+      )}
+
+      {/* Presentation Mode */}
+      {showPresentation && (
+        <PresentationMode analysis={analysis} onExit={() => setShowPresentation(false)} />
+      )}
+
+      {/* Share Dialog */}
+      {showShareDialog && (
+        <ShareDialog
+          mapId=""
+          title={analysis.main_theme || "Mapa Mental"}
+          isPublic={shareState.isPublic}
+          publicSlug={shareState.slug}
+          onClose={() => setShowShareDialog(false)}
+          onUpdate={(isPublic, slug) => setShareState({ isPublic, slug })}
+        />
+      )}
     </div>
   );
 }
@@ -434,6 +479,19 @@ function ToolbarBtn({ icon: Icon, label, active, onClick }: { icon: React.Elemen
     >
       <Icon size={14} />
       <span className="hidden sm:inline">{label}</span>
+    </button>
+  );
+}
+
+function MobileBarBtn({ icon: Icon, label, onClick }: { icon: React.ElementType; label: string; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex flex-col items-center gap-1 px-4 py-1 rounded-xl transition-all active:scale-95"
+      style={{ color: "#8a7d6a", minWidth: 48, minHeight: 44 }}
+    >
+      <Icon size={20} />
+      <span className="text-[9px] font-sans">{label}</span>
     </button>
   );
 }
