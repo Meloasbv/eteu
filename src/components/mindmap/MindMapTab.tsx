@@ -36,13 +36,12 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
   const [isDragging, setIsDragging] = useState(false);
 
   const saveAiMap = useCallback(async (result: AnalysisResult) => {
-    const nodes = buildNodesFromAnalysis(result);
     const { data } = await supabase
       .from("mind_maps")
       .insert({
         user_code_id: userCodeId,
         title: result.main_theme || "Mapa IA",
-        nodes: nodes as any,
+        nodes: (result.key_concepts || []) as any,
         edges: [] as any,
         source_type: "ai",
         study_notes: { analysis: result } as any,
@@ -51,10 +50,9 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
       .single();
     if (data?.id) {
       setAiMapId(data.id);
-      fetchMaps();
     }
     return data?.id || null;
-  }, [userCodeId, fetchMaps]);
+  }, [userCodeId]);
 
   const fetchMaps = useCallback(async () => {
     setLoadingMaps(true);
