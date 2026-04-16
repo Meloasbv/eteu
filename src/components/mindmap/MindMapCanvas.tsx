@@ -29,8 +29,7 @@ import NotePanel from "./NotePanel";
 import PresentationMode from "./PresentationMode";
 import ShareDialog from "./ShareDialog";
 
-const StudyFlashcardView = lazy(() => import("./StudyFlashcardView"));
-const StudyNotesListView = lazy(() => import("./StudyNotesListView"));
+const MindMapQuizView = lazy(() => import("./MindMapQuizView"));
 const StudyRevealView = lazy(() => import("./StudyRevealView"));
 
 const nodeTypes = {
@@ -213,7 +212,8 @@ interface Props {
 export default function MindMapCanvas({ analysis, onClose }: Props) {
   const isMobile = useIsMobile();
   const [direction, setDirection] = useState<"TB" | "LR">("LR");
-  const [studyMode, setStudyMode] = useState<"map" | "notes" | "flashcards" | "review">("map");
+  const [studyMode, setStudyMode] = useState<"map" | "quiz" | "review">("map");
+  const [quizConceptId, setQuizConceptId] = useState<string | null>(null);
   const [openNoteIndex, setOpenNoteIndex] = useState<number | null>(null);
   const [showPresentation, setShowPresentation] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
