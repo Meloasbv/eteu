@@ -61,9 +61,10 @@ Seja CONCISO em cada campo. Nada de parágrafos longos. Cada ponto escaneável e
       },
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
+        max_tokens: 16000,
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: `Analise COMPLETAMENTE este texto, extraindo o máximo de informação:\n\n${text.slice(0, 30000)}` },
+          { role: "user", content: `Analise COMPLETAMENTE este texto, extraindo o máximo de informação:\n\n${text.slice(0, 20000)}` },
         ],
         tools: [
           {
