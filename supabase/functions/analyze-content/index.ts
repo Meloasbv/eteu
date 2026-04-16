@@ -61,9 +61,10 @@ Seja CONCISO em cada campo. Nada de parágrafos longos. Cada ponto escaneável e
       },
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
+        max_tokens: 16000,
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: `Analise COMPLETAMENTE este texto, extraindo o máximo de informação:\n\n${text.slice(0, 30000)}` },
+          { role: "user", content: `Analise COMPLETAMENTE este texto, extraindo o máximo de informação:\n\n${text.slice(0, 20000)}` },
         ],
         tools: [
           {
@@ -172,20 +173,75 @@ Seja CONCISO em cada campo. Nada de parágrafos longos. Cada ponto escaneável e
       throw new Error("AI gateway error");
     }
 
-    const data = await response.json();
+    const rawText = await response.text();
+    let data;
+    try {
+      data = JSON.parse(rawText);
+    } catch {
+      console.error("Failed to parse AI gateway response, length:", rawText.length, "last 100 chars:", rawText.slice(-100));
+      throw new Error("Resposta da IA foi truncada. Tente com um texto menor.");
+    }
     
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+    const finishReason = data.choices?.[0]?.finish_reason;
     let result;
     
+    let rawArgs = "";
     if (toolCall?.function?.arguments) {
-      result = typeof toolCall.function.arguments === "string" 
-        ? JSON.parse(toolCall.function.arguments)
-        : toolCall.function.arguments;
+      rawArgs = typeof toolCall.function.arguments === "string" 
+        ? toolCall.function.arguments 
+        : JSON.stringify(toolCall.function.arguments);
     } else {
       const content = data.choices?.[0]?.message?.content || "";
-      const cleaned = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-      result = JSON.parse(cleaned);
+      rawArgs = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
     }
+
+    if (!rawArgs || rawArgs.length < 10) {
+      console.error("Empty AI response. finish_reason:", finishReason);
+      throw new Error("A IA não retornou dados. Tente novamente.");
+    }
+
+    // Attempt parse with repair for truncated JSON
+    try {
+      result = JSON.parse(rawArgs);
+    } catch {
+      console.warn("JSON parse failed, attempting repair. Length:", rawArgs.length, "finish_reason:", finishReason);
+      // Try to repair truncated JSON by closing open brackets/braces
+      let repaired = rawArgs
+        .replace(/,\s*$/g, "")  // trailing comma
+        .replace(/,\s*}/g, "}")
+        .replace(/,\s*]/g, "]");
+      
+      // Count and close unclosed brackets
+      const openBraces = (repaired.match(/{/g) || []).length;
+      const closeBraces = (repaired.match(/}/g) || []).length;
+      const openBrackets = (repaired.match(/\[/g) || []).length;
+      const closeBrackets = (repaired.match(/]/g) || []).length;
+      
+      // Remove trailing incomplete string/value
+      repaired = repaired.replace(/,\s*"[^"]*$/, "");
+      repaired = repaired.replace(/:\s*"[^"]*$/, ': ""');
+      repaired = repaired.replace(/:\s*$/, ': null');
+      
+      for (let i = 0; i < openBrackets - closeBrackets; i++) repaired += "]";
+      for (let i = 0; i < openBraces - closeBraces; i++) repaired += "}";
+      
+      try {
+        result = JSON.parse(repaired);
+        console.log("JSON repair succeeded");
+      } catch (e2) {
+        console.error("JSON repair also failed:", (e2 as Error).message);
+        throw new Error("Resposta da IA foi truncada. Tente com um texto menor.");
+      }
+    }
+    
+    // Ensure minimum structure
+    if (!result.main_theme) result.main_theme = "Análise";
+    if (!result.summary) result.summary = "";
+    if (!result.key_concepts) result.key_concepts = [];
+    if (!result.hierarchy) result.hierarchy = { root: { label: result.main_theme, children: [] } };
+    if (!result.keywords) result.keywords = [];
+    if (!result.structured_notes) result.structured_notes = [];
 
     return new Response(
       JSON.stringify({ result }),
