@@ -16,8 +16,8 @@ import {
 import "@xyflow/react/dist/style.css";
 import dagre from "dagre";
 import {
-  ArrowLeftRight, ArrowUpDown, X, Map, ClipboardList, Layers, Eye,
-  Loader2, Presentation, Share2, Focus, MoreHorizontal,
+  ArrowLeftRight, ArrowUpDown, X, Map, Layers, Eye,
+  Loader2, Presentation, Share2,
 } from "lucide-react";
 import type { AnalysisResult, KeyConcept } from "./types";
 import { getCategoryColor } from "./types";
