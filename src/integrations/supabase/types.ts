@@ -465,6 +465,7 @@ export type Database = {
       thoughts: {
         Row: {
           analysis: Json | null
+          archived: boolean
           content: string
           created_at: string
           emotion_intensity: number | null
@@ -478,6 +479,7 @@ export type Database = {
         }
         Insert: {
           analysis?: Json | null
+          archived?: boolean
           content: string
           created_at?: string
           emotion_intensity?: number | null
@@ -491,6 +493,7 @@ export type Database = {
         }
         Update: {
           analysis?: Json | null
+          archived?: boolean
           content?: string
           created_at?: string
           emotion_intensity?: number | null
