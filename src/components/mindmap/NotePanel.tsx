@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { X, ChevronLeft, ChevronRight, BookOpen } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { KeyConcept } from "./types";
@@ -87,9 +87,7 @@ export default function NotePanel({
   } | null>(null);
 
   const allVerses = concept
-    ? [
-        ...(concept.expanded_note?.verses || concept.bible_refs || []),
-      ]
+    ? [...(concept.expanded_note?.verses || concept.bible_refs || [])]
     : [];
 
   const handleVerseClick = useCallback(
@@ -104,13 +102,10 @@ export default function NotePanel({
   const catColor = getCategoryColor(concept.category);
   const catName = getCategoryName(concept.category);
   const note = concept.expanded_note;
-  const topicConcepts = concepts.filter(
-    (c) => !c.type || c.type === "topic"
-  );
+  const topicConcepts = concepts.filter((c) => !c.type || c.type === "topic");
   const topicIndex = topicConcepts.findIndex((c) => c.id === concept.id);
   const total = topicConcepts.length;
 
-  // Legacy fallback
   const coreIdea = note?.core_idea || concept.coreIdea || "";
   const explanation = note?.explanation || concept.description || "";
   const affirmations = note?.affirmations || concept.keyPoints || [];
@@ -133,10 +128,7 @@ export default function NotePanel({
         }}
       >
         <div className="flex items-center gap-2">
-          <div
-            className="w-2 h-2 rounded-full"
-            style={{ background: catColor }}
-          />
+          <div className="w-2 h-2 rounded-full" style={{ background: catColor }} />
           <span
             className="text-[10px] font-sans font-bold tracking-[1.5px] uppercase"
             style={{ color: catColor }}
@@ -149,29 +141,20 @@ export default function NotePanel({
             </span>
           )}
         </div>
-        <button
-          onClick={onClose}
-          className="p-1.5 rounded-lg transition-colors hover:bg-white/5"
-        >
+        <button onClick={onClose} className="p-1.5 rounded-lg transition-colors hover:bg-white/5">
           <X size={18} style={{ color: "#8a7d6a" }} />
         </button>
       </div>
 
       {/* Scrollable body */}
       <div className="flex-1 overflow-y-auto px-5 py-5 space-y-0">
-        {/* Title */}
         <h2
           className="font-display font-bold mb-5"
-          style={{
-            color: "#ede4d3",
-            fontSize: isMobile ? 24 : 32,
-            lineHeight: 1.2,
-          }}
+          style={{ color: "#ede4d3", fontSize: isMobile ? 24 : 32, lineHeight: 1.2 }}
         >
           {concept.title}
         </h2>
 
-        {/* Core Idea */}
         {coreIdea && (
           <div
             className="mb-6"
@@ -182,63 +165,38 @@ export default function NotePanel({
               padding: "14px 18px",
             }}
           >
-            <p
-              className="font-body text-[15px] italic"
-              style={{ color: "#ede4d3", lineHeight: 1.6 }}
-            >
+            <p className="font-body text-[15px] italic" style={{ color: "#ede4d3", lineHeight: 1.6 }}>
               {coreIdea}
             </p>
           </div>
         )}
 
-        {/* Explanation */}
         {explanation && (
           <>
             <SectionLabel>EXPLICAÇÃO</SectionLabel>
             <div className="mb-6">
               {explanation.split("\n\n").map((para, i) => (
-                <p
-                  key={i}
-                  className="font-body text-[15px] mb-3"
-                  style={{ color: "#c4b89e", lineHeight: 1.75 }}
-                >
-                  <InlineVerseText
-                    text={para}
-                    onVerseClick={handleVerseClick}
-                  />
+                <p key={i} className="font-body text-[15px] mb-3" style={{ color: "#c4b89e", lineHeight: 1.75 }}>
+                  <InlineVerseText text={para} onVerseClick={handleVerseClick} />
                 </p>
               ))}
             </div>
           </>
         )}
 
-        {/* Affirmations */}
         {affirmations.length > 0 && (
           <>
             <SectionLabel>AFIRMAÇÕES CENTRAIS</SectionLabel>
             <div className="space-y-2 mb-6">
               {affirmations.map((a, i) => (
-                <div
-                  key={i}
-                  className="pl-3.5"
-                  style={{
-                    borderLeft: "2px solid #d4b87a",
-                    padding: "8px 14px",
-                  }}
-                >
-                  <p
-                    className="font-body text-[14px] italic"
-                    style={{ color: "#d4b87a" }}
-                  >
-                    {a}
-                  </p>
+                <div key={i} style={{ borderLeft: "2px solid #d4b87a", padding: "8px 14px" }}>
+                  <p className="font-body text-[14px] italic" style={{ color: "#d4b87a" }}>{a}</p>
                 </div>
               ))}
             </div>
           </>
         )}
 
-        {/* Verses */}
         {verses.length > 0 && (
           <>
             <SectionLabel>VERSÍCULOS</SectionLabel>
@@ -252,61 +210,42 @@ export default function NotePanel({
                     border: "1px solid rgba(123,163,201,0.25)",
                     padding: "6px 12px",
                   }}
-                  onClick={(e) =>
-                    handleVerseClick(v, e.currentTarget as HTMLElement)
-                  }
+                  onClick={(e) => handleVerseClick(v, e.currentTarget as HTMLElement)}
                   onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLElement).style.background =
-                      "rgba(123,163,201,0.14)";
+                    (e.currentTarget as HTMLElement).style.background = "rgba(123,163,201,0.14)";
                   }}
                   onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLElement).style.background =
-                      "rgba(123,163,201,0.06)";
+                    (e.currentTarget as HTMLElement).style.background = "rgba(123,163,201,0.06)";
                   }}
                 >
                   <BookOpen size={12} style={{ color: "#7ba3c9" }} />
-                  <span
-                    className="font-body italic text-[12.5px]"
-                    style={{ color: "#7ba3c9" }}
-                  >
-                    {v}
-                  </span>
+                  <span className="font-body italic text-[12.5px]" style={{ color: "#7ba3c9" }}>{v}</span>
                 </button>
               ))}
             </div>
           </>
         )}
 
-        {/* Application */}
         {application && (
           <>
             <SectionLabel>APLICAÇÃO</SectionLabel>
             <div className="mb-6">
               {application.split("\n\n").map((para, i) => (
-                <p
-                  key={i}
-                  className="font-body text-[15px] mb-3"
-                  style={{ color: "#c4b89e", lineHeight: 1.75 }}
-                >
-                  <InlineVerseText
-                    text={para}
-                    onVerseClick={handleVerseClick}
-                  />
+                <p key={i} className="font-body text-[15px] mb-3" style={{ color: "#c4b89e", lineHeight: 1.75 }}>
+                  <InlineVerseText text={para} onVerseClick={handleVerseClick} />
                 </p>
               ))}
             </div>
           </>
         )}
 
-        {/* Impact Phrase */}
         {impactPhrase && (
           <>
             <SectionLabel>FRASE DE IMPACTO</SectionLabel>
             <div
               className="mb-6 text-center relative"
               style={{
-                background:
-                  "linear-gradient(135deg, rgba(196,164,106,0.1), rgba(196,164,106,0.04))",
+                background: "linear-gradient(135deg, rgba(196,164,106,0.1), rgba(196,164,106,0.04))",
                 borderTop: "1px solid rgba(196,164,106,0.15)",
                 borderBottom: "1px solid rgba(196,164,106,0.15)",
                 padding: "18px 24px",
@@ -315,25 +254,17 @@ export default function NotePanel({
               <span
                 className="absolute top-2 left-4 font-body text-[30px] select-none"
                 style={{ color: "rgba(196,164,106,0.2)", lineHeight: 1 }}
-              >
-                "
-              </span>
+              >"</span>
               <p
                 className="font-body font-semibold"
-                style={{
-                  color: "#d4b87a",
-                  fontSize: isMobile ? 15 : 17,
-                  lineHeight: 1.5,
-                }}
+                style={{ color: "#d4b87a", fontSize: isMobile ? 15 : 17, lineHeight: 1.5 }}
               >
                 {impactPhrase}
               </p>
               <span
                 className="absolute bottom-1 right-4 font-body text-[30px] select-none"
                 style={{ color: "rgba(196,164,106,0.2)", lineHeight: 1 }}
-              >
-                "
-              </span>
+              >"</span>
             </div>
           </>
         )}
@@ -356,8 +287,7 @@ export default function NotePanel({
           className="flex items-center gap-1 text-[12px] font-sans transition-colors disabled:opacity-20"
           style={{ color: "#c4a46a" }}
         >
-          <ChevronLeft size={14} />
-          Anterior
+          <ChevronLeft size={14} /> Anterior
         </button>
         <span className="text-[11px] font-sans" style={{ color: "#5c5347" }}>
           {concept.title} · {topicIndex + 1}/{total}
@@ -368,56 +298,28 @@ export default function NotePanel({
           className="flex items-center gap-1 text-[12px] font-sans transition-colors disabled:opacity-20"
           style={{ color: "#c4a46a" }}
         >
-          Próximo
-          <ChevronRight size={14} />
+          Próximo <ChevronRight size={14} />
         </button>
       </div>
 
-      {/* VersePopover */}
       {versePopover && (
         <VersePopover
           reference={versePopover.ref}
           anchorEl={versePopover.anchor}
           siblings={versePopover.siblings}
           onClose={() => setVersePopover(null)}
-          onNavigate={(ref) =>
-            setVersePopover((prev) =>
-              prev ? { ...prev, ref } : null
-            )
-          }
+          onNavigate={(ref) => setVersePopover((prev) => (prev ? { ...prev, ref } : null))}
         />
       )}
     </div>
   );
 
-  // Mobile: bottom sheet overlay
+  // Mobile: bottom sheet with drag-to-dismiss + swipe navigation
   if (isMobile) {
     return (
-      <div className="fixed inset-0 z-50 flex flex-col justify-end">
-        {/* Backdrop */}
-        <div
-          className="absolute inset-0"
-          style={{ background: "rgba(0,0,0,0.4)" }}
-        />
-        {/* Sheet */}
-        <div
-          className="relative rounded-t-[16px] flex flex-col animate-slide-up"
-          style={{
-            background: "#1a1610",
-            maxHeight: "88vh",
-            minHeight: "60vh",
-          }}
-        >
-          {/* Drag handle */}
-          <div className="flex justify-center pt-3 pb-1 shrink-0">
-            <div
-              className="w-10 h-[5px] rounded-full"
-              style={{ background: "#5c5347" }}
-            />
-          </div>
-          {content}
-        </div>
-      </div>
+      <MobileBottomSheet onClose={onClose} onSwipeLeft={() => canNext && onNavigate(currentIndex + 1)} onSwipeRight={() => canPrev && onNavigate(currentIndex - 1)}>
+        {content}
+      </MobileBottomSheet>
     );
   }
 
@@ -425,12 +327,109 @@ export default function NotePanel({
   return (
     <div
       className="flex flex-col h-full w-[480px] shrink-0 border-l animate-slide-in-right"
-      style={{
-        background: "#1a1610",
-        borderColor: "rgba(196,164,106,0.1)",
-      }}
+      style={{ background: "#1a1610", borderColor: "rgba(196,164,106,0.1)" }}
     >
       {content}
+    </div>
+  );
+}
+
+// ── Mobile Bottom Sheet with drag-to-dismiss ──
+
+function MobileBottomSheet({
+  children,
+  onClose,
+  onSwipeLeft,
+  onSwipeRight,
+}: {
+  children: React.ReactNode;
+  onClose: () => void;
+  onSwipeLeft?: () => void;
+  onSwipeRight?: () => void;
+}) {
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<{ startY: number; startX: number; currentY: number; isDragging: boolean }>({
+    startY: 0, startX: 0, currentY: 0, isDragging: false,
+  });
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    dragRef.current = { startY: touch.clientY, startX: touch.clientX, currentY: touch.clientY, isDragging: true };
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!dragRef.current.isDragging || !sheetRef.current) return;
+    const touch = e.touches[0];
+    const deltaY = touch.clientY - dragRef.current.startY;
+    dragRef.current.currentY = touch.clientY;
+    if (deltaY > 0) {
+      sheetRef.current.style.transform = `translateY(${deltaY}px)`;
+      sheetRef.current.style.transition = "none";
+    }
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    if (!dragRef.current.isDragging || !sheetRef.current) return;
+    const deltaY = dragRef.current.currentY - dragRef.current.startY;
+    const deltaX = dragRef.current.currentY - dragRef.current.startY;
+    dragRef.current.isDragging = false;
+
+    if (deltaY > 120) {
+      sheetRef.current.style.transition = "transform 0.3s ease-out";
+      sheetRef.current.style.transform = "translateY(100%)";
+      setTimeout(onClose, 300);
+    } else {
+      sheetRef.current.style.transition = "transform 0.2s ease-out";
+      sheetRef.current.style.transform = "translateY(0)";
+    }
+  }, [onClose]);
+
+  // Horizontal swipe for navigation (tracked on body, not handle)
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const swipeRef = useRef<{ startX: number; startY: number }>({ startX: 0, startY: 0 });
+
+  const onBodyTouchStart = useCallback((e: React.TouchEvent) => {
+    swipeRef.current = { startX: e.touches[0].clientX, startY: e.touches[0].clientY };
+  }, []);
+
+  const onBodyTouchEnd = useCallback((e: React.TouchEvent) => {
+    const endX = e.changedTouches[0].clientX;
+    const endY = e.changedTouches[0].clientY;
+    const dx = endX - swipeRef.current.startX;
+    const dy = endY - swipeRef.current.startY;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      if (dx < 0) onSwipeLeft?.();
+      else onSwipeRight?.();
+    }
+  }, [onSwipeLeft, onSwipeRight]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col justify-end">
+      <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.4)" }} onClick={onClose} />
+      <div
+        ref={sheetRef}
+        className="relative rounded-t-[16px] flex flex-col animate-slide-up"
+        style={{ background: "#1a1610", maxHeight: "88vh", minHeight: "60vh" }}
+      >
+        {/* Drag handle */}
+        <div
+          className="flex justify-center pt-3 pb-1 shrink-0 cursor-grab active:cursor-grabbing"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
+          <div className="w-10 h-[5px] rounded-full" style={{ background: "#5c5347" }} />
+        </div>
+        {/* Swipeable body */}
+        <div
+          ref={bodyRef}
+          className="flex-1 min-h-0 overflow-hidden"
+          onTouchStart={onBodyTouchStart}
+          onTouchEnd={onBodyTouchEnd}
+        >
+          {children}
+        </div>
+      </div>
     </div>
   );
 }
@@ -439,10 +438,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex items-center gap-3 mt-7 mb-3">
       <div className="h-px flex-1" style={{ background: "rgba(92,83,71,0.3)" }} />
-      <span
-        className="text-[10px] font-sans font-bold tracking-[2px] uppercase"
-        style={{ color: "#5c5347" }}
-      >
+      <span className="text-[10px] font-sans font-bold tracking-[2px] uppercase" style={{ color: "#5c5347" }}>
         {children}
       </span>
       <div className="h-px flex-1" style={{ background: "rgba(92,83,71,0.3)" }} />
