@@ -460,7 +460,7 @@ export default function MindMapCanvas({ analysis, mapId, onClose }: Props) {
       {/* Share Dialog */}
       {showShareDialog && (
         <ShareDialog
-          mapId=""
+          mapId={mapId || ""}
           title={analysis.main_theme || "Mapa Mental"}
           isPublic={shareState.isPublic}
           publicSlug={shareState.slug}
