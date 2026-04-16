@@ -51,7 +51,43 @@ REGRAS PARA EXPANDED_NOTE:
 - application: 1-2 parágrafos de aplicação prática/espiritual
 - impact_phrase: 1 frase memorizável (máx 15 palavras)
 
-Seja CONCISO em cada campo. Nada de parágrafos longos. Cada ponto escaneável em 2 segundos.`;
+Seja CONCISO em cada campo. Nada de parágrafos longos. Cada ponto escaneável em 2 segundos.
+
+RETORNE APENAS um JSON válido (sem markdown, sem \`\`\`), com esta estrutura exata:
+{
+  "main_theme": "string",
+  "summary": "string",
+  "key_concepts": [
+    {
+      "id": "concept_1",
+      "type": "topic|highlight|verse",
+      "title": "string",
+      "description": "string",
+      "summary": "gancho curto max 80 chars",
+      "category": "teologia|cristologia|pneumatologia|exegese|contexto|aplicacao|escatologia|soteriologia",
+      "icon_suggestion": "emoji",
+      "bible_refs": ["Livro C:V"],
+      "expanded_note": {
+        "core_idea": "string",
+        "explanation": "string com \\n\\n entre parágrafos",
+        "affirmations": ["frase 1", "frase 2"],
+        "verses": ["Livro C:V"],
+        "application": "string",
+        "impact_phrase": "string"
+      },
+      "child_highlights": ["frase citável 1"],
+      "child_verses": ["Livro C:V"]
+    }
+  ],
+  "hierarchy": {
+    "root": {
+      "label": "string",
+      "children": [{"label": "string", "children": [{"label": "string"}]}]
+    }
+  },
+  "keywords": ["string"],
+  "structured_notes": [{"section_title": "string", "points": ["string"]}]
+}`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -64,94 +100,8 @@ Seja CONCISO em cada campo. Nada de parágrafos longos. Cada ponto escaneável e
         max_tokens: 16000,
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: `Analise COMPLETAMENTE este texto, extraindo o máximo de informação:\n\n${text.slice(0, 20000)}` },
+          { role: "user", content: `Analise COMPLETAMENTE este texto, extraindo o máximo de informação. Retorne APENAS JSON válido:\n\n${text.slice(0, 15000)}` },
         ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "return_analysis",
-              description: "Return the structured analysis for the mind map",
-              parameters: {
-                type: "object",
-                properties: {
-                  main_theme: { type: "string" },
-                  summary: { type: "string" },
-                  key_concepts: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        id: { type: "string" },
-                        type: { type: "string", enum: ["topic", "highlight", "verse"] },
-                        title: { type: "string" },
-                        description: { type: "string" },
-                        summary: { type: "string", description: "Gancho de 1 linha (max 80 chars) para exibir no card do mapa" },
-                        category: { type: "string", enum: ["teologia", "cristologia", "pneumatologia", "exegese", "contexto", "aplicacao", "escatologia", "soteriologia"] },
-                        icon_suggestion: { type: "string" },
-                        bible_refs: { type: "array", items: { type: "string" } },
-                        expanded_note: {
-                          type: "object",
-                          properties: {
-                            core_idea: { type: "string", description: "1 frase essencial, max 20 palavras" },
-                            explanation: { type: "string", description: "2-4 parágrafos separados por \\n\\n, com versículos inline" },
-                            affirmations: { type: "array", items: { type: "string" }, description: "3-5 frases citáveis, max 15 palavras cada" },
-                            verses: { type: "array", items: { type: "string" }, description: "3-6 referências bíblicas formato Livro C:V" },
-                            application: { type: "string", description: "1-2 parágrafos de aplicação" },
-                            impact_phrase: { type: "string", description: "1 frase memorizável max 15 palavras" },
-                          },
-                          required: ["core_idea", "explanation", "affirmations", "verses", "application", "impact_phrase"],
-                        },
-                        child_highlights: { type: "array", items: { type: "string" }, description: "2-4 frases citáveis para HighlightCards filhos" },
-                        child_verses: { type: "array", items: { type: "string" }, description: "1-3 referências bíblicas para VerseCards filhos" },
-                      },
-                      required: ["id", "type", "title", "description", "category"],
-                    },
-                  },
-                  hierarchy: {
-                    type: "object",
-                    properties: {
-                      root: {
-                        type: "object",
-                        properties: {
-                          label: { type: "string" },
-                          children: {
-                            type: "array",
-                            items: {
-                              type: "object",
-                              properties: {
-                                label: { type: "string" },
-                                children: { type: "array", items: { type: "object", properties: { label: { type: "string" } }, required: ["label"] } },
-                              },
-                              required: ["label"],
-                            },
-                          },
-                        },
-                        required: ["label", "children"],
-                      },
-                    },
-                    required: ["root"],
-                  },
-                  keywords: { type: "array", items: { type: "string" } },
-                  structured_notes: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        section_title: { type: "string" },
-                        points: { type: "array", items: { type: "string" } },
-                      },
-                      required: ["section_title", "points"],
-                    },
-                  },
-                },
-                required: ["main_theme", "summary", "key_concepts", "hierarchy", "keywords", "structured_notes"],
-                additionalProperties: false,
-              },
-            },
-          },
-        ],
-        tool_choice: { type: "function", function: { name: "return_analysis" } },
       }),
     });
 
