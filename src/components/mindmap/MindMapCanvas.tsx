@@ -16,8 +16,8 @@ import {
 import "@xyflow/react/dist/style.css";
 import dagre from "dagre";
 import {
-  ArrowLeftRight, ArrowUpDown, X, Map, ClipboardList, Layers, Eye,
-  Loader2, Presentation, Share2, Focus, MoreHorizontal,
+  ArrowLeftRight, ArrowUpDown, X, Map, Layers, Eye,
+  Loader2, Presentation, Share2,
 } from "lucide-react";
 import type { AnalysisResult, KeyConcept } from "./types";
 import { getCategoryColor } from "./types";
@@ -29,8 +29,7 @@ import NotePanel from "./NotePanel";
 import PresentationMode from "./PresentationMode";
 import ShareDialog from "./ShareDialog";
 
-const StudyFlashcardView = lazy(() => import("./StudyFlashcardView"));
-const StudyNotesListView = lazy(() => import("./StudyNotesListView"));
+const MindMapQuizView = lazy(() => import("./MindMapQuizView"));
 const StudyRevealView = lazy(() => import("./StudyRevealView"));
 
 const nodeTypes = {
@@ -213,7 +212,8 @@ interface Props {
 export default function MindMapCanvas({ analysis, onClose }: Props) {
   const isMobile = useIsMobile();
   const [direction, setDirection] = useState<"TB" | "LR">("LR");
-  const [studyMode, setStudyMode] = useState<"map" | "notes" | "flashcards" | "review">("map");
+  const [studyMode, setStudyMode] = useState<"map" | "quiz" | "review">("map");
+  const [quizConceptId, setQuizConceptId] = useState<string | null>(null);
   const [openNoteIndex, setOpenNoteIndex] = useState<number | null>(null);
   const [showPresentation, setShowPresentation] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
@@ -272,8 +272,7 @@ export default function MindMapCanvas({ analysis, onClose }: Props) {
     return () => window.removeEventListener("keydown", handler);
   }, [openNoteIndex]);
 
-  const isDesktop = typeof window !== "undefined" && window.innerWidth >= 1024;
-  const flashcardCount = topicConcepts.length * 2;
+  const quizCount = topicConcepts.length * 3;
 
   const fallbackLoader = (
     <div className="flex items-center justify-center h-full">
@@ -287,13 +286,12 @@ export default function MindMapCanvas({ analysis, onClose }: Props) {
       style={{ background: "rgba(15,13,10,0.9)", border: "1px solid rgba(196,164,106,0.1)", backdropFilter: "blur(12px)" }}>
       {[
         { key: "map" as const, icon: Map, label: "Mapa" },
-        { key: "notes" as const, icon: ClipboardList, label: "Notas" },
-        { key: "flashcards" as const, icon: Layers, label: "Flashcards", badge: flashcardCount },
+        { key: "quiz" as const, icon: Layers, label: "Quiz", badge: quizCount },
         { key: "review" as const, icon: Eye, label: "Revisão" },
       ].map(tab => (
         <button
           key={tab.key}
-          onClick={() => setStudyMode(tab.key)}
+          onClick={() => { setStudyMode(tab.key); if (tab.key === "quiz") setQuizConceptId(null); }}
           className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[12px] font-sans font-semibold transition-all whitespace-nowrap"
           style={{
             background: studyMode === tab.key ? "rgba(196,164,106,0.1)" : "transparent",
@@ -316,9 +314,6 @@ export default function MindMapCanvas({ analysis, onClose }: Props) {
 
   // Non-map study modes
   if (studyMode !== "map") {
-    const ViewComponent = studyMode === "flashcards" ? StudyFlashcardView
-      : studyMode === "notes" ? StudyNotesListView
-      : StudyRevealView;
     return (
       <div className="flex flex-col h-full w-full">
         <div className="flex items-center justify-between px-4 py-2 shrink-0"
@@ -330,7 +325,11 @@ export default function MindMapCanvas({ analysis, onClose }: Props) {
         </div>
         <div className="flex-1 overflow-hidden">
           <Suspense fallback={fallbackLoader}>
-            <ViewComponent analysis={analysis} onBack={() => setStudyMode("map")} />
+            {studyMode === "quiz" ? (
+              <MindMapQuizView analysis={analysis} onBack={() => setStudyMode("map")} filterConceptId={quizConceptId} />
+            ) : (
+              <StudyRevealView analysis={analysis} onBack={() => setStudyMode("map")} />
+            )}
           </Suspense>
         </div>
       </div>
@@ -426,6 +425,11 @@ export default function MindMapCanvas({ analysis, onClose }: Props) {
             currentIndex={openNoteIndex}
             onNavigate={(idx) => setOpenNoteIndex(idx)}
             onClose={() => setOpenNoteIndex(null)}
+            onQuiz={(conceptId) => {
+              setQuizConceptId(conceptId);
+              setOpenNoteIndex(null);
+              setStudyMode("quiz");
+            }}
           />
         )}
       </div>
