@@ -179,6 +179,8 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
         setPdfProgress({ step: "done", fileName: file.name, pages: extractData.pages, percent: 100 });
         await new Promise(r => setTimeout(r, 600));
         setAnalysis(analyzeData.result);
+        await saveAiMap(analyzeData.result);
+        fetchMaps();
         setMode("ai-canvas");
       } else {
         setError("Resposta inesperada da IA.");
