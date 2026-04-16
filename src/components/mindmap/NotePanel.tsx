@@ -1,8 +1,8 @@
 import { useState, useCallback } from "react";
 import { X, ChevronLeft, ChevronRight, BookOpen } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
-import type { KeyConcept } from "../types";
-import { getCategoryColor, getCategoryName } from "../types";
+import type { KeyConcept } from "./types";
+import { getCategoryColor, getCategoryName } from "./types";
 import VersePopover from "./VersePopover";
 
 // Regex to detect Bible references inline
