@@ -206,10 +206,11 @@ function buildFromAnalysis(analysis: AnalysisResult, selectedNodeId: string | nu
 
 interface Props {
   analysis: AnalysisResult;
+  mapId?: string | null;
   onClose: () => void;
 }
 
-export default function MindMapCanvas({ analysis, onClose }: Props) {
+export default function MindMapCanvas({ analysis, mapId, onClose }: Props) {
   const isMobile = useIsMobile();
   const [direction, setDirection] = useState<"TB" | "LR">("LR");
   const [studyMode, setStudyMode] = useState<"map" | "quiz" | "review">("map");
@@ -459,7 +460,7 @@ export default function MindMapCanvas({ analysis, onClose }: Props) {
       {/* Share Dialog */}
       {showShareDialog && (
         <ShareDialog
-          mapId=""
+          mapId={mapId || ""}
           title={analysis.main_theme || "Mapa Mental"}
           isPublic={shareState.isPublic}
           publicSlug={shareState.slug}

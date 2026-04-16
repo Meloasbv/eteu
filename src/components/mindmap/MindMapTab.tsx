@@ -31,8 +31,28 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
   const [savedMaps, setSavedMaps] = useState<SavedMap[]>([]);
   const [loadingMaps, setLoadingMaps] = useState(true);
   const [editMapId, setEditMapId] = useState<string | null>(null);
+  const [aiMapId, setAiMapId] = useState<string | null>(null);
   const [pdfProgress, setPdfProgress] = useState<PdfProgress | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+
+  const saveAiMap = useCallback(async (result: AnalysisResult) => {
+    const { data } = await supabase
+      .from("mind_maps")
+      .insert({
+        user_code_id: userCodeId,
+        title: result.main_theme || "Mapa IA",
+        nodes: (result.key_concepts || []) as any,
+        edges: [] as any,
+        source_type: "ai",
+        study_notes: { analysis: result } as any,
+      })
+      .select("id")
+      .single();
+    if (data?.id) {
+      setAiMapId(data.id);
+    }
+    return data?.id || null;
+  }, [userCodeId]);
 
   const fetchMaps = useCallback(async () => {
     setLoadingMaps(true);
@@ -73,11 +93,16 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
       });
       const data = await res.json();
       if (!res.ok || data?.error) { setError(data?.error || `Erro ${res.status}`); return; }
-      if (data?.result) { setAnalysis(data.result); setMode("ai-canvas"); }
+      if (data?.result) {
+        setAnalysis(data.result);
+        await saveAiMap(data.result);
+        fetchMaps();
+        setMode("ai-canvas");
+      }
       else { setError("Resposta inesperada da IA."); }
     } catch { setError("Erro de conexão. Verifique sua internet."); }
     finally { setLoading(false); }
-  }, []);
+  }, [saveAiMap, fetchMaps]);
 
   // PDF upload and processing
   const handlePdfUpload = useCallback(async (file: File) => {
@@ -154,6 +179,8 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
         setPdfProgress({ step: "done", fileName: file.name, pages: extractData.pages, percent: 100 });
         await new Promise(r => setTimeout(r, 600));
         setAnalysis(analyzeData.result);
+        await saveAiMap(analyzeData.result);
+        fetchMaps();
         setMode("ai-canvas");
       } else {
         setError("Resposta inesperada da IA.");
@@ -246,7 +273,7 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
     return (
       <div className="h-full w-full">
         <Suspense fallback={fallback}>
-          <MindMapCanvas analysis={analysis} onClose={() => { setAnalysis(null); setMode("select"); }} />
+          <MindMapCanvas analysis={analysis} mapId={aiMapId} onClose={() => { setAnalysis(null); setAiMapId(null); setMode("select"); }} />
         </Suspense>
       </div>
     );
