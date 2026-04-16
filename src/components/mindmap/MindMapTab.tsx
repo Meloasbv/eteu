@@ -93,7 +93,12 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
       });
       const data = await res.json();
       if (!res.ok || data?.error) { setError(data?.error || `Erro ${res.status}`); return; }
-      if (data?.result) { setAnalysis(data.result); setMode("ai-canvas"); }
+      if (data?.result) {
+        setAnalysis(data.result);
+        await saveAiMap(data.result);
+        fetchMaps();
+        setMode("ai-canvas");
+      }
       else { setError("Resposta inesperada da IA."); }
     } catch { setError("Erro de conexão. Verifique sua internet."); }
     finally { setLoading(false); }
