@@ -132,19 +132,12 @@ RETORNE APENAS um JSON válido (sem markdown, sem \`\`\`), com esta estrutura ex
       throw new Error("Resposta da IA foi truncada. Tente com um texto menor.");
     }
     
-    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
     const finishReason = data.choices?.[0]?.finish_reason;
     let result;
     
-    let rawArgs = "";
-    if (toolCall?.function?.arguments) {
-      rawArgs = typeof toolCall.function.arguments === "string" 
-        ? toolCall.function.arguments 
-        : JSON.stringify(toolCall.function.arguments);
-    } else {
-      const content = data.choices?.[0]?.message?.content || "";
-      rawArgs = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-    }
+    // Extract content from response (plain text JSON, no tool calls)
+    const content = data.choices?.[0]?.message?.content || "";
+    let rawArgs = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
 
     if (!rawArgs || rawArgs.length < 10) {
       console.error("Empty AI response. finish_reason:", finishReason);
