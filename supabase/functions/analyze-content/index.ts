@@ -26,24 +26,32 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    const systemPrompt = `Você é um assistente especializado em análise de conteúdo bíblico e teológico. Analise o texto fornecido e retorne APENAS um JSON válido com a estrutura solicitada.
+    const systemPrompt = `Você é um assistente especializado em análise de conteúdo bíblico e teológico. Analise o texto fornecido e retorne dados estruturados para um mapa mental visual.
 
-REGRAS GERAIS:
-- Identifique 6-12 conceitos-chave, extraindo o máximo possível do conteúdo fornecido
-- Crie uma hierarquia com 3-6 tópicos principais, cada um com 2-4 subtópicos — seja detalhista e abrangente
-- Notas estruturadas devem ter 3-6 seções cobrindo todo o conteúdo
-- Inclua TODAS as referências bíblicas mencionadas no texto
-- NÃO ignore nenhuma parte do texto — cubra TODO o conteúdo fornecido
-- O resumo deve ter 3-4 parágrafos completos
+REGRAS PARA OS KEY_CONCEPTS:
+- Cada conceito principal é type="topic" e DEVE ter expanded_note completo
+- Para cada topic, gere 2-4 child_highlights (frases citáveis, máx 12 palavras, estilo tweet teológico)
+- Para cada topic, gere 1-3 child_verses (referências bíblicas relevantes no formato "Livro C:V")
+- Gere também conceitos type="highlight" standalone para frases marcantes do texto
+- Gere também conceitos type="verse" standalone para versículos centrais
 
-REGRAS PARA OS CAMPOS DE ESTUDO (dentro de cada key_concept):
-- coreIdea: UMA frase que resume a essência (máximo 15 palavras). Deve ser escaneável em 2 segundos.
-- keyPoints: array de 3-5 pontos principais (cada um máximo 12 palavras). Curtos e diretos.
-- practicalApplication: como isso afeta a vida do cristão (1-2 frases de confronto espiritual)
-- bibleVerses: array de referências bíblicas relacionadas (formato "Livro capítulo:versículo"). Os mais relevantes, não genéricos.
-- impactPhrase: uma frase curta e poderosa para memorizar (máximo 10 palavras). Como um slogan espiritual.
+REGRAS PARA CATEGORIAS:
+Use estas categorias teológicas: teologia, cristologia, pneumatologia, exegese, contexto, aplicacao, escatologia, soteriologia
 
-Seja CONCISO. Nenhum parágrafo longo. Cada ponto deve ser escaneável em 2 segundos.`;
+REGRAS PARA O SUMMARY DE CADA TOPIC:
+- NÃO é resumo acadêmico. É um GANCHO de 1 linha (máx 80 chars)
+- Exemplo BOM: "O Verbo se fez carne — adição, não subtração"
+- Exemplo RUIM: "Na teologia cristã, a encarnação refere-se ao processo..."
+
+REGRAS PARA EXPANDED_NOTE:
+- core_idea: 1 frase essencial, máx 20 palavras
+- explanation: 2-4 parágrafos (separados por \\n\\n), cada um máx 4 linhas. Mencione versículos inline (Jo 1:14, Rm 8:28)
+- affirmations: 3-5 frases curtas (máx 15 palavras cada), citáveis
+- verses: 3-6 referências bíblicas no formato "Livro C:V"
+- application: 1-2 parágrafos de aplicação prática/espiritual
+- impact_phrase: 1 frase memorizável (máx 15 palavras)
+
+Seja CONCISO em cada campo. Nada de parágrafos longos. Cada ponto escaneável em 2 segundos.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -55,14 +63,14 @@ Seja CONCISO. Nenhum parágrafo longo. Cada ponto deve ser escaneável em 2 segu
         model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: `Analise COMPLETAMENTE este texto, cobrindo TODOS os pontos e detalhes mencionados. Não resuma demais — extraia o máximo de informação possível:\n\n${text.slice(0, 30000)}` },
+          { role: "user", content: `Analise COMPLETAMENTE este texto, extraindo o máximo de informação:\n\n${text.slice(0, 30000)}` },
         ],
         tools: [
           {
             type: "function",
             function: {
               name: "return_analysis",
-              description: "Return the structured analysis of the text",
+              description: "Return the structured analysis for the mind map",
               parameters: {
                 type: "object",
                 properties: {
@@ -74,17 +82,29 @@ Seja CONCISO. Nenhum parágrafo longo. Cada ponto deve ser escaneável em 2 segu
                       type: "object",
                       properties: {
                         id: { type: "string" },
+                        type: { type: "string", enum: ["topic", "highlight", "verse"] },
                         title: { type: "string" },
                         description: { type: "string" },
-                        category: { type: "string", enum: ["teologia", "contexto", "aplicação", "personagem", "lugar", "evento"] },
+                        summary: { type: "string", description: "Gancho de 1 linha (max 80 chars) para exibir no card do mapa" },
+                        category: { type: "string", enum: ["teologia", "cristologia", "pneumatologia", "exegese", "contexto", "aplicacao", "escatologia", "soteriologia"] },
                         icon_suggestion: { type: "string" },
                         bible_refs: { type: "array", items: { type: "string" } },
-                        coreIdea: { type: "string", description: "Uma frase que resume a essência (max 15 palavras)" },
-                        keyPoints: { type: "array", items: { type: "string" }, description: "3-5 pontos principais (max 12 palavras cada)" },
-                        practicalApplication: { type: "string", description: "Aplicação prática ou confronto espiritual (1-2 frases)" },
-                        impactPhrase: { type: "string", description: "Frase memorizável de impacto (max 10 palavras)" },
+                        expanded_note: {
+                          type: "object",
+                          properties: {
+                            core_idea: { type: "string", description: "1 frase essencial, max 20 palavras" },
+                            explanation: { type: "string", description: "2-4 parágrafos separados por \\n\\n, com versículos inline" },
+                            affirmations: { type: "array", items: { type: "string" }, description: "3-5 frases citáveis, max 15 palavras cada" },
+                            verses: { type: "array", items: { type: "string" }, description: "3-6 referências bíblicas formato Livro C:V" },
+                            application: { type: "string", description: "1-2 parágrafos de aplicação" },
+                            impact_phrase: { type: "string", description: "1 frase memorizável max 15 palavras" },
+                          },
+                          required: ["core_idea", "explanation", "affirmations", "verses", "application", "impact_phrase"],
+                        },
+                        child_highlights: { type: "array", items: { type: "string" }, description: "2-4 frases citáveis para HighlightCards filhos" },
+                        child_verses: { type: "array", items: { type: "string" }, description: "1-3 referências bíblicas para VerseCards filhos" },
                       },
-                      required: ["id", "title", "description", "category", "coreIdea", "keyPoints", "practicalApplication", "impactPhrase"],
+                      required: ["id", "type", "title", "description", "category"],
                     },
                   },
                   hierarchy: {
@@ -100,17 +120,7 @@ Seja CONCISO. Nenhum parágrafo longo. Cada ponto deve ser escaneável em 2 segu
                               type: "object",
                               properties: {
                                 label: { type: "string" },
-                                children: {
-                                  type: "array",
-                                  items: {
-                                    type: "object",
-                                    properties: {
-                                      label: { type: "string" },
-                                      children: { type: "array", items: { type: "object" } },
-                                    },
-                                    required: ["label"],
-                                  },
-                                },
+                                children: { type: "array", items: { type: "object", properties: { label: { type: "string" } }, required: ["label"] } },
                               },
                               required: ["label"],
                             },
