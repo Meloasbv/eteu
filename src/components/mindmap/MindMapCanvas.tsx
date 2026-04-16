@@ -206,10 +206,11 @@ function buildFromAnalysis(analysis: AnalysisResult, selectedNodeId: string | nu
 
 interface Props {
   analysis: AnalysisResult;
+  mapId?: string | null;
   onClose: () => void;
 }
 
-export default function MindMapCanvas({ analysis, onClose }: Props) {
+export default function MindMapCanvas({ analysis, mapId, onClose }: Props) {
   const isMobile = useIsMobile();
   const [direction, setDirection] = useState<"TB" | "LR">("LR");
   const [studyMode, setStudyMode] = useState<"map" | "quiz" | "review">("map");
