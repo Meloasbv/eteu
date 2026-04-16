@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useEffect, useState, lazy, Suspense } from "react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   ReactFlow,
   MiniMap,
@@ -16,7 +17,7 @@ import "@xyflow/react/dist/style.css";
 import dagre from "dagre";
 import {
   ArrowLeftRight, ArrowUpDown, X, Map, ClipboardList, Layers, Eye,
-  Loader2, Presentation, Share2,
+  Loader2, Presentation, Share2, Focus, MoreHorizontal,
 } from "lucide-react";
 import type { AnalysisResult, KeyConcept } from "./types";
 import { getCategoryColor } from "./types";
