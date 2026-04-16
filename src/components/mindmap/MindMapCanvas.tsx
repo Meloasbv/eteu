@@ -425,6 +425,11 @@ export default function MindMapCanvas({ analysis, onClose }: Props) {
             currentIndex={openNoteIndex}
             onNavigate={(idx) => setOpenNoteIndex(idx)}
             onClose={() => setOpenNoteIndex(null)}
+            onQuiz={(conceptId) => {
+              setQuizConceptId(conceptId);
+              setOpenNoteIndex(null);
+              setStudyMode("quiz");
+            }}
           />
         )}
       </div>
