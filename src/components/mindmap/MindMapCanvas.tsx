@@ -482,3 +482,16 @@ function ToolbarBtn({ icon: Icon, label, active, onClick }: { icon: React.Elemen
     </button>
   );
 }
+
+function MobileBarBtn({ icon: Icon, label, onClick }: { icon: React.ElementType; label: string; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex flex-col items-center gap-1 px-4 py-1 rounded-xl transition-all active:scale-95"
+      style={{ color: "#8a7d6a", minWidth: 48, minHeight: 44 }}
+    >
+      <Icon size={20} />
+      <span className="text-[9px] font-sans">{label}</span>
+    </button>
+  );
+}
