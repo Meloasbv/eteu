@@ -273,7 +273,7 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
     return (
       <div className="h-full w-full">
         <Suspense fallback={fallback}>
-          <MindMapCanvas analysis={analysis} onClose={() => { setAnalysis(null); setMode("select"); }} />
+          <MindMapCanvas analysis={analysis} mapId={aiMapId} onClose={() => { setAnalysis(null); setAiMapId(null); setMode("select"); }} />
         </Suspense>
       </div>
     );
