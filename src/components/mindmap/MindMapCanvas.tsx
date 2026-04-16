@@ -430,6 +430,23 @@ export default function MindMapCanvas({ analysis, onClose }: Props) {
         )}
       </div>
 
+      {/* Mobile Bottom Action Bar */}
+      {isMobile && studyMode === "map" && openNoteIndex === null && (
+        <div
+          className="flex items-center justify-around px-2 py-2 shrink-0"
+          style={{
+            background: "rgba(15,13,10,0.95)",
+            backdropFilter: "blur(12px)",
+            borderTop: "1px solid rgba(196,164,106,0.08)",
+            height: 56,
+          }}
+        >
+          <MobileBarBtn icon={Presentation} label="Apresentar" onClick={() => setShowPresentation(true)} />
+          <MobileBarBtn icon={Share2} label="Compartilhar" onClick={() => setShowShareDialog(true)} />
+          <MobileBarBtn icon={X} label="Fechar" onClick={onClose} />
+        </div>
+      )}
+
       {/* Presentation Mode */}
       {showPresentation && (
         <PresentationMode analysis={analysis} onExit={() => setShowPresentation(false)} />
