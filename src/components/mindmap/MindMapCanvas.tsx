@@ -272,8 +272,7 @@ export default function MindMapCanvas({ analysis, onClose }: Props) {
     return () => window.removeEventListener("keydown", handler);
   }, [openNoteIndex]);
 
-  const isDesktop = typeof window !== "undefined" && window.innerWidth >= 1024;
-  const flashcardCount = topicConcepts.length * 2;
+  const quizCount = topicConcepts.length * 3;
 
   const fallbackLoader = (
     <div className="flex items-center justify-center h-full">
@@ -287,13 +286,12 @@ export default function MindMapCanvas({ analysis, onClose }: Props) {
       style={{ background: "rgba(15,13,10,0.9)", border: "1px solid rgba(196,164,106,0.1)", backdropFilter: "blur(12px)" }}>
       {[
         { key: "map" as const, icon: Map, label: "Mapa" },
-        { key: "notes" as const, icon: ClipboardList, label: "Notas" },
-        { key: "flashcards" as const, icon: Layers, label: "Flashcards", badge: flashcardCount },
+        { key: "quiz" as const, icon: Layers, label: "Quiz", badge: quizCount },
         { key: "review" as const, icon: Eye, label: "Revisão" },
       ].map(tab => (
         <button
           key={tab.key}
-          onClick={() => setStudyMode(tab.key)}
+          onClick={() => { setStudyMode(tab.key); if (tab.key === "quiz") setQuizConceptId(null); }}
           className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[12px] font-sans font-semibold transition-all whitespace-nowrap"
           style={{
             background: studyMode === tab.key ? "rgba(196,164,106,0.1)" : "transparent",
