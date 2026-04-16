@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback, useRef, lazy, Suspense } from "react";
+import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { haptic } from "@/hooks/useHaptic";
-import { Brain, Mic, MicOff, Sparkles, ChevronDown, ChevronUp, Link2, Search, X, MessageSquare, Map, BarChart3 } from "lucide-react";
+import { Brain, Mic, MicOff, Sparkles, ChevronDown, ChevronUp, Link2, Search, X, MessageSquare, Map, BarChart3, MoreHorizontal, Pencil, Archive, Trash2, Unlink, ArchiveRestore, Check } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Json } from "@/integrations/supabase/types";
 
@@ -11,14 +11,21 @@ const PatternsView = lazy(() => import("./PatternsView"));
 // ── Types ──
 type ThoughtType = "problema" | "insight" | "estudo" | "reflexão" | "oração" | "decisão" | "emocional" | "ideia" | "pergunta";
 
+interface AIConnection {
+  target_id: string;
+  type: string;
+  strength: number;
+  explanation: string;
+}
+
 interface ThoughtAnalysis {
   detected_type?: ThoughtType;
   psychological_analysis?: { pattern: string; explanation: string; reframe: string };
   biblical_analysis?: { principle: string; verses: string[]; application: string };
   diagnosis?: { summary: string; action: string; question: string };
   keywords?: string[];
-  connections?: { search_terms: string[]; possible_themes: string[] };
   emotion_score?: { valence: number; intensity: number };
+  resolved_connections?: AIConnection[];
 }
 
 interface Thought {
@@ -31,6 +38,7 @@ interface Thought {
   emotion_valence: number;
   emotion_intensity: number;
   is_favorite: boolean;
+  archived: boolean;
   created_at: string;
 }
 
@@ -74,6 +82,8 @@ export default function SecondBrainTab({ userCodeId }: { userCodeId: string }) {
   const [isListening, setIsListening] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const recognitionRef = useRef<any>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -82,12 +92,15 @@ export default function SecondBrainTab({ userCodeId }: { userCodeId: string }) {
   const loadThoughts = async () => {
     const { data } = await supabase
       .from("thoughts").select("*").eq("user_code_id", userCodeId)
-      .order("created_at", { ascending: false }).limit(50);
+      .order("created_at", { ascending: false }).limit(80);
     if (data) {
       setThoughts(data.map(t => ({
-        ...t, keywords: (t.keywords as string[]) || [],
+        ...t,
+        keywords: (t.keywords as string[]) || [],
         analysis: t.analysis ? (t.analysis as unknown as ThoughtAnalysis) : null,
-        emotion_valence: Number(t.emotion_valence) || 0, emotion_intensity: Number(t.emotion_intensity) || 0,
+        emotion_valence: Number(t.emotion_valence) || 0,
+        emotion_intensity: Number(t.emotion_intensity) || 0,
+        archived: Boolean((t as any).archived),
       })));
     }
   };
@@ -111,7 +124,14 @@ export default function SecondBrainTab({ userCodeId }: { userCodeId: string }) {
       toast({ title: "Erro ao salvar", description: error?.message, variant: "destructive" });
       setIsRegistering(false); return;
     }
-    const newThought: Thought = { ...inserted, keywords: [], analysis: null, emotion_valence: 0, emotion_intensity: 0 };
+    const newThought: Thought = {
+      ...inserted,
+      keywords: [],
+      analysis: null,
+      emotion_valence: 0,
+      emotion_intensity: 0,
+      archived: false,
+    } as Thought;
     setThoughts(prev => [newThought, ...prev]);
     setContent(""); setSelectedType("auto");
     if (textareaRef.current) textareaRef.current.style.height = "120px";
@@ -122,36 +142,113 @@ export default function SecondBrainTab({ userCodeId }: { userCodeId: string }) {
   const analyzeThought = async (thought: Thought) => {
     setAnalyzingIds(prev => new Set(prev).add(thought.id));
     try {
-      const recentForContext = thoughts.slice(0, 10).map(t => ({ type: t.type, content: t.content }));
+      // Send richer context: id + content + type + keywords for the AI to reference by index
+      const pastForContext = thoughts
+        .filter(t => t.id !== thought.id && !t.archived)
+        .slice(0, 25)
+        .map(t => ({ id: t.id, type: t.type, content: t.content, keywords: t.keywords }));
+
       const { data, error } = await supabase.functions.invoke("analyze-thought", {
-        body: { content: thought.content, recentThoughts: recentForContext },
+        body: { content: thought.content, pastThoughts: pastForContext },
       });
-      if (error || data?.error) return;
+      if (error || data?.error) {
+        if (data?.error) toast({ title: "IA indisponível", description: data.error, variant: "destructive" });
+        return;
+      }
       const analysis = data.analysis as ThoughtAnalysis;
       const detectedType = analysis.detected_type || thought.type;
       const keywords = analysis.keywords || [];
       const valence = analysis.emotion_score?.valence ?? 0;
       const intensity = analysis.emotion_score?.intensity ?? 0;
+
       await supabase.from("thoughts").update({
         analysis: analysis as unknown as Json,
         type: selectedType === "auto" ? detectedType : thought.type,
         keywords, emotion_valence: valence, emotion_intensity: intensity,
       }).eq("id", thought.id);
+
       setThoughts(prev => prev.map(t => t.id === thought.id
         ? { ...t, analysis, type: selectedType === "auto" ? detectedType : t.type, keywords, emotion_valence: valence, emotion_intensity: intensity } : t
       ));
-      if (keywords.length > 0) findAndSaveConnections(thought.id, keywords);
-    } catch (e) { console.error("Analysis failed:", e);
-    } finally { setAnalyzingIds(prev => { const n = new Set(prev); n.delete(thought.id); return n; }); }
+
+      const conns = analysis.resolved_connections || [];
+      if (conns.length > 0) await saveAIConnections(thought.id, conns);
+    } catch (e) {
+      console.error("Analysis failed:", e);
+    } finally {
+      setAnalyzingIds(prev => { const n = new Set(prev); n.delete(thought.id); return n; });
+    }
   };
 
-  const findAndSaveConnections = async (thoughtId: string, keywords: string[]) => {
-    const { data: connected } = await supabase.from("thoughts").select("id, keywords")
-      .eq("user_code_id", userCodeId).neq("id", thoughtId).overlaps("keywords", keywords).limit(5);
-    if (connected && connected.length > 0) {
-      const conns = connected.map(c => ({ user_code_id: userCodeId, thought_a: thoughtId, thought_b: c.id, connection_type: "keyword", strength: 0.5 }));
-      await supabase.from("thought_connections").upsert(conns, { onConflict: "thought_a,thought_b" });
+  const saveAIConnections = async (thoughtId: string, conns: AIConnection[]) => {
+    // Deduplicate by undirected pair (a<b)
+    const rows = conns.map(c => {
+      const a = thoughtId < c.target_id ? thoughtId : c.target_id;
+      const b = thoughtId < c.target_id ? c.target_id : thoughtId;
+      return {
+        user_code_id: userCodeId,
+        thought_a: a,
+        thought_b: b,
+        connection_type: c.type || "semantic",
+        strength: c.strength,
+        explanation: c.explanation,
+      };
+    });
+    const { error } = await supabase.from("thought_connections").upsert(rows as any, {
+      onConflict: "thought_a,thought_b",
+    });
+    if (error) console.error("connection upsert error:", error);
+  };
+
+  const updateThoughtContent = async (id: string, newContent: string) => {
+    const { error } = await supabase.from("thoughts").update({ content: newContent.trim() }).eq("id", id);
+    if (error) {
+      toast({ title: "Erro ao editar", description: error.message, variant: "destructive" });
+      return false;
     }
+    setThoughts(prev => prev.map(t => t.id === id ? { ...t, content: newContent.trim() } : t));
+    toast({ title: "Pensamento atualizado" });
+    return true;
+  };
+
+  const archiveThought = async (id: string, archived: boolean) => {
+    const { error } = await supabase.from("thoughts").update({ archived } as any).eq("id", id);
+    if (error) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+      return;
+    }
+    setThoughts(prev => prev.map(t => t.id === id ? { ...t, archived } : t));
+    toast({ title: archived ? "Arquivado" : "Restaurado", description: archived ? "Some do grafo, mantido no histórico." : "Voltou para o grafo." });
+    haptic("light");
+  };
+
+  const removeConnections = async (id: string) => {
+    const { error } = await supabase.from("thought_connections").delete()
+      .eq("user_code_id", userCodeId)
+      .or(`thought_a.eq.${id},thought_b.eq.${id}`);
+    if (error) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Conexões removidas" });
+    haptic("light");
+  };
+
+  const deleteThought = async (id: string) => {
+    // Remove connections first to avoid orphans
+    await supabase.from("thought_connections").delete()
+      .eq("user_code_id", userCodeId)
+      .or(`thought_a.eq.${id},thought_b.eq.${id}`);
+    const { error } = await supabase.from("thoughts").delete().eq("id", id);
+    if (error) {
+      toast({ title: "Erro ao excluir", description: error.message, variant: "destructive" });
+      return;
+    }
+    setThoughts(prev => prev.filter(t => t.id !== id));
+    setConfirmDeleteId(null);
+    if (expandedId === id) setExpandedId(null);
+    toast({ title: "Excluído permanentemente" });
+    haptic("medium");
   };
 
   const toggleVoice = () => {
@@ -166,9 +263,10 @@ export default function SecondBrainTab({ userCodeId }: { userCodeId: string }) {
     recognition.start(); recognitionRef.current = recognition; setIsListening(true); haptic("light");
   };
 
+  const visible = thoughts.filter(t => showArchived ? true : !t.archived);
   const filtered = searchQuery
-    ? thoughts.filter(t => t.content.toLowerCase().includes(searchQuery.toLowerCase()) || t.keywords.some(k => k.toLowerCase().includes(searchQuery.toLowerCase())))
-    : thoughts;
+    ? visible.filter(t => t.content.toLowerCase().includes(searchQuery.toLowerCase()) || t.keywords.some(k => k.toLowerCase().includes(searchQuery.toLowerCase())))
+    : visible;
 
   const TABS: { key: ViewMode; icon: any; label: string }[] = [
     { key: "capture", icon: MessageSquare, label: "Captura" },
@@ -243,9 +341,23 @@ export default function SecondBrainTab({ userCodeId }: { userCodeId: string }) {
             {/* Feed header */}
             <div className="flex items-center justify-between mt-6 mb-3">
               <h3 className="text-xs font-bold uppercase tracking-[2px] text-muted-foreground/60 font-ui">Pensamentos Recentes</h3>
-              <button onClick={() => { setShowSearch(!showSearch); if (showSearch) setSearchQuery(""); }} className="text-muted-foreground hover:text-foreground transition-colors">
-                {showSearch ? <X size={16} /> : <Search size={16} />}
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowArchived(v => !v)}
+                  className="text-[10px] font-bold uppercase tracking-wider font-ui px-2 py-1 rounded-md transition-colors"
+                  style={{
+                    background: showArchived ? "hsl(var(--primary) / 0.12)" : "transparent",
+                    color: showArchived ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))",
+                    border: `1px solid ${showArchived ? "hsl(var(--primary) / 0.3)" : "hsl(var(--border))"}`,
+                  }}
+                  title="Mostrar arquivados"
+                >
+                  {showArchived ? "Com arquivados" : "Sem arquivados"}
+                </button>
+                <button onClick={() => { setShowSearch(!showSearch); if (showSearch) setSearchQuery(""); }} className="text-muted-foreground hover:text-foreground transition-colors">
+                  {showSearch ? <X size={16} /> : <Search size={16} />}
+                </button>
+              </div>
             </div>
             {showSearch && (
               <input autoFocus value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
@@ -255,9 +367,20 @@ export default function SecondBrainTab({ userCodeId }: { userCodeId: string }) {
 
             <div className="space-y-2.5">
               {filtered.map(thought => (
-                <ThoughtCard key={thought.id} thought={thought} isExpanded={expandedId === thought.id}
+                <ThoughtCard
+                  key={thought.id}
+                  thought={thought}
+                  isExpanded={expandedId === thought.id}
                   isAnalyzing={analyzingIds.has(thought.id)}
-                  onToggle={() => { setExpandedId(expandedId === thought.id ? null : thought.id); haptic("light"); }} />
+                  isConfirmingDelete={confirmDeleteId === thought.id}
+                  onToggle={() => { setExpandedId(expandedId === thought.id ? null : thought.id); haptic("light"); }}
+                  onEdit={(newText) => updateThoughtContent(thought.id, newText)}
+                  onArchive={() => archiveThought(thought.id, !thought.archived)}
+                  onRemoveConnections={() => removeConnections(thought.id)}
+                  onRequestDelete={() => setConfirmDeleteId(thought.id)}
+                  onCancelDelete={() => setConfirmDeleteId(null)}
+                  onConfirmDelete={() => deleteThought(thought.id)}
+                />
               ))}
               {filtered.length === 0 && (
                 <p className="text-center text-muted-foreground/50 text-sm py-8 font-body italic">
@@ -289,39 +412,142 @@ export default function SecondBrainTab({ userCodeId }: { userCodeId: string }) {
 }
 
 // ── Thought Card ──
-function ThoughtCard({ thought, isExpanded, isAnalyzing, onToggle }: {
-  thought: Thought; isExpanded: boolean; isAnalyzing: boolean; onToggle: () => void;
+function ThoughtCard({
+  thought, isExpanded, isAnalyzing, isConfirmingDelete,
+  onToggle, onEdit, onArchive, onRemoveConnections, onRequestDelete, onCancelDelete, onConfirmDelete,
+}: {
+  thought: Thought;
+  isExpanded: boolean;
+  isAnalyzing: boolean;
+  isConfirmingDelete: boolean;
+  onToggle: () => void;
+  onEdit: (newText: string) => Promise<boolean>;
+  onArchive: () => void;
+  onRemoveConnections: () => void;
+  onRequestDelete: () => void;
+  onCancelDelete: () => void;
+  onConfirmDelete: () => void;
 }) {
   const typeInfo = getTypeInfo(thought.type);
   const analysis = thought.analysis;
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editValue, setEditValue] = useState(thought.content);
+
+  const stop = (e: React.MouseEvent) => e.stopPropagation();
+
+  const startEdit = () => { setEditValue(thought.content); setEditing(true); setMenuOpen(false); };
+  const saveEdit = async () => {
+    if (editValue.trim() && editValue.trim() !== thought.content) {
+      const ok = await onEdit(editValue);
+      if (ok) setEditing(false);
+    } else {
+      setEditing(false);
+    }
+  };
 
   return (
-    <div className="rounded-xl transition-all duration-200 cursor-pointer"
-      style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderLeft: `3px solid ${typeInfo.color}` }}
-      onClick={onToggle}>
+    <div className="rounded-xl transition-all duration-200 cursor-pointer relative"
+      style={{
+        background: "hsl(var(--card))",
+        border: "1px solid hsl(var(--border))",
+        borderLeft: `3px solid ${typeInfo.color}`,
+        opacity: thought.archived ? 0.55 : 1,
+      }}
+      onClick={() => { if (!editing && !menuOpen) onToggle(); }}>
       <div className="p-3.5">
         <div className="flex items-center justify-between mb-1.5">
-          <div className="flex items-center gap-2">
-            <span className="text-xs" style={{ color: typeInfo.color }}>{typeInfo.emoji} {typeInfo.label}</span>
-            <span className="text-[10px] text-muted-foreground/50">{timeAgo(thought.created_at)}</span>
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-xs whitespace-nowrap" style={{ color: typeInfo.color }}>{typeInfo.emoji} {typeInfo.label}</span>
+            <span className="text-[10px] text-muted-foreground/50 whitespace-nowrap">{timeAgo(thought.created_at)}</span>
+            {thought.archived && (
+              <span className="text-[9px] uppercase tracking-wider font-bold text-muted-foreground/60 px-1.5 py-0.5 rounded bg-muted/30">arquivado</span>
+            )}
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1" onClick={stop}>
             {isAnalyzing && <span className="text-[10px] text-primary animate-pulse font-ui">Analisando...</span>}
-            {isExpanded ? <ChevronUp size={14} className="text-muted-foreground/40" /> : <ChevronDown size={14} className="text-muted-foreground/40" />}
+            <button
+              onClick={(e) => { e.stopPropagation(); setMenuOpen(v => !v); }}
+              className="p-1 rounded-md hover:bg-muted/40 text-muted-foreground/60 hover:text-foreground transition-colors"
+              aria-label="Opções"
+            >
+              <MoreHorizontal size={14} />
+            </button>
+            <button onClick={(e) => { e.stopPropagation(); onToggle(); }} className="p-1 text-muted-foreground/40">
+              {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </button>
           </div>
         </div>
-        <p className={`text-sm text-foreground/80 font-body leading-relaxed ${!isExpanded ? "line-clamp-2" : ""}`}>{thought.content}</p>
-        {!isExpanded && analysis?.diagnosis?.summary && (
+
+        {/* Action menu */}
+        {menuOpen && (
+          <div
+            className="absolute right-3 top-10 z-30 rounded-lg shadow-lg p-1 min-w-[180px] animate-fade-in"
+            style={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }}
+            onClick={stop}
+          >
+            <MenuItem icon={Pencil} label="Editar" onClick={startEdit} />
+            <MenuItem
+              icon={thought.archived ? ArchiveRestore : Archive}
+              label={thought.archived ? "Restaurar" : "Arquivar"}
+              onClick={() => { onArchive(); setMenuOpen(false); }}
+            />
+            <MenuItem icon={Unlink} label="Remover conexões" onClick={() => { onRemoveConnections(); setMenuOpen(false); }} />
+            <div className="my-1 h-px bg-border" />
+            <MenuItem icon={Trash2} label="Excluir permanentemente" danger onClick={() => { onRequestDelete(); setMenuOpen(false); }} />
+          </div>
+        )}
+
+        {/* Editing mode */}
+        {editing ? (
+          <div onClick={stop} className="space-y-2">
+            <textarea
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              autoFocus
+              className="w-full text-sm font-body bg-background/50 border border-border rounded-lg p-2 outline-none focus:border-primary/40 resize-y"
+              style={{ minHeight: 80 }}
+            />
+            <div className="flex items-center gap-2 justify-end">
+              <button onClick={() => setEditing(false)} className="text-[11px] font-ui text-muted-foreground px-2 py-1">Cancelar</button>
+              <button onClick={saveEdit} className="flex items-center gap-1 text-[11px] font-ui font-bold px-2.5 py-1 rounded-md"
+                style={{ background: "hsl(var(--primary) / 0.15)", color: "hsl(var(--primary))", border: "1px solid hsl(var(--primary) / 0.3)" }}>
+                <Check size={12} /> Salvar
+              </button>
+            </div>
+          </div>
+        ) : (
+          <p className={`text-sm text-foreground/80 font-body leading-relaxed ${!isExpanded ? "line-clamp-2" : ""}`}>{thought.content}</p>
+        )}
+
+        {!isExpanded && !editing && analysis?.diagnosis?.summary && (
           <p className="text-[11px] text-muted-foreground/60 mt-1.5 italic font-body line-clamp-1">💊 {analysis.diagnosis.summary}</p>
         )}
-        {!isExpanded && thought.keywords.length > 0 && (
+        {!isExpanded && !editing && thought.keywords.length > 0 && (
           <div className="flex items-center gap-1 mt-1.5">
             <Link2 size={10} className="text-primary/40" />
             <span className="text-[10px] text-primary/50">{thought.keywords.slice(0, 3).join(" · ")}</span>
           </div>
         )}
+
+        {/* Inline delete confirmation */}
+        {isConfirmingDelete && (
+          <div onClick={stop} className="mt-3 p-2.5 rounded-lg flex items-center justify-between gap-2"
+            style={{ background: "hsl(var(--destructive) / 0.08)", border: "1px solid hsl(var(--destructive) / 0.3)" }}>
+            <span className="text-[11px] text-destructive font-ui">Excluir permanentemente? Não dá pra desfazer.</span>
+            <div className="flex items-center gap-1.5">
+              <button onClick={onCancelDelete} className="text-[11px] font-ui px-2 py-1 text-muted-foreground">Cancelar</button>
+              <button onClick={onConfirmDelete}
+                className="text-[11px] font-bold font-ui px-2.5 py-1 rounded-md"
+                style={{ background: "hsl(var(--destructive))", color: "hsl(var(--destructive-foreground))" }}>
+                Excluir
+              </button>
+            </div>
+          </div>
+        )}
       </div>
-      {isExpanded && analysis && (
+
+      {isExpanded && analysis && !editing && (
         <div className="px-3.5 pb-4 pt-1 space-y-3 animate-fade-in"
           style={{ borderTop: "1px solid hsl(var(--border) / 0.5)" }} onClick={e => e.stopPropagation()}>
           {analysis.psychological_analysis && (
@@ -355,6 +581,26 @@ function ThoughtCard({ thought, isExpanded, isAnalyzing, onToggle }: {
               <p className="text-xs mt-1 italic font-body text-primary/70">❓ {analysis.diagnosis.question}</p>
             </div>
           )}
+          {analysis.resolved_connections && analysis.resolved_connections.length > 0 && (
+            <div>
+              <p className="text-[9px] font-bold uppercase tracking-[2px] text-muted-foreground/40 font-ui mb-1">🔗 Conexões detectadas</p>
+              <div className="space-y-1.5">
+                {analysis.resolved_connections.map((c, i) => (
+                  <div key={i} className="text-[11px] font-body p-2 rounded-md"
+                    style={{ background: "hsl(var(--primary) / 0.04)", border: "1px solid hsl(var(--primary) / 0.12)" }}>
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="text-[9px] uppercase tracking-wider font-bold text-primary/70">{c.type}</span>
+                      <div className="flex-1 h-0.5 rounded-full bg-primary/10">
+                        <div className="h-full rounded-full bg-primary/50" style={{ width: `${Math.round(c.strength * 100)}%` }} />
+                      </div>
+                      <span className="text-[9px] text-muted-foreground/50">{Math.round(c.strength * 100)}%</span>
+                    </div>
+                    <p className="text-foreground/70">{c.explanation}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {thought.keywords.length > 0 && (
             <div className="flex flex-wrap gap-1 pt-1">
               {thought.keywords.map((k, i) => (
@@ -366,5 +612,18 @@ function ThoughtCard({ thought, isExpanded, isAnalyzing, onToggle }: {
         </div>
       )}
     </div>
+  );
+}
+
+function MenuItem({ icon: Icon, label, onClick, danger }: { icon: any; label: string; onClick: () => void; danger?: boolean }) {
+  return (
+    <button
+      onClick={onClick}
+      className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs font-ui transition-colors hover:bg-muted/40"
+      style={{ color: danger ? "hsl(var(--destructive))" : "hsl(var(--foreground))" }}
+    >
+      <Icon size={13} />
+      {label}
+    </button>
   );
 }
