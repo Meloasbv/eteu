@@ -70,6 +70,7 @@ interface NotePanelProps {
   currentIndex: number;
   onNavigate: (index: number) => void;
   onClose: () => void;
+  onQuiz?: (conceptId: string) => void;
 }
 
 export default function NotePanel({
@@ -78,6 +79,7 @@ export default function NotePanel({
   currentIndex,
   onNavigate,
   onClose,
+  onQuiz,
 }: NotePanelProps) {
   const isMobile = useIsMobile();
   const [versePopover, setVersePopover] = useState<{
