@@ -314,9 +314,6 @@ export default function MindMapCanvas({ analysis, onClose }: Props) {
 
   // Non-map study modes
   if (studyMode !== "map") {
-    const ViewComponent = studyMode === "flashcards" ? StudyFlashcardView
-      : studyMode === "notes" ? StudyNotesListView
-      : StudyRevealView;
     return (
       <div className="flex flex-col h-full w-full">
         <div className="flex items-center justify-between px-4 py-2 shrink-0"
@@ -328,7 +325,11 @@ export default function MindMapCanvas({ analysis, onClose }: Props) {
         </div>
         <div className="flex-1 overflow-hidden">
           <Suspense fallback={fallbackLoader}>
-            <ViewComponent analysis={analysis} onBack={() => setStudyMode("map")} />
+            {studyMode === "quiz" ? (
+              <MindMapQuizView analysis={analysis} onBack={() => setStudyMode("map")} filterConceptId={quizConceptId} />
+            ) : (
+              <StudyRevealView analysis={analysis} onBack={() => setStudyMode("map")} />
+            )}
           </Suspense>
         </div>
       </div>
