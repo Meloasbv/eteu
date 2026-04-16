@@ -1,15 +1,16 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { Copy, Check, ExternalLink, X, Globe, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 interface ShareDialogProps {
-  mapId: string;
+  mapId: string | null;
   title: string;
   isPublic: boolean;
   publicSlug: string | null;
   onClose: () => void;
   onUpdate: (isPublic: boolean, slug: string | null) => void;
+  onEnsureSaved?: () => Promise<string | null>;
 }
 
 function generateSlug(title: string): string {
@@ -23,11 +24,21 @@ function generateSlug(title: string): string {
   return `${base}-${rand}`;
 }
 
-export default function ShareDialog({ mapId, title, isPublic, publicSlug, onClose, onUpdate }: ShareDialogProps) {
+export default function ShareDialog({ mapId, title, isPublic, publicSlug, onClose, onUpdate, onEnsureSaved }: ShareDialogProps) {
   const [sharing, setSharing] = useState(isPublic);
   const [slug, setSlug] = useState(publicSlug);
+  const [resolvedMapId, setResolvedMapId] = useState<string | null>(mapId);
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setResolvedMapId(mapId);
+  }, [mapId]);
+
+  useEffect(() => {
+    setSharing(isPublic);
+    setSlug(publicSlug);
+  }, [isPublic, publicSlug]);
 
   const publicUrl = useMemo(() => {
     if (!slug) return "";
@@ -37,31 +48,75 @@ export default function ShareDialog({ mapId, title, isPublic, publicSlug, onClos
   const togglePublic = useCallback(async () => {
     setLoading(true);
     try {
+      let effectiveMapId = resolvedMapId;
+
+      if (!effectiveMapId && onEnsureSaved) {
+        effectiveMapId = await onEnsureSaved();
+        if (effectiveMapId) {
+          setResolvedMapId(effectiveMapId);
+        }
+      }
+
+      if (!effectiveMapId) {
+        throw new Error("Salve o mapa antes de compartilhar.");
+      }
+
+      const { data: currentMap, error: readError } = await supabase
+        .from("mind_maps")
+        .select("study_notes")
+        .eq("id", effectiveMapId)
+        .maybeSingle();
+
+      if (readError) throw readError;
+      if (!currentMap) throw new Error("Não foi possível localizar o mapa salvo.");
+
+      const currentStudyNotes = (currentMap.study_notes as Record<string, unknown> | null) ?? {};
+
       if (!sharing) {
-        // Make public
         const newSlug = slug || generateSlug(title);
-        await supabase.from("mind_maps").update({
-          // We store public info in study_notes JSON field as a workaround
-          study_notes: { is_public: true, public_slug: newSlug, shared_at: new Date().toISOString() } as any,
-        }).eq("id", mapId);
+        const { error: updateError } = await supabase
+          .from("mind_maps")
+          .update({
+            study_notes: {
+              ...currentStudyNotes,
+              is_public: true,
+              public_slug: newSlug,
+              shared_at: new Date().toISOString(),
+            } as any,
+          })
+          .eq("id", effectiveMapId);
+
+        if (updateError) throw updateError;
+
         setSlug(newSlug);
         setSharing(true);
         onUpdate(true, newSlug);
         toast.success("Mapa publicado!");
       } else {
-        // Make private
-        await supabase.from("mind_maps").update({
-          study_notes: { is_public: false, public_slug: null } as any,
-        }).eq("id", mapId);
+        const { error: updateError } = await supabase
+          .from("mind_maps")
+          .update({
+            study_notes: {
+              ...currentStudyNotes,
+              is_public: false,
+              public_slug: null,
+            } as any,
+          })
+          .eq("id", effectiveMapId);
+
+        if (updateError) throw updateError;
+
+        setSlug(null);
         setSharing(false);
         onUpdate(false, null);
         toast.success("Mapa tornado privado.");
       }
-    } catch {
-      toast.error("Erro ao atualizar compartilhamento.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao atualizar compartilhamento.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-  }, [sharing, slug, title, mapId, onUpdate]);
+  }, [resolvedMapId, onEnsureSaved, sharing, slug, title, onUpdate]);
 
   const copyLink = useCallback(() => {
     navigator.clipboard.writeText(publicUrl);
@@ -87,7 +142,6 @@ export default function ShareDialog({ mapId, title, isPublic, publicSlug, onClos
         </div>
 
         <div className="px-5 pb-5 space-y-4">
-          {/* Toggle */}
           <button
             onClick={togglePublic}
             disabled={loading}
@@ -120,7 +174,6 @@ export default function ShareDialog({ mapId, title, isPublic, publicSlug, onClos
             </div>
           </button>
 
-          {/* Link */}
           {sharing && slug && (
             <div className="space-y-2">
               <p className="text-[11px] font-sans uppercase tracking-[1.5px]" style={{ color: "#5c5347" }}>

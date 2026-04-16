@@ -207,10 +207,11 @@ function buildFromAnalysis(analysis: AnalysisResult, selectedNodeId: string | nu
 interface Props {
   analysis: AnalysisResult;
   mapId?: string | null;
+  onEnsureSavedForShare?: () => Promise<string | null>;
   onClose: () => void;
 }
 
-export default function MindMapCanvas({ analysis, mapId, onClose }: Props) {
+export default function MindMapCanvas({ analysis, mapId, onEnsureSavedForShare, onClose }: Props) {
   const isMobile = useIsMobile();
   const [direction, setDirection] = useState<"TB" | "LR">("LR");
   const [studyMode, setStudyMode] = useState<"map" | "quiz" | "review">("map");
@@ -248,10 +249,8 @@ export default function MindMapCanvas({ analysis, mapId, onClose }: Props) {
     setEdges(le);
   }, [analysis, selectedNodeId]);
 
-  // Handle node click → open NotePanel for TopicCards
   const onNodeClick = useCallback((_: any, node: Node) => {
     if (node.type === "topicCard") {
-      // Find index in topicConcepts
       const idx = topicConcepts.findIndex((c, i) => {
         const expectedId = `topic-${c.id || i}`;
         return expectedId === node.id;
@@ -262,7 +261,6 @@ export default function MindMapCanvas({ analysis, mapId, onClose }: Props) {
     }
   }, [topicConcepts]);
 
-  // Close with Esc
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape" && openNoteIndex !== null) {
@@ -281,7 +279,6 @@ export default function MindMapCanvas({ analysis, mapId, onClose }: Props) {
     </div>
   );
 
-  // Study mode tabs
   const StudyModeTabs = () => (
     <div className="flex gap-0.5 rounded-xl p-1"
       style={{ background: "rgba(15,13,10,0.9)", border: "1px solid rgba(196,164,106,0.1)", backdropFilter: "blur(12px)" }}>
@@ -313,7 +310,6 @@ export default function MindMapCanvas({ analysis, mapId, onClose }: Props) {
     </div>
   );
 
-  // Non-map study modes
   if (studyMode !== "map") {
     return (
       <div className="flex flex-col h-full w-full">
@@ -337,10 +333,8 @@ export default function MindMapCanvas({ analysis, mapId, onClose }: Props) {
     );
   }
 
-  // Map mode
   return (
     <div className="flex flex-col h-full w-full">
-      {/* Header */}
       <div className="flex items-center justify-between px-4 py-2 shrink-0"
         style={{ borderBottom: "1px solid rgba(196,164,106,0.1)" }}>
         <StudyModeTabs />
@@ -349,9 +343,7 @@ export default function MindMapCanvas({ analysis, mapId, onClose }: Props) {
         </button>
       </div>
 
-      {/* Map + NotePanel */}
       <div className="flex flex-1 min-h-0">
-        {/* Canvas */}
         <div className="flex-1 h-full relative">
           <ReactFlow
             nodes={nodes}
@@ -400,7 +392,6 @@ export default function MindMapCanvas({ analysis, mapId, onClose }: Props) {
               }}
             />
 
-            {/* Toolbar */}
             <Panel position="top-center">
               <div className="flex items-center gap-1.5 px-3 py-2 rounded-2xl shadow-lg"
                 style={{
@@ -418,7 +409,6 @@ export default function MindMapCanvas({ analysis, mapId, onClose }: Props) {
           </ReactFlow>
         </div>
 
-        {/* NotePanel - Desktop */}
         {openNoteIndex !== null && (
           <NotePanel
             concept={topicConcepts[openNoteIndex] || null}
@@ -435,7 +425,6 @@ export default function MindMapCanvas({ analysis, mapId, onClose }: Props) {
         )}
       </div>
 
-      {/* Mobile Bottom Action Bar */}
       {isMobile && studyMode === "map" && openNoteIndex === null && (
         <div
           className="flex items-center justify-around px-2 py-2 shrink-0"
@@ -452,20 +441,19 @@ export default function MindMapCanvas({ analysis, mapId, onClose }: Props) {
         </div>
       )}
 
-      {/* Presentation Mode */}
       {showPresentation && (
         <PresentationMode analysis={analysis} onExit={() => setShowPresentation(false)} />
       )}
 
-      {/* Share Dialog */}
       {showShareDialog && (
         <ShareDialog
-          mapId={mapId || ""}
+          mapId={mapId ?? null}
           title={analysis.main_theme || "Mapa Mental"}
           isPublic={shareState.isPublic}
           publicSlug={shareState.slug}
           onClose={() => setShowShareDialog(false)}
           onUpdate={(isPublic, slug) => setShareState({ isPublic, slug })}
+          onEnsureSaved={onEnsureSavedForShare}
         />
       )}
     </div>
