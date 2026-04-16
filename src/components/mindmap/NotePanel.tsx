@@ -143,9 +143,20 @@ export default function NotePanel({
             </span>
           )}
         </div>
-        <button onClick={onClose} className="p-1.5 rounded-lg transition-colors hover:bg-white/5">
-          <X size={18} style={{ color: "#8a7d6a" }} />
-        </button>
+        <div className="flex items-center gap-1">
+          {onQuiz && (
+            <button
+              onClick={() => onQuiz(concept.id)}
+              className="px-2.5 py-1.5 rounded-lg text-[10px] font-sans font-bold tracking-wide transition-all active:scale-95"
+              style={{ background: "rgba(196,164,106,0.1)", color: "#c4a46a", border: "1px solid rgba(196,164,106,0.15)" }}
+            >
+              🧠 Quiz
+            </button>
+          )}
+          <button onClick={onClose} className="p-1.5 rounded-lg transition-colors hover:bg-white/5">
+            <X size={18} style={{ color: "#8a7d6a" }} />
+          </button>
+        </div>
       </div>
 
       {/* Scrollable body */}
