@@ -35,23 +35,56 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
   const [pdfProgress, setPdfProgress] = useState<PdfProgress | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
-  const saveAiMap = useCallback(async (result: AnalysisResult) => {
-    const { data } = await supabase
-      .from("mind_maps")
-      .insert({
-        user_code_id: userCodeId,
-        title: result.main_theme || "Mapa IA",
-        nodes: (result.key_concepts || []) as any,
-        edges: [] as any,
-        source_type: "ai",
-        study_notes: { analysis: result } as any,
-      })
-      .select("id")
-      .single();
-    if (data?.id) {
-      setAiMapId(data.id);
+  const saveAiMap = useCallback(async (result: AnalysisResult, existingMapId: string | null = null) => {
+    let currentStudyNotes: Record<string, unknown> = {};
+    let shouldUpdateExistingMap = false;
+
+    if (existingMapId) {
+      const { data: existingMap, error: existingMapError } = await supabase
+        .from("mind_maps")
+        .select("id, study_notes")
+        .eq("id", existingMapId)
+        .maybeSingle();
+
+      if (existingMapError) throw existingMapError;
+
+      if (existingMap?.id) {
+        shouldUpdateExistingMap = true;
+        currentStudyNotes = (existingMap.study_notes as Record<string, unknown> | null) ?? {};
+      }
     }
-    return data?.id || null;
+
+    const payload = {
+      user_code_id: userCodeId,
+      title: result.main_theme || "Mapa IA",
+      nodes: (result.key_concepts || []) as any,
+      edges: [] as any,
+      source_type: "ai",
+      updated_at: new Date().toISOString(),
+      study_notes: {
+        ...currentStudyNotes,
+        analysis: result,
+      } as any,
+    };
+
+    const { data, error } = shouldUpdateExistingMap
+      ? await supabase
+          .from("mind_maps")
+          .update(payload)
+          .eq("id", existingMapId)
+          .select("id")
+          .single()
+      : await supabase
+          .from("mind_maps")
+          .insert(payload)
+          .select("id")
+          .single();
+
+    if (error) throw error;
+    if (!data?.id) throw new Error("Não foi possível salvar o mapa.");
+
+    setAiMapId(data.id);
+    return data.id;
   }, [userCodeId]);
 
   const fetchMaps = useCallback(async () => {
@@ -94,17 +127,20 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
       const data = await res.json();
       if (!res.ok || data?.error) { setError(data?.error || `Erro ${res.status}`); return; }
       if (data?.result) {
+        const savedMapId = await saveAiMap(data.result);
         setAnalysis(data.result);
-        await saveAiMap(data.result);
-        fetchMaps();
+        setAiMapId(savedMapId);
+        await fetchMaps();
         setMode("ai-canvas");
       }
       else { setError("Resposta inesperada da IA."); }
-    } catch { setError("Erro de conexão. Verifique sua internet."); }
+    } catch (error) {
+      console.error("Mind map generation failed:", error);
+      setError(error instanceof Error ? error.message : "Erro de conexão. Verifique sua internet.");
+    }
     finally { setLoading(false); }
   }, [saveAiMap, fetchMaps]);
 
-  // PDF upload and processing
   const handlePdfUpload = useCallback(async (file: File) => {
     if (!file || !file.name.toLowerCase().endsWith(".pdf")) {
       setError("Selecione um arquivo PDF válido.");
@@ -120,7 +156,6 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
     setPdfProgress({ step: "uploading", fileName: file.name, percent: 10 });
 
     try {
-      // Read file as base64
       const arrayBuffer = await file.arrayBuffer();
       const bytes = new Uint8Array(arrayBuffer);
       let binary = "";
@@ -131,7 +166,6 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
 
       setPdfProgress({ step: "extracting", fileName: file.name, percent: 30 });
 
-      // Extract text from PDF
       const extractUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-pdf`;
       const extractRes = await fetch(extractUrl, {
         method: "POST",
@@ -152,7 +186,6 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
 
       setPdfProgress({ step: "analyzing", fileName: file.name, pages: extractData.pages, percent: 55 });
 
-      // Analyze extracted text with AI
       const analyzeUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-content`;
       const analyzeRes = await fetch(analyzeUrl, {
         method: "POST",
@@ -173,26 +206,28 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
 
       setPdfProgress({ step: "generating", fileName: file.name, pages: extractData.pages, percent: 85 });
 
-      await new Promise(r => setTimeout(r, 500)); // brief pause for UX
+      await new Promise(r => setTimeout(r, 500));
 
       if (analyzeData?.result) {
         setPdfProgress({ step: "done", fileName: file.name, pages: extractData.pages, percent: 100 });
         await new Promise(r => setTimeout(r, 600));
+        const savedMapId = await saveAiMap(analyzeData.result);
         setAnalysis(analyzeData.result);
-        await saveAiMap(analyzeData.result);
-        fetchMaps();
+        setAiMapId(savedMapId);
+        await fetchMaps();
         setMode("ai-canvas");
       } else {
         setError("Resposta inesperada da IA.");
         setMode("select");
       }
-    } catch {
-      setError("Erro de conexão. Verifique sua internet.");
+    } catch (error) {
+      console.error("PDF mind map generation failed:", error);
+      setError(error instanceof Error ? error.message : "Erro de conexão. Verifique sua internet.");
       setMode("select");
     } finally {
       setPdfProgress(null);
     }
-  }, []);
+  }, [fetchMaps, saveAiMap]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -214,7 +249,6 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
     </div>
   );
 
-  // PDF Processing screen
   if (mode === "pdf-processing" && pdfProgress) {
     const steps = [
       { key: "uploading", label: "Upload concluído", icon: Upload },
@@ -256,7 +290,6 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
             })}
           </div>
 
-          {/* Progress bar */}
           <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: "hsl(var(--muted))" }}>
             <div
               className="h-full rounded-full transition-all duration-500 ease-out"
@@ -273,7 +306,12 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
     return (
       <div className="h-full w-full">
         <Suspense fallback={fallback}>
-          <MindMapCanvas analysis={analysis} mapId={aiMapId} onClose={() => { setAnalysis(null); setAiMapId(null); setMode("select"); }} />
+          <MindMapCanvas
+            analysis={analysis}
+            mapId={aiMapId}
+            onEnsureSavedForShare={() => saveAiMap(analysis, aiMapId)}
+            onClose={() => { setAnalysis(null); setAiMapId(null); setMode("select"); }}
+          />
         </Suspense>
       </div>
     );
