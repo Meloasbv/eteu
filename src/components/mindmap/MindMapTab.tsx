@@ -102,7 +102,7 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
       else { setError("Resposta inesperada da IA."); }
     } catch { setError("Erro de conexão. Verifique sua internet."); }
     finally { setLoading(false); }
-  }, []);
+  }, [saveAiMap, fetchMaps]);
 
   // PDF upload and processing
   const handlePdfUpload = useCallback(async (file: File) => {
