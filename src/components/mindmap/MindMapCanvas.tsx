@@ -407,6 +407,9 @@ export default function MindMapCanvas({ analysis, onClose }: Props) {
                 }}>
                 <ToolbarBtn icon={ArrowUpDown} label="Vertical" active={direction === "TB"} onClick={() => onLayout("TB")} />
                 <ToolbarBtn icon={ArrowLeftRight} label="Horizontal" active={direction === "LR"} onClick={() => onLayout("LR")} />
+                <div className="w-px h-4 mx-1" style={{ background: "rgba(196,164,106,0.15)" }} />
+                <ToolbarBtn icon={Presentation} label="Apresentar" onClick={() => setShowPresentation(true)} />
+                <ToolbarBtn icon={Share2} label="Compartilhar" onClick={() => setShowShareDialog(true)} />
               </div>
             </Panel>
           </ReactFlow>
