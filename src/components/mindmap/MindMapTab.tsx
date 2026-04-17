@@ -508,13 +508,21 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
                 onMouseEnter={() => prefetchMap(map.id)}
                 onFocus={() => prefetchMap(map.id)}
                 onTouchStart={() => prefetchMap(map.id)}
-                className="w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all hover:-translate-y-0.5 active:scale-[0.99] group"
+                disabled={loading}
+                className="w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all hover:-translate-y-0.5 active:scale-[0.99] group disabled:opacity-60"
                 style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}>
                 <div className="flex items-center gap-3 min-w-0">
-                  <Edit3 size={14} className="text-primary/50 flex-shrink-0" />
+                  {loading ? (
+                    <Loader2 size={14} className="text-primary/60 flex-shrink-0 animate-spin" />
+                  ) : map.source_type === "ai" ? (
+                    <Sparkles size={14} className="text-primary/60 flex-shrink-0" />
+                  ) : (
+                    <Edit3 size={14} className="text-primary/50 flex-shrink-0" />
+                  )}
                   <div className="text-left min-w-0">
                     <p className="text-sm font-display font-semibold text-foreground truncate">{map.title}</p>
                     <p className="text-[11px] text-muted-foreground/50 font-ui">
+                      {map.source_type === "ai" ? "IA · " : ""}
                       {new Date(map.updated_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
                     </p>
                   </div>
