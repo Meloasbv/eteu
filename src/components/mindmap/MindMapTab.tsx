@@ -3,9 +3,14 @@ import { Loader2, Sparkles, PenTool, Clock, Trash2, Edit3, FileText, Upload, Che
 import MindMapInput from "./MindMapInput";
 import type { AnalysisResult } from "./types";
 import { supabase } from "@/integrations/supabase/client";
+import { setCachedMap, getCachedMap, setInflight, getInflight } from "./mapCache";
 
 const MindMapCanvas = lazy(() => import("./MindMapCanvas"));
 const ManualMindMapCanvas = lazy(() => import("./ManualMindMapCanvas"));
+// Warm canvas chunk in the background so first open is instant
+if (typeof window !== "undefined") {
+  setTimeout(() => { import("./ManualMindMapCanvas"); import("./MindMapCanvas"); }, 800);
+}
 
 type Mode = "select" | "ai-input" | "ai-canvas" | "manual" | "pdf-processing";
 
