@@ -19,6 +19,7 @@ interface SavedMap {
   title: string;
   updated_at: string;
   created_at: string;
+  source_type: string | null;
 }
 
 interface PdfProgress {
@@ -96,7 +97,7 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
     setLoadingMaps(true);
     const { data } = await supabase
       .from("mind_maps")
-      .select("id, title, updated_at, created_at")
+      .select("id, title, updated_at, created_at, source_type")
       .eq("user_code_id", userCodeId)
       .order("updated_at", { ascending: false });
     setSavedMaps((data as SavedMap[]) || []);
@@ -124,7 +125,42 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
     setInflight(id, p);
   }, []);
 
-  const openMap = (id: string) => { setEditMapId(id); setMode("manual"); };
+  const openMap = useCallback(async (id: string) => {
+    // Optimistically use cache if present
+    const cached = getCachedMap(id);
+    const resolveAndOpen = (row: any) => {
+      if (!row) { setError("Não foi possível abrir o mapa."); return; }
+      const sn = (row.study_notes as Record<string, unknown> | null) ?? {};
+      const storedAnalysis = (sn as any).analysis as AnalysisResult | undefined;
+      const isAi = row.source_type === "ai" || !!storedAnalysis;
+      if (isAi && storedAnalysis) {
+        setAnalysis(storedAnalysis);
+        setAiMapId(row.id);
+        setMode("ai-canvas");
+      } else {
+        setEditMapId(id);
+        setMode("manual");
+      }
+    };
+    if (cached) { resolveAndOpen(cached); return; }
+    const inflight = getInflight(id);
+    setLoading(true);
+    try {
+      const row = inflight
+        ? await inflight
+        : await (async () => {
+            const { data } = await supabase.from("mind_maps").select("*").eq("id", id).single();
+            if (data) setCachedMap(id, data as any);
+            return data as any;
+          })();
+      resolveAndOpen(row);
+    } catch (e) {
+      console.error("openMap failed", e);
+      setError("Erro ao abrir o mapa. Tente novamente.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
   const createNewMap = () => { setEditMapId(null); setMode("manual"); };
 
   const handleGenerate = useCallback(async (text: string) => {
@@ -472,13 +508,21 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
                 onMouseEnter={() => prefetchMap(map.id)}
                 onFocus={() => prefetchMap(map.id)}
                 onTouchStart={() => prefetchMap(map.id)}
-                className="w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all hover:-translate-y-0.5 active:scale-[0.99] group"
+                disabled={loading}
+                className="w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all hover:-translate-y-0.5 active:scale-[0.99] group disabled:opacity-60"
                 style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}>
                 <div className="flex items-center gap-3 min-w-0">
-                  <Edit3 size={14} className="text-primary/50 flex-shrink-0" />
+                  {loading ? (
+                    <Loader2 size={14} className="text-primary/60 flex-shrink-0 animate-spin" />
+                  ) : map.source_type === "ai" ? (
+                    <Sparkles size={14} className="text-primary/60 flex-shrink-0" />
+                  ) : (
+                    <Edit3 size={14} className="text-primary/50 flex-shrink-0" />
+                  )}
                   <div className="text-left min-w-0">
                     <p className="text-sm font-display font-semibold text-foreground truncate">{map.title}</p>
                     <p className="text-[11px] text-muted-foreground/50 font-ui">
+                      {map.source_type === "ai" ? "IA · " : ""}
                       {new Date(map.updated_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
                     </p>
                   </div>

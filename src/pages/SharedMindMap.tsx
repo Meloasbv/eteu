@@ -15,21 +15,31 @@ export default function SharedMindMap() {
     if (!slug) { setNotFound(true); setLoading(false); return; }
 
     const fetchMap = async () => {
-      const { data, error } = await supabase
+      // Filter server-side via JSONB key for speed; fallback to scan if needed
+      const { data: filtered } = await supabase
         .from("mind_maps")
-        .select("*")
-        .order("updated_at", { ascending: false });
+        .select("title, study_notes")
+        .eq("study_notes->>public_slug", slug)
+        .limit(1);
 
-      if (error || !data) { setNotFound(true); setLoading(false); return; }
+      let map: any = filtered?.[0] ?? null;
 
-      const map = data.find((m: any) => {
-        const notes = m.study_notes as any;
-        return notes?.is_public && notes?.public_slug === slug;
-      });
+      if (!map) {
+        const { data } = await supabase
+          .from("mind_maps")
+          .select("title, study_notes")
+          .order("updated_at", { ascending: false });
+        map = (data || []).find((m: any) => {
+          const notes = m.study_notes as any;
+          return notes?.is_public && notes?.public_slug === slug;
+        });
+      }
 
       if (!map) { setNotFound(true); setLoading(false); return; }
 
       const studyNotes = map.study_notes as any;
+      if (studyNotes?.is_public !== true) { setNotFound(true); setLoading(false); return; }
+
       if (studyNotes?.analysis) {
         setAnalysis(studyNotes.analysis);
       } else {
