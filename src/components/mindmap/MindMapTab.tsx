@@ -260,9 +260,20 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
 
   const handleDragLeave = useCallback(() => setIsDragging(false), []);
 
+  // Skeleton that mimics the canvas layout — feels instant even while data loads
   const fallback = (
-    <div className="flex items-center justify-center h-full">
-      <Loader2 className="animate-spin text-primary" size={24} />
+    <div className="h-full w-full relative overflow-hidden" style={{ background: "hsl(var(--background))" }}>
+      <div className="absolute inset-0 opacity-30"
+        style={{ backgroundImage: "radial-gradient(circle, hsl(var(--border)) 1px, transparent 1px)", backgroundSize: "20px 20px" }} />
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-12 h-12 rounded-full flex items-center justify-center animate-pulse"
+            style={{ background: "hsl(var(--primary) / 0.1)", border: "1px solid hsl(var(--primary) / 0.2)" }}>
+            <Loader2 className="animate-spin text-primary" size={20} />
+          </div>
+          <p className="text-xs font-ui text-muted-foreground/60">Abrindo mapa…</p>
+        </div>
+      </div>
     </div>
   );
 
