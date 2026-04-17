@@ -469,6 +469,9 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
           <div className="space-y-2">
             {savedMaps.map(map => (
               <button key={map.id} onClick={() => openMap(map.id)}
+                onMouseEnter={() => prefetchMap(map.id)}
+                onFocus={() => prefetchMap(map.id)}
+                onTouchStart={() => prefetchMap(map.id)}
                 className="w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all hover:-translate-y-0.5 active:scale-[0.99] group"
                 style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}>
                 <div className="flex items-center gap-3 min-w-0">
