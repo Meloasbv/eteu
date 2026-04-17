@@ -32,6 +32,7 @@ import {
 import dagre from "dagre";
 import { supabase } from "@/integrations/supabase/client";
 import MindMapCardEditor from "./MindMapCardEditor";
+import { getCachedMap, setCachedMap, getInflight, setInflight, invalidateMap } from "./mapCache";
 
 // ── Icons ──
 
