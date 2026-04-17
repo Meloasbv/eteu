@@ -481,6 +481,7 @@ function ManualCanvas({ userCodeId, mapId, onClose }: ManualCanvasProps) {
         .from("mind_maps")
         .update({ title: mapTitle, nodes: cleanNodes, edges, updated_at: new Date().toISOString() })
         .eq("id", currentMapId);
+      invalidateMap(currentMapId);
     } else {
       const { data } = await supabase
         .from("mind_maps")
