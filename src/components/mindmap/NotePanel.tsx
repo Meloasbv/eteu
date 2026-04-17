@@ -161,12 +161,28 @@ export default function NotePanel({
 
       {/* Scrollable body */}
       <div className="flex-1 overflow-y-auto px-5 py-5 space-y-0">
-        <h2
-          className="font-display font-bold mb-5"
-          style={{ color: "#ede4d3", fontSize: isMobile ? 24 : 32, lineHeight: 1.2 }}
-        >
-          {concept.title}
-        </h2>
+        <div className="flex items-baseline gap-3 mb-5 flex-wrap">
+          <h2 className="font-display font-bold" style={{ color: "#ede4d3", fontSize: isMobile ? 24 : 32, lineHeight: 1.2 }}>
+            {concept.title}
+          </h2>
+          {concept.page_ref && (
+            <span className="text-[10px] font-sans font-bold tracking-[1.5px] uppercase px-2 py-1 rounded"
+              style={{ background: "rgba(196,164,106,0.1)", color: "#c4a46a" }}>
+              p. {concept.page_ref}
+            </span>
+          )}
+        </div>
+
+        {concept.quotes && concept.quotes.length > 0 && (
+          <div className="mb-6 space-y-2">
+            {concept.quotes.map((q, i) => (
+              <blockquote key={i} className="font-body italic text-[14px] pl-4 py-1"
+                style={{ color: "#c4b89e", borderLeft: "2px solid rgba(196,164,106,0.4)", lineHeight: 1.55 }}>
+                "{q}"
+              </blockquote>
+            ))}
+          </div>
+        )}
 
         {coreIdea && (
           <div
