@@ -79,21 +79,27 @@ function getLayoutedElements(nodes: Node[], edges: Edge[], direction = "TB") {
 
 // ── Build graph from analysis ──
 
-function buildFromAnalysis(analysis: AnalysisResult, selectedNodeId: string | null) {
+function buildFromAnalysis(
+  analysis: AnalysisResult,
+  selectedNodeId: string | null,
+  images: Record<string, string> = {},
+  loadingImages: Record<string, boolean> = {},
+) {
   const nodes: Node[] = [];
   const edges: Edge[] = [];
-  let nodeId = 0;
 
-  // Root
   const rootId = `node-root`;
   nodes.push({
     id: rootId,
     type: "root",
     position: { x: 0, y: 0 },
-    data: { label: analysis.main_theme || analysis.hierarchy.root.label },
+    data: {
+      label: analysis.main_theme || analysis.hierarchy.root.label,
+      imageUrl: images["__root__"],
+      imageLoading: loadingImages["__root__"],
+    },
   });
 
-  // Create TopicCards from key_concepts
   const topicConcepts = (analysis.key_concepts || []).filter(
     c => !c.type || c.type === "topic"
   );
@@ -101,7 +107,6 @@ function buildFromAnalysis(analysis: AnalysisResult, selectedNodeId: string | nu
   topicConcepts.forEach((concept, i) => {
     const id = `topic-${concept.id || i}`;
     const catColor = getCategoryColor(concept.category);
-
     const childHighlights = concept.child_highlights || [];
     const childVerses = concept.child_verses || concept.expanded_note?.verses || concept.bible_refs || [];
 
@@ -118,6 +123,10 @@ function buildFromAnalysis(analysis: AnalysisResult, selectedNodeId: string | nu
         verseCount: childVerses.length,
         selected: selectedNodeId === id,
         nodeId: id,
+        isKey: concept.is_key === true,
+        pageRef: concept.page_ref,
+        imageUrl: images[id],
+        imageLoading: loadingImages[id],
       },
     });
 
