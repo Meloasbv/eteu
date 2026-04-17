@@ -3,9 +3,14 @@ import { Loader2, Sparkles, PenTool, Clock, Trash2, Edit3, FileText, Upload, Che
 import MindMapInput from "./MindMapInput";
 import type { AnalysisResult } from "./types";
 import { supabase } from "@/integrations/supabase/client";
+import { setCachedMap, getCachedMap, setInflight, getInflight } from "./mapCache";
 
 const MindMapCanvas = lazy(() => import("./MindMapCanvas"));
 const ManualMindMapCanvas = lazy(() => import("./ManualMindMapCanvas"));
+// Warm canvas chunk in the background so first open is instant
+if (typeof window !== "undefined") {
+  setTimeout(() => { import("./ManualMindMapCanvas"); import("./MindMapCanvas"); }, 800);
+}
 
 type Mode = "select" | "ai-input" | "ai-canvas" | "manual" | "pdf-processing";
 
@@ -106,6 +111,18 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
     await supabase.from("mind_maps").delete().eq("id", id);
     setSavedMaps(prev => prev.filter(m => m.id !== id));
   };
+
+  // Prefetch full map data + warm canvas chunk on hover/focus for instant open
+  const prefetchMap = useCallback((id: string) => {
+    if (getCachedMap(id) || getInflight(id)) return;
+    import("./ManualMindMapCanvas"); // ensure chunk warm
+    const p = (async () => {
+      const { data } = await supabase.from("mind_maps").select("*").eq("id", id).single();
+      if (data) setCachedMap(id, data as any);
+      return data as any;
+    })();
+    setInflight(id, p);
+  }, []);
 
   const openMap = (id: string) => { setEditMapId(id); setMode("manual"); };
   const createNewMap = () => { setEditMapId(null); setMode("manual"); };
@@ -243,9 +260,20 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
 
   const handleDragLeave = useCallback(() => setIsDragging(false), []);
 
+  // Skeleton that mimics the canvas layout — feels instant even while data loads
   const fallback = (
-    <div className="flex items-center justify-center h-full">
-      <Loader2 className="animate-spin text-primary" size={24} />
+    <div className="h-full w-full relative overflow-hidden" style={{ background: "hsl(var(--background))" }}>
+      <div className="absolute inset-0 opacity-30"
+        style={{ backgroundImage: "radial-gradient(circle, hsl(var(--border)) 1px, transparent 1px)", backgroundSize: "20px 20px" }} />
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-12 h-12 rounded-full flex items-center justify-center animate-pulse"
+            style={{ background: "hsl(var(--primary) / 0.1)", border: "1px solid hsl(var(--primary) / 0.2)" }}>
+            <Loader2 className="animate-spin text-primary" size={20} />
+          </div>
+          <p className="text-xs font-ui text-muted-foreground/60">Abrindo mapa…</p>
+        </div>
+      </div>
     </div>
   );
 
@@ -441,6 +469,9 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
           <div className="space-y-2">
             {savedMaps.map(map => (
               <button key={map.id} onClick={() => openMap(map.id)}
+                onMouseEnter={() => prefetchMap(map.id)}
+                onFocus={() => prefetchMap(map.id)}
+                onTouchStart={() => prefetchMap(map.id)}
                 className="w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all hover:-translate-y-0.5 active:scale-[0.99] group"
                 style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}>
                 <div className="flex items-center gap-3 min-w-0">

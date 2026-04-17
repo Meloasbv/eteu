@@ -32,6 +32,7 @@ import {
 import dagre from "dagre";
 import { supabase } from "@/integrations/supabase/client";
 import MindMapCardEditor from "./MindMapCardEditor";
+import { getCachedMap, setCachedMap, getInflight, setInflight, invalidateMap } from "./mapCache";
 
 // ── Icons ──
 
@@ -436,29 +437,39 @@ function ManualCanvas({ userCodeId, mapId, onClose }: ManualCanvasProps) {
     setLoaded(true);
   }, []);
 
-  // Load existing map
+  // Load existing map (uses in-memory cache for instant re-opens)
   useEffect(() => {
     if (!mapId) return;
-    (async () => {
-      const { data } = await supabase
-        .from("mind_maps")
-        .select("*")
-        .eq("id", mapId)
-        .single();
-      if (data) {
-        setMapTitle(data.title);
-        const loadedNodes = injectCallbacks((data.nodes as any) || []);
-        setNodes(loadedNodes);
-        setEdges((data.edges as any) || []);
-        const maxId = loadedNodes.reduce((max, n) => {
-          const match = n.id.match(/manual-(\d+)/);
-          return match ? Math.max(max, parseInt(match[1])) : max;
-        }, 0);
-        idCounter = maxId + 1;
-        setTimeout(() => fitView({ padding: 0.2 }), 100);
-      }
+    let cancelled = false;
+
+    const applyData = (data: any) => {
+      if (cancelled || !data) return;
+      setMapTitle(data.title);
+      const loadedNodes = injectCallbacks((data.nodes as any) || []);
+      setNodes(loadedNodes);
+      setEdges((data.edges as any) || []);
+      const maxId = loadedNodes.reduce((max, n) => {
+        const match = n.id.match(/manual-(\d+)/);
+        return match ? Math.max(max, parseInt(match[1])) : max;
+      }, 0);
+      idCounter = maxId + 1;
+      setTimeout(() => fitView({ padding: 0.2 }), 60);
       setLoaded(true);
+    };
+
+    const cached = getCachedMap(mapId);
+    if (cached) { applyData(cached); return () => { cancelled = true; }; }
+
+    const existing = getInflight(mapId);
+    const fetcher = existing ?? (async () => {
+      const { data } = await supabase.from("mind_maps").select("*").eq("id", mapId).single();
+      if (data) setCachedMap(mapId, data as any);
+      return data as any;
     })();
+    if (!existing) setInflight(mapId, fetcher as any);
+
+    (fetcher as Promise<any>).then(applyData);
+    return () => { cancelled = true; };
   }, [mapId]);
 
   // Save function
@@ -470,6 +481,7 @@ function ManualCanvas({ userCodeId, mapId, onClose }: ManualCanvasProps) {
         .from("mind_maps")
         .update({ title: mapTitle, nodes: cleanNodes, edges, updated_at: new Date().toISOString() })
         .eq("id", currentMapId);
+      invalidateMap(currentMapId);
     } else {
       const { data } = await supabase
         .from("mind_maps")

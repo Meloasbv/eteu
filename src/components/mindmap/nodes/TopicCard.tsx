@@ -1,5 +1,5 @@
 import { Handle, Position } from "@xyflow/react";
-import { BookOpen } from "lucide-react";
+import { BookOpen, Loader2 } from "lucide-react";
 import { getCategoryColor } from "../types";
 
 interface TopicCardData {
@@ -11,6 +11,10 @@ interface TopicCardData {
   verseCount?: number;
   nodeId?: string;
   selected?: boolean;
+  isKey?: boolean;
+  pageRef?: number;
+  imageUrl?: string;
+  imageLoading?: boolean;
 }
 
 export default function TopicCard({ data }: { data: TopicCardData }) {
@@ -34,56 +38,52 @@ export default function TopicCard({ data }: { data: TopicCardData }) {
       <Handle type="source" position={Position.Right} style={{ background: catColor, width: 6, height: 6, opacity: 0.5 }} />
 
       <div className="p-4 pb-3">
+        {/* Image (key cards only) */}
+        {(data.imageUrl || data.imageLoading) && (
+          <div className="w-full h-[120px] rounded-[10px] overflow-hidden mb-3 relative"
+            style={{ background: "#0f0d0a", border: "1px solid rgba(196,164,106,0.15)" }}>
+            {data.imageUrl ? (
+              <img src={data.imageUrl} alt="" className="w-full h-full object-cover" loading="lazy" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <Loader2 size={16} className="animate-spin" style={{ color: "#c4a46a" }} />
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex items-start gap-2 mb-2">
-          <div
-            className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0"
-            style={{ background: catColor }}
-          />
-          <p
-            className="font-display text-[16px] font-semibold flex-1"
-            style={{ color: "#ede4d3", lineHeight: 1.3 }}
-          >
+          <div className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0" style={{ background: catColor }} />
+          <p className="font-display text-[16px] font-semibold flex-1" style={{ color: "#ede4d3", lineHeight: 1.3 }}>
             {data.label}
           </p>
-          {data.hasNote && (
-            <BookOpen size={14} style={{ color: "#c4a46a", flexShrink: 0, marginTop: 2 }} />
-          )}
+          {data.hasNote && <BookOpen size={14} style={{ color: "#c4a46a", flexShrink: 0, marginTop: 2 }} />}
         </div>
 
         {/* Summary */}
         {data.summary && (
-          <p
-            className="font-body text-[13px] italic mb-2"
-            style={{
-              color: "#c4b89e",
-              lineHeight: 1.5,
-              display: "-webkit-box",
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: "vertical",
-              overflow: "hidden",
-            }}
-          >
+          <p className="font-body text-[13px] italic mb-2"
+            style={{ color: "#c4b89e", lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
             {data.summary}
           </p>
         )}
 
         {/* Metadata */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           {(data.childCount ?? 0) > 0 && (
-            <span
-              className="text-[10.5px] font-sans font-medium tracking-[1px] uppercase"
-              style={{ color: "#8a7d6a" }}
-            >
+            <span className="text-[10.5px] font-sans font-medium tracking-[1px] uppercase" style={{ color: "#8a7d6a" }}>
               {data.childCount} sub-cards
             </span>
           )}
           {(data.verseCount ?? 0) > 0 && (
-            <span
-              className="text-[10.5px] font-sans font-medium tracking-[1px] uppercase"
-              style={{ color: "#8a7d6a" }}
-            >
+            <span className="text-[10.5px] font-sans font-medium tracking-[1px] uppercase" style={{ color: "#8a7d6a" }}>
               {data.verseCount} versículos
+            </span>
+          )}
+          {data.pageRef && (
+            <span className="text-[10.5px] font-sans font-medium tracking-[1px] uppercase" style={{ color: "#c4a46a" }}>
+              p. {data.pageRef}
             </span>
           )}
         </div>

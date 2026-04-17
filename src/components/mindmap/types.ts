@@ -31,6 +31,10 @@ export interface KeyConcept {
   expanded_note?: ExpandedNote;
   child_highlights?: string[];
   child_verses?: string[];
+  // PDF / source enrichment
+  is_key?: boolean;
+  page_ref?: number;
+  quotes?: string[];
   // Legacy StudyNote fields
   coreIdea?: string;
   keyPoints?: string[];
