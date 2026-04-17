@@ -1,112 +1,251 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { X, ChevronLeft, ChevronRight, BookOpen, Map, CheckCircle2, XCircle } from "lucide-react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { X, ChevronLeft, ChevronRight, Play, Pause, BookOpen } from "lucide-react";
+import {
+  ReactFlow,
+  Background,
+  BackgroundVariant,
+  useNodesState,
+  useEdgesState,
+  useReactFlow,
+  ReactFlowProvider,
+  type Node,
+  type Edge,
+  MarkerType,
+} from "@xyflow/react";
+import dagre from "dagre";
 import type { AnalysisResult, KeyConcept } from "./types";
 import { getCategoryColor, getCategoryName } from "./types";
+import RootNodeComp from "./nodes/RootNode";
+import TopicCardComp from "./nodes/TopicCard";
+import HighlightCardComp from "./nodes/HighlightCard";
+import VerseCardComp from "./nodes/VerseCard";
 
-interface QuizQuestion {
-  question: string;
-  options: string[];
-  correctIndex: number;
-  explanation: string;
-}
-
-function generateTopicQuiz(concept: KeyConcept, allTopics: KeyConcept[]): QuizQuestion | null {
-  const note = concept.expanded_note;
-  const coreIdea = note?.core_idea || concept.coreIdea || concept.description;
-  if (!coreIdea) return null;
-
-  const distractors = allTopics
-    .filter(c => c.id !== concept.id)
-    .map(c => c.expanded_note?.core_idea || c.coreIdea || c.description)
-    .filter(Boolean)
-    .sort(() => Math.random() - 0.5)
-    .slice(0, 3);
-
-  if (distractors.length < 2) return null;
-
-  const options = [...distractors.slice(0, 3), coreIdea].sort(() => Math.random() - 0.5);
-  return {
-    question: `Qual é a ideia central de "${concept.title}"?`,
-    options,
-    correctIndex: options.indexOf(coreIdea),
-    explanation: coreIdea,
-  };
-}
+const nodeTypes = {
+  root: RootNodeComp,
+  topicCard: TopicCardComp,
+  highlightCard: HighlightCardComp,
+  verseCard: VerseCardComp,
+};
 
 interface PresentationModeProps {
   analysis: AnalysisResult;
   onExit: () => void;
 }
 
-// Slide types: "cover" | "topic" | "quiz"
-type SlideType = { kind: "cover" } | { kind: "topic"; topicIndex: number } | { kind: "quiz"; topicIndex: number; quiz: QuizQuestion };
+// Build the same graph used in MindMapCanvas (simplified, reuses layout)
+function buildPresentationGraph(analysis: AnalysisResult) {
+  const nodes: Node[] = [];
+  const edges: Edge[] = [];
 
-export default function PresentationMode({ analysis, onExit }: PresentationModeProps) {
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const [direction, setDirection] = useState<"next" | "prev">("next");
-  const [showMiniMap, setShowMiniMap] = useState(false);
+  const rootId = "node-root";
+  nodes.push({
+    id: rootId,
+    type: "root",
+    position: { x: 0, y: 0 },
+    data: { label: analysis.main_theme || analysis.hierarchy?.root?.label },
+  });
 
-  // Quiz state per slide
-  const [quizSelected, setQuizSelected] = useState<number | null>(null);
-  const [quizAnswered, setQuizAnswered] = useState(false);
-  const [quizScore, setQuizScore] = useState(0);
-  const [quizTotal, setQuizTotal] = useState(0);
+  const topicConcepts = (analysis.key_concepts || []).filter(c => !c.type || c.type === "topic");
 
-  const topics = useMemo(
-    () => (analysis.key_concepts || []).filter(c => !c.type || c.type === "topic"),
-    [analysis]
-  );
-
-  // Build slide sequence: cover, then for each topic: topic slide + quiz slide
-  const slides = useMemo(() => {
-    const s: SlideType[] = [{ kind: "cover" }];
-    topics.forEach((concept, i) => {
-      s.push({ kind: "topic", topicIndex: i });
-      const quiz = generateTopicQuiz(concept, topics);
-      if (quiz) {
-        s.push({ kind: "quiz", topicIndex: i, quiz });
-      }
+  topicConcepts.forEach((concept, i) => {
+    const id = `topic-${concept.id || i}`;
+    const catColor = getCategoryColor(concept.category);
+    nodes.push({
+      id,
+      type: "topicCard",
+      position: { x: 0, y: 0 },
+      data: {
+        label: concept.title,
+        summary: concept.summary || concept.expanded_note?.core_idea || concept.description?.substring(0, 80),
+        category: concept.category,
+        hasNote: true,
+        childCount: (concept.child_highlights || []).length,
+        verseCount: (concept.child_verses || []).length,
+        nodeId: id,
+        isKey: concept.is_key === true,
+        pageRef: concept.page_ref,
+      },
     });
-    return s;
-  }, [topics]);
+    edges.push({
+      id: `e-root-${id}`, source: rootId, target: id,
+      style: { stroke: `${catColor}66`, strokeWidth: 1.5 },
+      markerEnd: { type: MarkerType.ArrowClosed, color: `${catColor}99` },
+    });
 
-  const totalSlides = slides.length;
-  const current = slides[currentSlide];
+    (concept.child_highlights || []).forEach((hl, j) => {
+      const hlId = `hl-${i}-${j}`;
+      nodes.push({ id: hlId, type: "highlightCard", position: { x: 0, y: 0 }, data: { label: hl } });
+      edges.push({
+        id: `e-${id}-${hlId}`, source: id, target: hlId,
+        style: { stroke: "rgba(196,164,106,0.18)", strokeWidth: 1, strokeDasharray: "6 3" },
+      });
+    });
 
-  const resetQuizState = useCallback(() => {
-    setQuizSelected(null);
-    setQuizAnswered(false);
+    const childVerses = concept.child_verses || concept.expanded_note?.verses || concept.bible_refs || [];
+    childVerses.forEach((v, j) => {
+      const vId = `verse-${i}-${j}`;
+      nodes.push({ id: vId, type: "verseCard", position: { x: 0, y: 0 }, data: { label: v } });
+      edges.push({
+        id: `e-${id}-${vId}`, source: id, target: vId,
+        style: { stroke: "rgba(123,163,201,0.2)", strokeWidth: 1 },
+      });
+    });
+  });
+
+  // Layout
+  const g = new dagre.graphlib.Graph();
+  g.setDefaultEdgeLabel(() => ({}));
+  g.setGraph({ rankdir: "LR", nodesep: 60, ranksep: 100, marginx: 60, marginy: 60 });
+  const sizeMap: Record<string, { w: number; h: number }> = {
+    root: { w: 300, h: 90 },
+    topicCard: { w: 280, h: 110 },
+    highlightCard: { w: 220, h: 70 },
+    verseCard: { w: 160, h: 40 },
+  };
+  nodes.forEach(n => {
+    const s = sizeMap[n.type || "topicCard"];
+    g.setNode(n.id, { width: s.w, height: s.h });
+  });
+  edges.forEach(e => g.setEdge(e.source, e.target));
+  dagre.layout(g);
+  const positioned = nodes.map(n => {
+    const p = g.node(n.id);
+    const s = sizeMap[n.type || "topicCard"];
+    return { ...n, position: { x: p.x - s.w / 2, y: p.y - s.h / 2 } };
+  });
+
+  return { nodes: positioned, edges };
+}
+
+// Build sequential tour: root → for each topic [topic, highlights..., verses...]
+type TourStop = {
+  nodeId: string;
+  kind: "root" | "topic" | "highlight" | "verse";
+  topicIndex?: number;
+  childIndex?: number;
+  concept?: KeyConcept;
+  text?: string;
+};
+
+function buildTour(analysis: AnalysisResult): TourStop[] {
+  const stops: TourStop[] = [{ nodeId: "node-root", kind: "root" }];
+  const topics = (analysis.key_concepts || []).filter(c => !c.type || c.type === "topic");
+
+  topics.forEach((concept, i) => {
+    const id = `topic-${concept.id || i}`;
+    stops.push({ nodeId: id, kind: "topic", topicIndex: i, concept });
+
+    (concept.child_highlights || []).forEach((hl, j) => {
+      stops.push({ nodeId: `hl-${i}-${j}`, kind: "highlight", topicIndex: i, childIndex: j, concept, text: hl });
+    });
+
+    const childVerses = concept.child_verses || concept.expanded_note?.verses || concept.bible_refs || [];
+    childVerses.forEach((v, j) => {
+      stops.push({ nodeId: `verse-${i}-${j}`, kind: "verse", topicIndex: i, childIndex: j, concept, text: v });
+    });
+  });
+
+  return stops;
+}
+
+function PresentationCanvas({ analysis, onExit }: PresentationModeProps) {
+  const { nodes: initN, edges: initE } = useMemo(() => buildPresentationGraph(analysis), [analysis]);
+  const [nodes, setNodes, onNodesChange] = useNodesState(initN);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initE);
+  const { setCenter, fitView } = useReactFlow();
+
+  const tour = useMemo(() => buildTour(analysis), [analysis]);
+  const [stopIdx, setStopIdx] = useState(0);
+  const [autoPlay, setAutoPlay] = useState(false);
+  const autoPlayRef = useRef<number | null>(null);
+
+  const current = tour[stopIdx];
+
+  // Camera animation: pan + zoom to current node
+  const focusNode = useCallback((stop: TourStop, instant = false) => {
+    const node = initN.find(n => n.id === stop.nodeId);
+    if (!node) return;
+    const sizeMap: Record<string, { w: number; h: number }> = {
+      root: { w: 300, h: 90 },
+      topicCard: { w: 280, h: 110 },
+      highlightCard: { w: 220, h: 70 },
+      verseCard: { w: 160, h: 40 },
+    };
+    const s = sizeMap[node.type || "topicCard"];
+    const cx = node.position.x + s.w / 2;
+    const cy = node.position.y + s.h / 2;
+    const zoom = stop.kind === "root" ? 0.85 : stop.kind === "topic" ? 1.1 : 1.4;
+    setCenter(cx, cy, { zoom, duration: instant ? 0 : 900 });
+
+    // Highlight current node visually
+    setNodes(ns => ns.map(n => ({
+      ...n,
+      data: { ...n.data, selected: n.id === stop.nodeId },
+      style: {
+        ...n.style,
+        opacity: n.id === stop.nodeId ? 1 : 0.35,
+        transition: "opacity 0.6s ease",
+      },
+    })));
+    setEdges(es => es.map(e => ({
+      ...e,
+      style: {
+        ...e.style,
+        opacity: (e.source === stop.nodeId || e.target === stop.nodeId) ? 1 : 0.2,
+        transition: "opacity 0.6s ease",
+      },
+    })));
+  }, [initN, setCenter, setNodes, setEdges]);
+
+  // Initial fit
+  useEffect(() => {
+    const t = setTimeout(() => {
+      fitView({ padding: 0.3, duration: 500 });
+      setTimeout(() => focusNode(tour[0], false), 600);
+    }, 100);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Focus on stop change
+  useEffect(() => {
+    focusNode(current);
+  }, [stopIdx, current, focusNode]);
+
   const goNext = useCallback(() => {
-    if (currentSlide < totalSlides - 1) {
-      // Block advancing from unanswered quiz
-      if (current?.kind === "quiz" && !quizAnswered) return;
-      setDirection("next");
-      setCurrentSlide(s => s + 1);
-      resetQuizState();
-    }
-  }, [currentSlide, totalSlides, current, quizAnswered, resetQuizState]);
+    setStopIdx(i => Math.min(tour.length - 1, i + 1));
+  }, [tour.length]);
 
   const goPrev = useCallback(() => {
-    if (currentSlide > 0) {
-      setDirection("prev");
-      setCurrentSlide(s => s - 1);
-      resetQuizState();
-    }
-  }, [currentSlide, resetQuizState]);
+    setStopIdx(i => Math.max(0, i - 1));
+  }, []);
 
-  // Keyboard + click
+  // Auto-play (video mode)
+  useEffect(() => {
+    if (!autoPlay) {
+      if (autoPlayRef.current) { window.clearTimeout(autoPlayRef.current); autoPlayRef.current = null; }
+      return;
+    }
+    const dwell = current.kind === "topic" ? 4500 : current.kind === "root" ? 3500 : 2800;
+    autoPlayRef.current = window.setTimeout(() => {
+      if (stopIdx < tour.length - 1) goNext();
+      else setAutoPlay(false);
+    }, dwell);
+    return () => { if (autoPlayRef.current) window.clearTimeout(autoPlayRef.current); };
+  }, [autoPlay, stopIdx, current, goNext, tour.length]);
+
+  // Keyboard
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") onExit();
       if (e.key === "ArrowRight" || e.key === " ") { e.preventDefault(); goNext(); }
       if (e.key === "ArrowLeft") goPrev();
-      if (e.key === "m" || e.key === "M") setShowMiniMap(s => !s);
+      if (e.key === "p" || e.key === "P") setAutoPlay(p => !p);
+      if (e.key === "f" || e.key === "F") fitView({ padding: 0.3, duration: 600 });
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [goNext, goPrev, onExit]);
+  }, [goNext, goPrev, onExit, fitView]);
 
   // Fullscreen
   useEffect(() => {
@@ -115,285 +254,226 @@ export default function PresentationMode({ analysis, onExit }: PresentationModeP
   }, []);
 
   // Touch swipe
-  const touchRef = { startX: 0 };
-  const onTouchStart = (e: React.TouchEvent) => { touchRef.startX = e.touches[0].clientX; };
+  const touchRef = useRef({ startX: 0 });
+  const onTouchStart = (e: React.TouchEvent) => { touchRef.current.startX = e.touches[0].clientX; };
   const onTouchEnd = (e: React.TouchEvent) => {
-    const dx = e.changedTouches[0].clientX - touchRef.startX;
+    const dx = e.changedTouches[0].clientX - touchRef.current.startX;
     if (Math.abs(dx) > 60) { dx < 0 ? goNext() : goPrev(); }
   };
 
-  const handleClick = (e: React.MouseEvent) => {
-    // Don't navigate by click on quiz slides
-    if (current?.kind === "quiz") return;
-    const x = e.clientX / window.innerWidth;
-    if (x > 0.5) goNext(); else goPrev();
-  };
-
-  const handleQuizSelect = (idx: number) => {
-    if (quizAnswered || current?.kind !== "quiz") return;
-    setQuizSelected(idx);
-    setQuizAnswered(true);
-    setQuizTotal(t => t + 1);
-    if (idx === current.quiz.correctIndex) setQuizScore(s => s + 1);
-  };
-
-  // ── Slide renderers ──
-
-  const renderCoverSlide = () => (
-    <div className="flex flex-col items-center justify-center h-full px-8">
-      <h1
-        className="font-display font-bold text-center uppercase tracking-[2px] mb-6"
-        style={{ color: "#ede4d3", fontSize: "clamp(32px, 5vw, 56px)", lineHeight: 1.15 }}
-      >
-        {analysis.main_theme || analysis.hierarchy?.root?.label}
-      </h1>
-      <div className="w-[60px] h-[2px] mb-6" style={{ background: "#c4a46a" }} />
-      {analysis.summary && (
-        <p
-          className="font-body text-center italic max-w-[600px]"
-          style={{ color: "#c4b89e", fontSize: "clamp(16px, 2vw, 22px)", lineHeight: 1.6 }}
-        >
-          {analysis.summary}
-        </p>
-      )}
-      <p className="mt-10 text-[12px] font-sans tracking-[3px] uppercase" style={{ color: "#5c5347" }}>
-        {topics.length} tópicos · {quizTotal > 0 ? `${quizScore}/${quizTotal} quiz` : "com quiz interativo"}
-      </p>
-    </div>
-  );
-
-  const renderTopicSlide = (concept: KeyConcept) => {
-    const note = concept.expanded_note;
-    const coreIdea = note?.core_idea || concept.coreIdea || "";
-    const affirmations = note?.affirmations || concept.keyPoints || [];
-    const verses = note?.verses || concept.bible_refs || [];
-    const impactPhrase = note?.impact_phrase || concept.impactPhrase || "";
-    const catColor = getCategoryColor(concept.category);
-
-    return (
-      <div className="flex flex-col justify-center h-full px-8 max-w-[720px] mx-auto">
-        <span className="text-[10px] font-sans font-bold tracking-[2px] uppercase mb-4 self-start" style={{ color: catColor }}>
-          {getCategoryName(concept.category)}
-        </span>
-        <h2 className="font-display font-bold mb-4" style={{ color: "#ede4d3", fontSize: "clamp(28px, 4vw, 48px)", lineHeight: 1.15 }}>
-          {concept.title}
-        </h2>
-        <div className="w-[60px] h-[2px] mb-6" style={{ background: catColor }} />
-
-        {coreIdea && (
-          <p className="font-body italic mb-8" style={{ color: "#d4b87a", fontSize: "clamp(16px, 2vw, 24px)", lineHeight: 1.5 }}>
-            "{coreIdea}"
-          </p>
-        )}
-
-        {affirmations.length > 0 && (
-          <ul className="space-y-3 mb-8">
-            {affirmations.slice(0, 5).map((a, i) => (
-              <li key={i} className="flex items-start gap-3">
-                <span className="mt-2 w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: catColor }} />
-                <span className="font-body" style={{ color: "#c4b89e", fontSize: "clamp(14px, 1.5vw, 20px)", lineHeight: 1.6 }}>{a}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-
-        {verses.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-8">
-            {verses.map((v, i) => (
-              <span key={i} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full"
-                style={{ background: "rgba(123,163,201,0.08)", border: "1px solid rgba(123,163,201,0.25)" }}>
-                <BookOpen size={12} style={{ color: "#7ba3c9" }} />
-                <span className="font-body italic text-[13px]" style={{ color: "#7ba3c9" }}>{v}</span>
-              </span>
-            ))}
-          </div>
-        )}
-
-        {impactPhrase && (
-          <div className="mt-4 pt-4" style={{ borderTop: "1px solid rgba(196,164,106,0.1)" }}>
-            <p className="font-body font-semibold text-center italic" style={{ color: "#d4b87a", fontSize: "clamp(14px, 1.5vw, 18px)" }}>
-              "{impactPhrase}"
+  // Bottom caption content based on stop kind
+  const renderCaption = () => {
+    if (current.kind === "root") {
+      return (
+        <div className="text-center">
+          <p className="text-[10px] font-sans tracking-[3px] uppercase mb-2" style={{ color: "#8a7d6a" }}>Tema central</p>
+          <h1 className="font-display font-bold mb-2" style={{ color: "#ede4d3", fontSize: "clamp(22px, 3vw, 36px)", lineHeight: 1.2 }}>
+            {analysis.main_theme || analysis.hierarchy?.root?.label}
+          </h1>
+          {analysis.summary && (
+            <p className="font-body italic max-w-[720px] mx-auto" style={{ color: "#c4b89e", fontSize: "clamp(13px, 1.4vw, 16px)" }}>
+              {analysis.summary}
             </p>
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  const renderQuizSlide = (topicIndex: number, quiz: QuizQuestion) => {
-    const concept = topics[topicIndex];
-    const catColor = getCategoryColor(concept?.category);
-
-    return (
-      <div className="flex flex-col justify-center h-full px-8 max-w-[560px] mx-auto" onClick={e => e.stopPropagation()}>
-        {/* Badge */}
-        <div className="flex items-center gap-2 mb-6">
-          <span className="px-2.5 py-1 rounded-md text-[9px] font-sans font-bold tracking-[1.5px] uppercase"
-            style={{ background: `${catColor}15`, color: catColor }}>
-            🧠 QUIZ
-          </span>
-          <span className="text-[11px] font-sans" style={{ color: "#8a7d6a" }}>{concept?.title}</span>
+          )}
         </div>
+      );
+    }
 
-        <h3 className="font-display text-xl font-bold leading-snug mb-8" style={{ color: "#ede4d3", fontSize: "clamp(20px, 3vw, 32px)" }}>
-          {quiz.question}
-        </h3>
-
-        <div className="space-y-3">
-          {quiz.options.map((opt, idx) => {
-            const isSelected = quizSelected === idx;
-            const isCorrect = idx === quiz.correctIndex;
-            let borderColor = "rgba(196,164,106,0.15)";
-            let bgColor = "rgba(22,19,15,0.8)";
-            let textColor = "#c4b89e";
-            let icon = null;
-
-            if (quizAnswered) {
-              if (isCorrect) {
-                borderColor = "#8b9e7a";
-                bgColor = "rgba(139,158,122,0.1)";
-                textColor = "#8b9e7a";
-                icon = <CheckCircle2 size={18} style={{ color: "#8b9e7a" }} />;
-              } else if (isSelected && !isCorrect) {
-                borderColor = "#d4854a";
-                bgColor = "rgba(212,133,74,0.1)";
-                textColor = "#d4854a";
-                icon = <XCircle size={18} style={{ color: "#d4854a" }} />;
-              } else {
-                textColor = "#5c5347";
-              }
-            }
-
-            return (
-              <button
-                key={idx}
-                onClick={() => handleQuizSelect(idx)}
-                disabled={quizAnswered}
-                className="w-full text-left px-5 py-4 rounded-xl flex items-center gap-3 transition-all active:scale-[0.98]"
-                style={{ background: bgColor, border: `1.5px solid ${borderColor}`, cursor: quizAnswered ? "default" : "pointer" }}
-              >
-                <span className="w-8 h-8 rounded-lg flex items-center justify-center text-[13px] font-sans font-bold shrink-0"
-                  style={{ background: quizAnswered && isCorrect ? "rgba(139,158,122,0.2)" : "rgba(196,164,106,0.08)", color: quizAnswered && isCorrect ? "#8b9e7a" : "#8a7d6a" }}>
-                  {String.fromCharCode(65 + idx)}
-                </span>
-                <span className="flex-1 text-[15px] font-sans leading-relaxed" style={{ color: textColor }}>{opt}</span>
-                {icon}
-              </button>
-            );
-          })}
-        </div>
-
-        {quizAnswered && (
-          <div className="mt-6 animate-fade-in">
-            <div className="rounded-xl p-4" style={{ background: "rgba(196,164,106,0.04)", borderLeft: "3px solid rgba(196,164,106,0.3)" }}>
-              <p className="text-[10px] font-sans font-bold tracking-[1.5px] uppercase mb-2" style={{ color: "#8a7d6a" }}>Explicação</p>
-              <p className="text-[14px] font-body italic leading-relaxed" style={{ color: "#c4b89e" }}>{quiz.explanation}</p>
-            </div>
-            <button onClick={goNext}
-              className="w-full mt-4 py-3 rounded-xl text-sm font-sans font-semibold transition-all active:scale-95"
-              style={{ background: "rgba(196,164,106,0.12)", color: "#c4a46a", border: "1px solid rgba(196,164,106,0.2)" }}>
-              {currentSlide + 1 >= totalSlides ? "Finalizar" : "Próximo →"}
-            </button>
+    if (current.kind === "topic" && current.concept) {
+      const c = current.concept;
+      const note = c.expanded_note;
+      const catColor = getCategoryColor(c.category);
+      const coreIdea = note?.core_idea || c.coreIdea || "";
+      const affirmations = note?.affirmations || c.keyPoints || [];
+      const impact = note?.impact_phrase || c.impactPhrase;
+      return (
+        <div className="max-w-[860px] mx-auto">
+          <div className="flex items-center gap-2 justify-center mb-2">
+            <span className="text-[9px] font-sans font-bold tracking-[2px] uppercase" style={{ color: catColor }}>
+              {getCategoryName(c.category)}
+            </span>
+            {c.page_ref && (
+              <span className="text-[9px] font-sans tracking-[1.5px] uppercase px-2 py-0.5 rounded"
+                style={{ color: "#8a7d6a", background: "rgba(196,164,106,0.06)" }}>
+                p. {c.page_ref}
+              </span>
+            )}
           </div>
-        )}
-      </div>
-    );
-  };
+          <h2 className="font-display font-bold text-center mb-3" style={{ color: "#ede4d3", fontSize: "clamp(20px, 2.6vw, 30px)", lineHeight: 1.2 }}>
+            {c.title}
+          </h2>
+          {coreIdea && (
+            <p className="font-body italic text-center mb-3" style={{ color: "#d4b87a", fontSize: "clamp(13px, 1.4vw, 17px)", lineHeight: 1.5 }}>
+              "{coreIdea}"
+            </p>
+          )}
+          {affirmations.length > 0 && (
+            <ul className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5 max-w-[800px] mx-auto">
+              {affirmations.slice(0, 4).map((a, i) => (
+                <li key={i} className="flex items-start gap-2">
+                  <span className="mt-1.5 w-1 h-1 rounded-full flex-shrink-0" style={{ background: catColor }} />
+                  <span className="font-body" style={{ color: "#c4b89e", fontSize: "clamp(11px, 1.1vw, 13px)", lineHeight: 1.5 }}>{a}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {impact && (
+            <p className="text-center mt-3 pt-2 font-body italic" style={{ color: "#d4b87a", fontSize: "clamp(11px, 1.2vw, 14px)", borderTop: "1px solid rgba(196,164,106,0.1)" }}>
+              "{impact}"
+            </p>
+          )}
+        </div>
+      );
+    }
 
-  // Progress (topic-based, not counting quiz slides)
-  const topicSlideIndices = slides.map((s, i) => s.kind === "topic" ? i : -1).filter(i => i >= 0);
-  const currentTopicProgress = topicSlideIndices.filter(i => i <= currentSlide).length;
+    if (current.kind === "highlight") {
+      return (
+        <div className="text-center max-w-[640px] mx-auto">
+          <p className="text-[9px] font-sans tracking-[2px] uppercase mb-2" style={{ color: "#8a7d6a" }}>
+            Destaque · {current.concept?.title}
+          </p>
+          <p className="font-body italic" style={{ color: "#ede4d3", fontSize: "clamp(15px, 1.8vw, 22px)", lineHeight: 1.5 }}>
+            "{current.text}"
+          </p>
+        </div>
+      );
+    }
+
+    if (current.kind === "verse") {
+      return (
+        <div className="text-center max-w-[640px] mx-auto">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full mb-2"
+            style={{ background: "rgba(123,163,201,0.08)", border: "1px solid rgba(123,163,201,0.25)" }}>
+            <BookOpen size={12} style={{ color: "#7ba3c9" }} />
+            <span className="font-body italic text-[12px]" style={{ color: "#7ba3c9" }}>Referência bíblica</span>
+          </div>
+          <p className="font-display font-bold" style={{ color: "#7ba3c9", fontSize: "clamp(20px, 2.4vw, 28px)" }}>
+            {current.text}
+          </p>
+          <p className="text-[11px] font-sans mt-2" style={{ color: "#8a7d6a" }}>
+            de "{current.concept?.title}"
+          </p>
+        </div>
+      );
+    }
+
+    return null;
+  };
 
   return (
     <div
       className="fixed inset-0 z-[200] flex flex-col select-none"
-      style={{ background: "#0f0d0a", cursor: current?.kind === "quiz" ? "default" : "none" }}
-      onClick={handleClick}
+      style={{ background: "#0f0d0a" }}
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
     >
       {/* Progress bar */}
       <div className="h-1 w-full shrink-0" style={{ background: "rgba(196,164,106,0.06)" }}>
-        <div className="h-full transition-all duration-500" style={{
-          width: `${(currentTopicProgress / topics.length) * 100}%`,
-          background: "linear-gradient(90deg, #c4a46a, #d4b87a)",
-        }} />
+        <div className="h-full transition-all duration-700"
+          style={{ width: `${((stopIdx + 1) / tour.length) * 100}%`, background: "linear-gradient(90deg, #c4a46a, #d4b87a)" }} />
       </div>
 
-      {/* Slide content */}
+      {/* Canvas — top portion */}
       <div className="flex-1 relative overflow-hidden">
-        <div
-          key={currentSlide}
-          className="absolute inset-0"
-          style={{ animation: `presentation-${direction === "next" ? "enter" : "enter-prev"} 0.4s cubic-bezier(0.4, 0, 0.2, 1)` }}
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          nodeTypes={nodeTypes}
+          minZoom={0.1}
+          maxZoom={2.5}
+          panOnDrag={false}
+          nodesDraggable={false}
+          nodesConnectable={false}
+          zoomOnScroll={false}
+          zoomOnPinch={false}
+          zoomOnDoubleClick={false}
+          panOnScroll={false}
+          proOptions={{ hideAttribution: true }}
         >
-          {current?.kind === "cover" && renderCoverSlide()}
-          {current?.kind === "topic" && renderTopicSlide(topics[current.topicIndex])}
-          {current?.kind === "quiz" && renderQuizSlide(current.topicIndex, current.quiz)}
-        </div>
+          <Background variant={BackgroundVariant.Dots} gap={28} size={1} color="rgba(196,164,106,0.05)" style={{ background: "#0f0d0a" }} />
+        </ReactFlow>
+
+        {/* Left/Right click zones for navigation (transparent) */}
+        <button
+          onClick={goPrev}
+          aria-label="Anterior"
+          className="absolute top-0 left-0 h-full w-[15%] z-10 flex items-center justify-start pl-4 group"
+          style={{ background: "transparent", cursor: "w-resize" }}
+        >
+          <ChevronLeft size={32} style={{ color: "rgba(196,164,106,0.0)" }} className="group-hover:!text-[rgba(196,164,106,0.6)] transition-colors" />
+        </button>
+        <button
+          onClick={goNext}
+          aria-label="Próximo"
+          className="absolute top-0 right-0 h-full w-[15%] z-10 flex items-center justify-end pr-4 group"
+          style={{ background: "transparent", cursor: "e-resize" }}
+        >
+          <ChevronRight size={32} style={{ color: "rgba(196,164,106,0.0)" }} className="group-hover:!text-[rgba(196,164,106,0.6)] transition-colors" />
+        </button>
       </div>
 
-      {/* Bottom bar */}
+      {/* Caption overlay — bottom portion */}
+      <div
+        key={stopIdx}
+        className="shrink-0 px-6 py-5 animate-fade-in"
+        style={{
+          background: "linear-gradient(to top, rgba(15,13,10,0.98), rgba(15,13,10,0.92) 70%, rgba(15,13,10,0))",
+          backdropFilter: "blur(10px)",
+          minHeight: 160,
+          maxHeight: "38vh",
+          overflowY: "auto",
+        }}
+      >
+        {renderCaption()}
+      </div>
+
+      {/* Bottom control bar */}
       <div className="flex items-center justify-between px-6 py-3 shrink-0"
-        style={{ background: "rgba(15,13,10,0.8)" }}
-        onClick={e => e.stopPropagation()}>
-        <button onClick={goPrev} disabled={currentSlide === 0}
+        style={{ background: "rgba(15,13,10,0.95)", borderTop: "1px solid rgba(196,164,106,0.08)" }}>
+        <button onClick={goPrev} disabled={stopIdx === 0}
           className="p-2 rounded-lg transition-opacity disabled:opacity-10" style={{ color: "#c4a46a" }}>
-          <ChevronLeft size={24} />
+          <ChevronLeft size={22} />
         </button>
 
-        <div className="flex items-center gap-4">
-          {quizTotal > 0 && (
-            <span className="text-[12px] font-sans font-semibold" style={{ color: "#8b9e7a" }}>
-              ✅ {quizScore}/{quizTotal}
-            </span>
-          )}
-          <button onClick={() => setShowMiniMap(s => !s)}
-            className="p-2 rounded-lg transition-colors hover:bg-white/5"
-            style={{ color: showMiniMap ? "#c4a46a" : "#5c5347" }}>
-            <Map size={16} />
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setAutoPlay(p => !p)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all text-[11px] font-sans font-semibold"
+            style={{
+              background: autoPlay ? "rgba(196,164,106,0.15)" : "transparent",
+              color: autoPlay ? "#c4a46a" : "#8a7d6a",
+              border: `1px solid ${autoPlay ? "rgba(196,164,106,0.3)" : "rgba(196,164,106,0.1)"}`,
+            }}
+          >
+            {autoPlay ? <Pause size={12} /> : <Play size={12} />}
+            <span>{autoPlay ? "Pausar" : "Auto"}</span>
           </button>
-          <span className="text-[14px] font-sans" style={{ color: "#5c5347" }}>
-            {currentSlide + 1} / {totalSlides}
+          <span className="text-[12px] font-sans" style={{ color: "#5c5347" }}>
+            {stopIdx + 1} / {tour.length}
+          </span>
+          <span className="text-[10px] font-sans uppercase tracking-[1.5px] hidden sm:inline" style={{ color: "#5c5347" }}>
+            {current.kind === "root" ? "Tema" : current.kind === "topic" ? "Tópico" : current.kind === "highlight" ? "Destaque" : "Versículo"}
           </span>
           <button onClick={onExit} className="p-2 rounded-lg transition-colors hover:bg-white/5" style={{ color: "#8a7d6a" }}>
             <X size={16} />
           </button>
         </div>
 
-        <button onClick={goNext}
-          disabled={currentSlide === totalSlides - 1 || (current?.kind === "quiz" && !quizAnswered)}
+        <button onClick={goNext} disabled={stopIdx === tour.length - 1}
           className="p-2 rounded-lg transition-opacity disabled:opacity-10" style={{ color: "#c4a46a" }}>
-          <ChevronRight size={24} />
+          <ChevronRight size={22} />
         </button>
       </div>
-
-      {/* Mini-map */}
-      {showMiniMap && (
-        <div className="absolute bottom-16 right-4 rounded-xl overflow-hidden"
-          style={{ background: "rgba(30,26,20,0.95)", border: "1px solid rgba(196,164,106,0.15)", width: 200, padding: 12 }}
-          onClick={e => e.stopPropagation()}>
-          <p className="text-[9px] font-sans uppercase tracking-[1.5px] mb-2" style={{ color: "#5c5347" }}>Tópicos</p>
-          <div className="space-y-1">
-            {topics.map((t, i) => {
-              const slideIdx = slides.findIndex(s => s.kind === "topic" && s.topicIndex === i);
-              const isCurrent = current?.kind === "topic" && current.topicIndex === i;
-              const isQuizCurrent = current?.kind === "quiz" && current.topicIndex === i;
-              return (
-                <button key={i}
-                  onClick={() => { setDirection(slideIdx > currentSlide ? "next" : "prev"); setCurrentSlide(slideIdx); resetQuizState(); }}
-                  className="w-full text-left px-2 py-1 rounded text-[10px] font-sans truncate transition-colors"
-                  style={{
-                    color: (isCurrent || isQuizCurrent) ? "#c4a46a" : "#8a7d6a",
-                    background: (isCurrent || isQuizCurrent) ? "rgba(196,164,106,0.1)" : "transparent",
-                  }}>
-                  {i + 1}. {t.title}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
     </div>
+  );
+}
+
+export default function PresentationMode(props: PresentationModeProps) {
+  return (
+    <ReactFlowProvider>
+      <PresentationCanvas {...props} />
+    </ReactFlowProvider>
   );
 }
