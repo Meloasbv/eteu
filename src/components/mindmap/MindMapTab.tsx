@@ -112,6 +112,18 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
     setSavedMaps(prev => prev.filter(m => m.id !== id));
   };
 
+  // Prefetch full map data + warm canvas chunk on hover/focus for instant open
+  const prefetchMap = useCallback((id: string) => {
+    if (getCachedMap(id) || getInflight(id)) return;
+    import("./ManualMindMapCanvas"); // ensure chunk warm
+    const p = (async () => {
+      const { data } = await supabase.from("mind_maps").select("*").eq("id", id).single();
+      if (data) setCachedMap(id, data as any);
+      return data as any;
+    })();
+    setInflight(id, p);
+  }, []);
+
   const openMap = (id: string) => { setEditMapId(id); setMode("manual"); };
   const createNewMap = () => { setEditMapId(null); setMode("manual"); };
 
