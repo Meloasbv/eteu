@@ -220,6 +220,15 @@ function PresentationCanvas({ analysis, onExit }: PresentationModeProps) {
     setStopIdx(i => Math.max(0, i - 1));
   }, []);
 
+  // Click on a node → jump to its tour stop
+  const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
+    const idx = tour.findIndex(s => s.nodeId === node.id);
+    if (idx >= 0) {
+      setAutoPlay(false);
+      setStopIdx(idx);
+    }
+  }, [tour]);
+
   // Auto-play (video mode)
   useEffect(() => {
     if (!autoPlay) {
@@ -380,6 +389,8 @@ function PresentationCanvas({ analysis, onExit }: PresentationModeProps) {
           edges={edges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
+          onNodeClick={onNodeClick}
+          nodesFocusable
           nodeTypes={nodeTypes}
           minZoom={0.1}
           maxZoom={2.5}
@@ -399,7 +410,7 @@ function PresentationCanvas({ analysis, onExit }: PresentationModeProps) {
         <button
           onClick={goPrev}
           aria-label="Anterior"
-          className="absolute top-0 left-0 h-full w-[15%] z-10 flex items-center justify-start pl-4 group"
+          className="absolute top-0 left-0 h-full w-[10%] z-10 flex items-center justify-start pl-4 group"
           style={{ background: "transparent", cursor: "w-resize" }}
         >
           <ChevronLeft size={32} style={{ color: "rgba(196,164,106,0.0)" }} className="group-hover:!text-[rgba(196,164,106,0.6)] transition-colors" />
@@ -407,7 +418,7 @@ function PresentationCanvas({ analysis, onExit }: PresentationModeProps) {
         <button
           onClick={goNext}
           aria-label="Próximo"
-          className="absolute top-0 right-0 h-full w-[15%] z-10 flex items-center justify-end pr-4 group"
+          className="absolute top-0 right-0 h-full w-[10%] z-10 flex items-center justify-end pr-4 group"
           style={{ background: "transparent", cursor: "e-resize" }}
         >
           <ChevronRight size={32} style={{ color: "rgba(196,164,106,0.0)" }} className="group-hover:!text-[rgba(196,164,106,0.6)] transition-colors" />
