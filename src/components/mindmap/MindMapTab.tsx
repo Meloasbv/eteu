@@ -19,6 +19,7 @@ interface SavedMap {
   title: string;
   updated_at: string;
   created_at: string;
+  source_type: string | null;
 }
 
 interface PdfProgress {
@@ -96,7 +97,7 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
     setLoadingMaps(true);
     const { data } = await supabase
       .from("mind_maps")
-      .select("id, title, updated_at, created_at")
+      .select("id, title, updated_at, created_at, source_type")
       .eq("user_code_id", userCodeId)
       .order("updated_at", { ascending: false });
     setSavedMaps((data as SavedMap[]) || []);
