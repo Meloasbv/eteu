@@ -230,6 +230,25 @@ export default function MindMapCanvas({ analysis, mapId, onEnsureSavedForShare, 
   const [showPresentation, setShowPresentation] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [shareState, setShareState] = useState<{ isPublic: boolean; slug: string | null }>({ isPublic: false, slug: null });
+  // Hydrate share state from saved map's study_notes
+  useEffect(() => {
+    if (!mapId) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("mind_maps")
+        .select("study_notes")
+        .eq("id", mapId)
+        .maybeSingle();
+      if (cancelled || !data) return;
+      const sn = (data.study_notes as Record<string, unknown> | null) ?? {};
+      setShareState({
+        isPublic: Boolean((sn as any).is_public),
+        slug: ((sn as any).public_slug as string | null) ?? null,
+      });
+    })();
+    return () => { cancelled = true; };
+  }, [mapId]);
   const [focusBranch, setFocusBranch] = useState<string | null>(null);
   const [images, setImages] = useState<Record<string, string>>({});
   const [loadingImages, setLoadingImages] = useState<Record<string, boolean>>({});
