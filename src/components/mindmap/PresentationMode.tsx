@@ -74,7 +74,7 @@ function buildPresentationGraph(analysis: AnalysisResult) {
 
     (concept.child_highlights || []).forEach((hl, j) => {
       const hlId = `hl-${i}-${j}`;
-      nodes.push({ id: hlId, type: "highlightCard", position: { x: 0, y: 0 }, data: { label: hl } });
+      nodes.push({ id: hlId, type: "highlightCard", position: { x: 0, y: 0 }, data: { label: hl, pageRef: concept.page_ref } });
       edges.push({
         id: `e-${id}-${hlId}`, source: id, target: hlId,
         style: { stroke: "rgba(196,164,106,0.18)", strokeWidth: 1, strokeDasharray: "6 3" },
@@ -84,7 +84,7 @@ function buildPresentationGraph(analysis: AnalysisResult) {
     const childVerses = concept.child_verses || concept.expanded_note?.verses || concept.bible_refs || [];
     childVerses.forEach((v, j) => {
       const vId = `verse-${i}-${j}`;
-      nodes.push({ id: vId, type: "verseCard", position: { x: 0, y: 0 }, data: { label: v } });
+      nodes.push({ id: vId, type: "verseCard", position: { x: 0, y: 0 }, data: { label: v, pageRef: concept.page_ref } });
       edges.push({
         id: `e-${id}-${vId}`, source: id, target: vId,
         style: { stroke: "rgba(123,163,201,0.2)", strokeWidth: 1 },

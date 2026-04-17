@@ -146,7 +146,7 @@ function buildFromAnalysis(
         id: hlId,
         type: "highlightCard",
         position: { x: 0, y: 0 },
-        data: { label: hl },
+        data: { label: hl, pageRef: concept.page_ref },
       });
       edges.push({
         id: `edge-${id}-${hlId}`,
@@ -163,7 +163,7 @@ function buildFromAnalysis(
         id: vId,
         type: "verseCard",
         position: { x: 0, y: 0 },
-        data: { label: v },
+        data: { label: v, pageRef: concept.page_ref },
       });
       edges.push({
         id: `edge-${id}-${vId}`,

@@ -1,10 +1,15 @@
 import { Handle, Position } from "@xyflow/react";
 import { BookOpen } from "lucide-react";
 
-export default function VerseCard({ data }: { data: { label: string } }) {
+interface VerseCardData {
+  label: string;
+  pageRef?: number;
+}
+
+export default function VerseCard({ data }: { data: VerseCardData }) {
   return (
     <div
-      className="rounded-[10px] transition-all hover:cursor-pointer relative inline-flex items-center gap-1.5"
+      className="rounded-[10px] transition-all hover:cursor-pointer relative inline-flex items-center gap-2"
       style={{
         background: "rgba(123,163,201,0.06)",
         border: "1px solid rgba(123,163,201,0.25)",
@@ -21,6 +26,14 @@ export default function VerseCard({ data }: { data: { label: string } }) {
       >
         {data.label}
       </p>
+      {data.pageRef && (
+        <span
+          className="text-[9.5px] font-sans font-medium tracking-[1px] uppercase pl-2 ml-1"
+          style={{ color: "#c4a46a", borderLeft: "1px solid rgba(123,163,201,0.2)" }}
+        >
+          p. {data.pageRef}
+        </span>
+      )}
     </div>
   );
 }
