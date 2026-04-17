@@ -74,7 +74,7 @@ function buildPresentationGraph(analysis: AnalysisResult) {
 
     (concept.child_highlights || []).forEach((hl, j) => {
       const hlId = `hl-${i}-${j}`;
-      nodes.push({ id: hlId, type: "highlightCard", position: { x: 0, y: 0 }, data: { label: hl } });
+      nodes.push({ id: hlId, type: "highlightCard", position: { x: 0, y: 0 }, data: { label: hl, pageRef: concept.page_ref } });
       edges.push({
         id: `e-${id}-${hlId}`, source: id, target: hlId,
         style: { stroke: "rgba(196,164,106,0.18)", strokeWidth: 1, strokeDasharray: "6 3" },
@@ -84,7 +84,7 @@ function buildPresentationGraph(analysis: AnalysisResult) {
     const childVerses = concept.child_verses || concept.expanded_note?.verses || concept.bible_refs || [];
     childVerses.forEach((v, j) => {
       const vId = `verse-${i}-${j}`;
-      nodes.push({ id: vId, type: "verseCard", position: { x: 0, y: 0 }, data: { label: v } });
+      nodes.push({ id: vId, type: "verseCard", position: { x: 0, y: 0 }, data: { label: v, pageRef: concept.page_ref } });
       edges.push({
         id: `e-${id}-${vId}`, source: id, target: vId,
         style: { stroke: "rgba(123,163,201,0.2)", strokeWidth: 1 },
@@ -219,6 +219,15 @@ function PresentationCanvas({ analysis, onExit }: PresentationModeProps) {
   const goPrev = useCallback(() => {
     setStopIdx(i => Math.max(0, i - 1));
   }, []);
+
+  // Click on a node → jump to its tour stop
+  const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
+    const idx = tour.findIndex(s => s.nodeId === node.id);
+    if (idx >= 0) {
+      setAutoPlay(false);
+      setStopIdx(idx);
+    }
+  }, [tour]);
 
   // Auto-play (video mode)
   useEffect(() => {
@@ -380,6 +389,8 @@ function PresentationCanvas({ analysis, onExit }: PresentationModeProps) {
           edges={edges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
+          onNodeClick={onNodeClick}
+          nodesFocusable
           nodeTypes={nodeTypes}
           minZoom={0.1}
           maxZoom={2.5}
@@ -399,7 +410,7 @@ function PresentationCanvas({ analysis, onExit }: PresentationModeProps) {
         <button
           onClick={goPrev}
           aria-label="Anterior"
-          className="absolute top-0 left-0 h-full w-[15%] z-10 flex items-center justify-start pl-4 group"
+          className="absolute top-0 left-0 h-full w-[10%] z-10 flex items-center justify-start pl-4 group"
           style={{ background: "transparent", cursor: "w-resize" }}
         >
           <ChevronLeft size={32} style={{ color: "rgba(196,164,106,0.0)" }} className="group-hover:!text-[rgba(196,164,106,0.6)] transition-colors" />
@@ -407,7 +418,7 @@ function PresentationCanvas({ analysis, onExit }: PresentationModeProps) {
         <button
           onClick={goNext}
           aria-label="Próximo"
-          className="absolute top-0 right-0 h-full w-[15%] z-10 flex items-center justify-end pr-4 group"
+          className="absolute top-0 right-0 h-full w-[10%] z-10 flex items-center justify-end pr-4 group"
           style={{ background: "transparent", cursor: "e-resize" }}
         >
           <ChevronRight size={32} style={{ color: "rgba(196,164,106,0.0)" }} className="group-hover:!text-[rgba(196,164,106,0.6)] transition-colors" />

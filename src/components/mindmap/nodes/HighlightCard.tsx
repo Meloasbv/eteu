@@ -1,6 +1,11 @@
 import { Handle, Position } from "@xyflow/react";
 
-export default function HighlightCard({ data }: { data: { label: string } }) {
+interface HighlightCardData {
+  label: string;
+  pageRef?: number;
+}
+
+export default function HighlightCard({ data }: { data: HighlightCardData }) {
   return (
     <div
       className="w-[220px] rounded-[12px] transition-all hover:cursor-default relative"
@@ -35,6 +40,14 @@ export default function HighlightCard({ data }: { data: { label: string } }) {
       >
         "
       </span>
+
+      {data.pageRef && (
+        <div className="mt-2 pt-2 flex justify-end" style={{ borderTop: "1px dashed rgba(196,164,106,0.12)" }}>
+          <span className="text-[9.5px] font-sans font-medium tracking-[1px] uppercase" style={{ color: "#c4a46a" }}>
+            slide {data.pageRef}
+          </span>
+        </div>
+      )}
     </div>
   );
 }
