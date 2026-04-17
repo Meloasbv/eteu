@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { text } = await req.json();
+    const { text, pagesText } = await req.json();
 
     if (!text || typeof text !== "string" || text.trim().length < 10) {
       return new Response(
@@ -26,6 +26,31 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
+    // Build a per-page tagged corpus when available (helps the model attribute page numbers)
+    const isPdf = Array.isArray(pagesText) && pagesText.length > 0;
+    let corpus: string;
+    if (isPdf) {
+      corpus = (pagesText as { page: number; text: string }[])
+        .map(p => `[[PÁGINA ${p.page}]]\n${p.text}`)
+        .join("\n\n")
+        .slice(0, 28000);
+    } else {
+      corpus = text.slice(0, 18000);
+    }
+
+    const pdfRules = isPdf ? `
+
+REGRAS ESPECÍFICAS PARA PDF (você recebeu o texto marcado por [[PÁGINA N]]):
+- Para CADA topic, preencha "page_ref" com o número da página onde o conceito aparece principalmente
+- Para CADA topic, preencha "quotes" com 2-3 CITAÇÕES LITERAIS curtas (máx 25 palavras cada) extraídas do texto da página, com aspas duplas no JSON. Não invente — copie do corpus.
+- Marque "is_key": true para os 2-4 topics MAIS IMPORTANTES do documento (ideias centrais, não detalhes). Os demais ficam com is_key: false.
+` : `
+
+REGRAS:
+- Marque "is_key": true para os 2-4 topics MAIS IMPORTANTES do texto (ideias centrais). Os demais ficam com is_key: false.
+- "quotes" e "page_ref" podem ser omitidos quando não houver fonte estruturada.
+`;
+
     const systemPrompt = `Você é um assistente especializado em análise de conteúdo bíblico e teológico. Analise o texto fornecido e retorne dados estruturados para um mapa mental visual.
 
 REGRAS PARA OS KEY_CONCEPTS:
@@ -34,24 +59,21 @@ REGRAS PARA OS KEY_CONCEPTS:
 - Para cada topic, gere 1-3 child_verses (referências bíblicas relevantes no formato "Livro C:V")
 - Gere também conceitos type="highlight" standalone para frases marcantes do texto
 - Gere também conceitos type="verse" standalone para versículos centrais
-
+${pdfRules}
 REGRAS PARA CATEGORIAS:
 Use estas categorias teológicas: teologia, cristologia, pneumatologia, exegese, contexto, aplicacao, escatologia, soteriologia
 
 REGRAS PARA O SUMMARY DE CADA TOPIC:
 - NÃO é resumo acadêmico. É um GANCHO de 1 linha (máx 80 chars)
 - Exemplo BOM: "O Verbo se fez carne — adição, não subtração"
-- Exemplo RUIM: "Na teologia cristã, a encarnação refere-se ao processo..."
 
 REGRAS PARA EXPANDED_NOTE:
 - core_idea: 1 frase essencial, máx 20 palavras
-- explanation: 2-4 parágrafos (separados por \\n\\n), cada um máx 4 linhas. Mencione versículos inline (Jo 1:14, Rm 8:28)
+- explanation: 4-6 parágrafos densos (separados por \\n\\n), cada um máx 5 linhas. Mencione versículos inline (Jo 1:14, Rm 8:28). Vá fundo no conceito.
 - affirmations: 3-5 frases curtas (máx 15 palavras cada), citáveis
 - verses: 3-6 referências bíblicas no formato "Livro C:V"
 - application: 1-2 parágrafos de aplicação prática/espiritual
 - impact_phrase: 1 frase memorizável (máx 15 palavras)
-
-Seja CONCISO em cada campo. Nada de parágrafos longos. Cada ponto escaneável em 2 segundos.
 
 RETORNE APENAS um JSON válido (sem markdown, sem \`\`\`), com esta estrutura exata:
 {
@@ -66,11 +88,14 @@ RETORNE APENAS um JSON válido (sem markdown, sem \`\`\`), com esta estrutura ex
       "summary": "gancho curto max 80 chars",
       "category": "teologia|cristologia|pneumatologia|exegese|contexto|aplicacao|escatologia|soteriologia",
       "icon_suggestion": "emoji",
+      "is_key": true,
+      "page_ref": 3,
+      "quotes": ["citação literal 1", "citação literal 2"],
       "bible_refs": ["Livro C:V"],
       "expanded_note": {
         "core_idea": "string",
         "explanation": "string com \\n\\n entre parágrafos",
-        "affirmations": ["frase 1", "frase 2"],
+        "affirmations": ["frase 1"],
         "verses": ["Livro C:V"],
         "application": "string",
         "impact_phrase": "string"
@@ -79,12 +104,7 @@ RETORNE APENAS um JSON válido (sem markdown, sem \`\`\`), com esta estrutura ex
       "child_verses": ["Livro C:V"]
     }
   ],
-  "hierarchy": {
-    "root": {
-      "label": "string",
-      "children": [{"label": "string", "children": [{"label": "string"}]}]
-    }
-  },
+  "hierarchy": { "root": { "label": "string", "children": [] } },
   "keywords": ["string"],
   "structured_notes": [{"section_title": "string", "points": ["string"]}]
 }`;
@@ -100,7 +120,7 @@ RETORNE APENAS um JSON válido (sem markdown, sem \`\`\`), com esta estrutura ex
         max_tokens: 16000,
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: `Analise COMPLETAMENTE este texto, extraindo o máximo de informação. Retorne APENAS JSON válido:\n\n${text.slice(0, 15000)}` },
+          { role: "user", content: `Analise COMPLETAMENTE o conteúdo abaixo, extraindo o máximo de informação. Retorne APENAS JSON válido:\n\n${corpus}` },
         ],
       }),
     });
@@ -128,64 +148,62 @@ RETORNE APENAS um JSON válido (sem markdown, sem \`\`\`), com esta estrutura ex
     try {
       data = JSON.parse(rawText);
     } catch {
-      console.error("Failed to parse AI gateway response, length:", rawText.length, "last 100 chars:", rawText.slice(-100));
       throw new Error("Resposta da IA foi truncada. Tente com um texto menor.");
     }
-    
+
     const finishReason = data.choices?.[0]?.finish_reason;
-    console.log("AI response received. finish_reason:", finishReason, "content length:", (data.choices?.[0]?.message?.content || "").length);
+    console.log("AI response. finish_reason:", finishReason);
     let result;
-    
-    // Extract content from response (plain text JSON, no tool calls)
     const content = data.choices?.[0]?.message?.content || "";
     let rawArgs = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
 
     if (!rawArgs || rawArgs.length < 10) {
-      console.error("Empty AI response. finish_reason:", finishReason);
       throw new Error("A IA não retornou dados. Tente novamente.");
     }
 
-    // Attempt parse with repair for truncated JSON
     try {
       result = JSON.parse(rawArgs);
     } catch {
-      console.warn("JSON parse failed, attempting repair. Length:", rawArgs.length, "finish_reason:", finishReason);
-      // Try to repair truncated JSON by closing open brackets/braces
       let repaired = rawArgs
-        .replace(/,\s*$/g, "")  // trailing comma
+        .replace(/,\s*$/g, "")
         .replace(/,\s*}/g, "}")
         .replace(/,\s*]/g, "]");
-      
-      // Count and close unclosed brackets
       const openBraces = (repaired.match(/{/g) || []).length;
       const closeBraces = (repaired.match(/}/g) || []).length;
       const openBrackets = (repaired.match(/\[/g) || []).length;
       const closeBrackets = (repaired.match(/]/g) || []).length;
-      
-      // Remove trailing incomplete string/value
       repaired = repaired.replace(/,\s*"[^"]*$/, "");
       repaired = repaired.replace(/:\s*"[^"]*$/, ': ""');
       repaired = repaired.replace(/:\s*$/, ': null');
-      
       for (let i = 0; i < openBrackets - closeBrackets; i++) repaired += "]";
       for (let i = 0; i < openBraces - closeBraces; i++) repaired += "}";
-      
       try {
         result = JSON.parse(repaired);
-        console.log("JSON repair succeeded");
       } catch (e2) {
-        console.error("JSON repair also failed:", (e2 as Error).message);
+        console.error("JSON repair failed:", (e2 as Error).message);
         throw new Error("Resposta da IA foi truncada. Tente com um texto menor.");
       }
     }
-    
-    // Ensure minimum structure
+
     if (!result.main_theme) result.main_theme = "Análise";
     if (!result.summary) result.summary = "";
     if (!result.key_concepts) result.key_concepts = [];
     if (!result.hierarchy) result.hierarchy = { root: { label: result.main_theme, children: [] } };
     if (!result.keywords) result.keywords = [];
     if (!result.structured_notes) result.structured_notes = [];
+
+    // Safety: ensure at least 1 topic is_key (root) when none flagged
+    const topics = (result.key_concepts || []).filter((c: any) => !c.type || c.type === "topic");
+    const hasKey = topics.some((t: any) => t.is_key === true);
+    if (!hasKey && topics.length > 0) {
+      // Mark first 2 topics as key
+      let count = 0;
+      for (const t of topics) {
+        if (count >= 2) break;
+        t.is_key = true;
+        count++;
+      }
+    }
 
     return new Response(
       JSON.stringify({ result }),
