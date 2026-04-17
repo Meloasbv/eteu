@@ -33,9 +33,9 @@ serve(async (req) => {
       corpus = (pagesText as { page: number; text: string }[])
         .map(p => `[[PÁGINA ${p.page}]]\n${p.text}`)
         .join("\n\n")
-        .slice(0, 28000);
+        .slice(0, 45000);
     } else {
-      corpus = text.slice(0, 18000);
+      corpus = text.slice(0, 30000);
     }
 
     const pdfRules = isPdf ? `
@@ -119,7 +119,7 @@ RETORNE APENAS um JSON válido (sem markdown, sem \`\`\`), com esta estrutura ex
       },
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
-        max_tokens: 16000,
+        max_tokens: 24000,
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: `Analise COMPLETAMENTE o conteúdo abaixo, extraindo o máximo de informação. Retorne APENAS JSON válido:\n\n${corpus}` },
