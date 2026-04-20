@@ -432,7 +432,7 @@ export default function FocusWorkspace({ open, onClose, tab, setTab, userCodeId,
 
           {/* COMMAND CHAT — the hub */}
           <div className="flex-1 overflow-hidden relative min-h-0">
-            <FocusCommandChat userCodeId={userCodeId} weeks={weeks} />
+            <FocusCommandChat userCodeId={userCodeId} weeks={weeks} devotionals={devotionals} />
           </div>
         </main>
       </div>
