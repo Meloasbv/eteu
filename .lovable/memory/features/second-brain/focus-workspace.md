@@ -1,33 +1,51 @@
 ---
 name: Focus Workspace (chat-first hub)
-description: Modo Foco refatorado em chat central GPT-style "O que quer fazer?" + painéis flutuantes arrastáveis (Leitura, Devocional, Estudo, Cérebro) com Pomodoro gigante e música YouTube custom
+description: Modo Foco com chat central GPT-style "O que quer fazer?", painéis surgindo como balões inline (não overlay), paleta sólida fixa #0B0F14/#00FF94, Pomodoro gigante, música YouTube, totalmente responsivo mobile/desktop
 type: feature
 ---
 
 ## Arquivos
-- `src/components/secondbrain/FocusWorkspace.tsx` — shell fullscreen com sidebar launcher, top-bar Pomodoro/música e área central de chat.
-- `src/components/secondbrain/FocusCommandChat.tsx` — chat estilo GPT com hero "O que quer fazer agora?", 4 quick action chips e composer com detecção de intenção (regex pt-BR) que abre painéis automaticamente para frases curtas tipo "abrir leitura".
-- `src/components/secondbrain/FloatingPanel.tsx` — painel arrastável (pointer events) com glassmorphism, drag handle, minimize, maximize fullscreen-do-painel e close. Animação de entrada slide+scale (cubic-bezier 0.22, 1, 0.36, 1).
+- `src/components/secondbrain/FocusWorkspace.tsx` — shell fullscreen, sidebar fixa (desktop) ou drawer (mobile), top-bar com Pomodoro + música, paleta sólida.
+- `src/components/secondbrain/FocusCommandChat.tsx` — chat thread com hero "O que quer fazer agora?", quick chips, e mensagens do tipo `panel` que renderizam o conteúdo da plataforma como **balão inline** (não overlay).
+- `src/hooks/useFocusMusic.ts` — hook YouTube IFrame API com `loadVideoById` para troca sem reload, novo ID embeddable para piano (`4xDzrJKXOOY`), iframe 1×1 visível para postMessage funcionar em todos os browsers.
 
-## Comportamento
-1. Ao abrir Modo Foco, usuário vê **chat central** com 4 quick chips (Leitura, Devocional, Caderno, Capturar).
-2. Clicar num chip OU digitar "abrir leitura" abre um **painel flutuante** sobre o chat com o conteúdo real da tab (vindo de `children` no Index.tsx).
-3. Múltiplos painéis podem ficar abertos simultaneamente. Cada painel vira foco quando clicado (z-index empilha via `panelOrder`).
-4. Apenas o painel da tab ativa renderiza o conteúdo real (`children`); os outros mostram um botão "Trazer para frente" para evitar dupla montagem dos componentes pesados.
-5. ESC fecha primeiro o painel do topo, depois o workspace.
-6. Pomodoro 25/5 com anel SVG 80px no topo + controles Pausar/Reiniciar.
-7. Mini-player YouTube no top-bar com 4 trilhas (lofi/piano/ambient/custom URL).
-8. Sidebar launcher esquerda mostra os 4 modos com indicador de "ativo" (ponto luminoso) quando o painel está aberto.
-9. 4 paletas cíclicas (Profundo/Oceano/Floresta/Crepúsculo) trocam a cada 30s; accent color permeia toda a UI (anel, chips, painéis, partículas).
+## Paleta sólida (fixa, não muda)
+- `bg: #0B0F14` (escuro profundo)
+- `surface: #11161D`, `surfaceLight: #1A2129`
+- `border: #1F2730`
+- `primary: #00FF94` (neon suave — usado em accents, glow, hover)
+- `primarySoft: #1DB954`
+- `text: #E6EDF3`, `textDim: #7A8A99`
 
-## Detecção de intenção (FocusCommandChat)
-Regex curtos disparam abertura de painel quando a mensagem tem ≤4 palavras:
-- `/\b(ler|leitura|plano|bíbli|capítulo)\b/` → leitura
-- `/\b(devocion|medita|orac|oração)\b/` → devocional
-- `/\b(anota|caderno|nota|mapa mental|estudo)\b/` → anotacoes
-- `/\b(captur|pensament|cérebro|registr)\b/` → cerebro
+Gradientes só em: glow leve do anel/botão Pomodoro, borda dos painéis-balão, sombra do botão enviar. **Sem ciclo de paletas.**
 
-Mensagens longas vão para o `study-chat` edge function (streaming SSE) com persona teólogo reformado.
+## Comportamento dos painéis (balão no chat)
+1. Estado vazio: hero "O que quer fazer agora?" + 4 quick chips.
+2. Clicar num chip OU digitar "leitura/devocional/caderno/capturar" (≤4 palavras) injeta uma mensagem `{ role: "panel", panelKey }` no thread.
+3. O balão tem header com ícone+título+X (fechar = remover do thread), e altura `min(70vh, 560px)` com scroll interno.
+4. `renderTab(key)` no Index.tsx é `(key) => { if (tab !== key) setTab(key); return renderContent(); }` — quando o usuário foca um painel, troca a tab subjacente e renderiza o conteúdo real.
+5. Não há overlay, não há drag — apenas balão que aparece com animação `focus-panel-in` (slide+scale, cubic-bezier 0.22, 1, 0.36, 1).
 
-## Integração com Index.tsx
-Index continua passando `children = renderContent()` (o conteúdo real da tab atual). O FocusWorkspace gerencia internamente quais painéis estão abertos e troca a `tab` quando o usuário foca um painel — assim só monta um conteúdo pesado por vez.
+## Mobile
+- Sidebar vira drawer com overlay escuro (botão Menu no top-bar).
+- Music mini-player oculto no mobile, substituído por botão único play/pause.
+- Composer com `pb-[max(env(safe-area-inset-bottom),12px)]` para safe area.
+- Painel-balão usa `min(70vh, 560px)` para nunca extrapolar a viewport.
+
+## Pomodoro
+25/5min, anel SVG 60-70px, glow neon do primary. Botões Pausar/Continuar + Reiniciar. Persiste em `localStorage[fascinacao-focus-minutes-today]`.
+
+## Música — fix
+- Iframe 1×1px com opacity 0.01 (não display:none) — necessário para `postMessage` funcionar em Safari/Firefox.
+- Track switching usa `loadVideoById` ao invés de mudar `src`, evitando perder o player.
+- Piano agora usa ID `4xDzrJKXOOY` (embeddable peaceful piano) — o anterior `y7e-GC6oGhg` tinha embed bloqueado.
+- Listener de `onReady` via postMessage para autoplay confiável.
+
+## Detecção de intenção
+Regex em pt-BR para frases curtas:
+- `/(ler|leitura|plano|bíbli|capítulo)/` → leitura
+- `/(devocion|medita|orac|oração)/` → devocional
+- `/(anota|caderno|nota|mapa mental|escrev)/` → anotacoes
+- `/(captur|pensament|cérebro|registr|ideia)/` → cerebro
+
+Mensagens longas vão para `study-chat` edge function (streaming SSE) com persona teólogo reformado.

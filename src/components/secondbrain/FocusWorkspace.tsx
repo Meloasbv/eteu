@@ -2,20 +2,24 @@ import { useEffect, useRef, useState, ReactNode } from "react";
 import {
   X, SkipForward, Pause, Play, Volume2, Youtube,
   BookOpen, Flame, PenLine, Brain, Timer, Maximize2, Minimize2,
-  ChevronLeft, Sparkles, Zap,
+  Menu,
 } from "lucide-react";
 import { haptic } from "@/hooks/useHaptic";
 import { toast } from "@/hooks/use-toast";
 import { useFocusMusic, FOCUS_TRACKS, type FocusTrackKey } from "@/hooks/useFocusMusic";
 import FocusCommandChat, { type FocusPanelKey } from "./FocusCommandChat";
-import FloatingPanel from "./FloatingPanel";
 
-const PALETTES = [
-  { key: "deep", label: "Profundo", from: "#1a0f2e", via: "#3a1c5c", to: "#0f0a1f", accent: "#a78bfa" },
-  { key: "ocean", label: "Oceano", from: "#0a1d2e", via: "#0f4a6e", to: "#06132a", accent: "#5cbdb9" },
-  { key: "forest", label: "Floresta", from: "#0f1f15", via: "#1b4332", to: "#070f0a", accent: "#73ffb8" },
-  { key: "sunset", label: "Crepúsculo", from: "#2a0f1a", via: "#7a2a35", to: "#1a0508", accent: "#ff8a5c" },
-];
+// Solid fixed palette — no cycling colors
+const PALETTE = {
+  bg: "#0B0F14",
+  surface: "#11161D",
+  surfaceLight: "#1A2129",
+  border: "#1F2730",
+  primary: "#00FF94",
+  primarySoft: "#1DB954",
+  text: "#E6EDF3",
+  textDim: "#7A8A99",
+};
 
 export type FocusTab = "leitura" | "devocional" | "anotacoes" | "cerebro";
 
@@ -28,24 +32,19 @@ interface Props {
   onClose: () => void;
   tab: FocusTab;
   setTab: (t: FocusTab) => void;
-  children: ReactNode; // the actual tab content from Index.tsx — rendered inside a floating panel when its mode is open
+  /** Render the actual platform tab content for a given focus key */
+  renderTab: (key: FocusPanelKey) => ReactNode;
 }
 
-const MODES: { key: FocusPanelKey; label: string; icon: any; description: string }[] = [
-  { key: "leitura", label: "Leitura", icon: BookOpen, description: "Plano bíblico do dia" },
-  { key: "devocional", label: "Devocional", icon: Flame, description: "Meditação diária" },
-  { key: "anotacoes", label: "Estudo", icon: PenLine, description: "Caderno & Mapa mental" },
-  { key: "cerebro", label: "Cérebro", icon: Brain, description: "Captura & conexões" },
+const MODES: { key: FocusPanelKey; label: string; icon: any }[] = [
+  { key: "leitura", label: "Leitura", icon: BookOpen },
+  { key: "devocional", label: "Devocional", icon: Flame },
+  { key: "anotacoes", label: "Estudo", icon: PenLine },
+  { key: "cerebro", label: "Cérebro", icon: Brain },
 ];
 
-export default function FocusWorkspace({ open, onClose, tab, setTab, children }: Props) {
-  const [paletteIdx, setPaletteIdx] = useState(0);
-  const palette = PALETTES[paletteIdx];
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-
-  // Floating panels state — which modes have open panels (and stack order)
-  const [openPanels, setOpenPanels] = useState<FocusPanelKey[]>([]);
-  const [panelOrder, setPanelOrder] = useState<FocusPanelKey[]>([]);
+export default function FocusWorkspace({ open, onClose, tab, setTab, renderTab }: Props) {
+  const [sidebarOpen, setSidebarOpen] = useState(false); // mobile drawer
 
   // Pomodoro
   const [phase, setPhase] = useState<"focus" | "break">("focus");
@@ -84,13 +83,6 @@ export default function FocusWorkspace({ open, onClose, tab, setTab, children }:
     } catch {}
   }, [open]);
 
-  // Palette cycle every 30s
-  useEffect(() => {
-    if (!open || reduceMotion) return;
-    const t = setInterval(() => setPaletteIdx(i => (i + 1) % PALETTES.length), 30000);
-    return () => clearInterval(t);
-  }, [open, reduceMotion]);
-
   // Pomodoro timer
   useEffect(() => {
     if (!open || !running) return;
@@ -127,22 +119,14 @@ export default function FocusWorkspace({ open, onClose, tab, setTab, children }:
     return () => document.removeEventListener("fullscreenchange", onFs);
   }, []);
 
-  // ESC closes top panel, then workspace
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !document.fullscreenElement) {
-        if (openPanels.length > 0) {
-          const top = panelOrder[panelOrder.length - 1] || openPanels[openPanels.length - 1];
-          closePanel(top);
-        } else {
-          onClose();
-        }
-      }
+      if (e.key === "Escape" && !document.fullscreenElement) onClose();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose, openPanels, panelOrder]);
+  }, [open, onClose]);
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -162,22 +146,6 @@ export default function FocusWorkspace({ open, onClose, tab, setTab, children }:
     }
   };
 
-  const openPanel = (key: FocusPanelKey) => {
-    setTab(key as FocusTab);
-    setOpenPanels(prev => prev.includes(key) ? prev : [...prev, key]);
-    setPanelOrder(prev => [...prev.filter(k => k !== key), key]);
-  };
-
-  const closePanel = (key: FocusPanelKey) => {
-    setOpenPanels(prev => prev.filter(k => k !== key));
-    setPanelOrder(prev => prev.filter(k => k !== key));
-  };
-
-  const focusPanel = (key: FocusPanelKey) => {
-    setPanelOrder(prev => [...prev.filter(k => k !== key), key]);
-    setTab(key as FocusTab);
-  };
-
   if (!open) return null;
 
   const totalSeconds = POMODORO_MIN[phase] * 60;
@@ -187,182 +155,136 @@ export default function FocusWorkspace({ open, onClose, tab, setTab, children }:
   const ringRadius = 42;
   const ringCirc = 2 * Math.PI * ringRadius;
 
-  const PANEL_LABEL: Record<FocusPanelKey, string> = {
-    leitura: "Leitura do dia",
-    devocional: "Devocional",
-    anotacoes: "Estudo · Caderno & Mapa",
-    cerebro: "Segundo Cérebro",
-  };
-  const PANEL_ICON: Record<FocusPanelKey, ReactNode> = {
-    leitura: <BookOpen size={13} />,
-    devocional: <Flame size={13} />,
-    anotacoes: <PenLine size={13} />,
-    cerebro: <Brain size={13} />,
-  };
-
   return (
     <div
       ref={containerRef}
-      className="fixed inset-0 z-[200] overflow-hidden text-white"
-      style={{ fontFamily: "var(--font-body)" }}
+      className="fixed inset-0 z-[200] overflow-hidden focus-workspace-root"
+      style={{
+        background: PALETTE.bg,
+        color: PALETTE.text,
+        fontFamily: "var(--font-body)",
+      }}
     >
-      {/* Animated background */}
-      <div
-        className="absolute inset-0 transition-all duration-[6000ms] ease-in-out"
-        style={{
-          background: `radial-gradient(140% 110% at 30% 10%, ${palette.via}, ${palette.from} 50%, ${palette.to} 100%)`,
-        }}
-      />
-      {/* Floating particles */}
-      {!reduceMotion && (
-        <div className="absolute inset-0 pointer-events-none opacity-30">
-          {Array.from({ length: 18 }).map((_, i) => (
-            <span
-              key={i} className="absolute block rounded-full"
-              style={{
-                width: 3 + (i % 5) * 2, height: 3 + (i % 5) * 2,
-                background: palette.accent,
-                left: `${(i * 53) % 100}%`, top: `${(i * 37) % 100}%`,
-                opacity: 0.35, filter: "blur(1px)",
-                animation: `focus-float ${12 + (i % 6) * 2}s ease-in-out ${i * 0.3}s infinite alternate`,
-              }}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Lazy YouTube iframe for music */}
+      {/* YouTube iframe — must be visible (1x1) so postMessage API works on all browsers */}
       <iframe
         ref={iframeRef}
-        src={`https://www.youtube.com/embed/${currentVideoId}?enablejsapi=1&autoplay=1&loop=1&playlist=${currentVideoId}&controls=0`}
+        src={`https://www.youtube.com/embed/${currentVideoId}?enablejsapi=1&autoplay=1&loop=1&playlist=${currentVideoId}&controls=0&origin=${typeof window !== "undefined" ? window.location.origin : ""}`}
         allow="autoplay; encrypted-media"
-        className="absolute w-0 h-0 border-none opacity-0 pointer-events-none"
+        className="absolute pointer-events-none"
+        style={{ width: 1, height: 1, opacity: 0.01, bottom: 0, right: 0, border: "none" }}
         title="Focus music"
       />
 
       {/* MAIN LAYOUT */}
       <div className="relative z-10 flex h-full w-full">
-        {/* ─── SIDEBAR: launcher ─── */}
+        {/* ─── SIDEBAR (desktop fixed, mobile drawer) ─── */}
         <aside
-          className="h-full flex flex-col border-r backdrop-blur-xl transition-all duration-300 shrink-0"
+          className={`focus-sidebar h-full flex flex-col border-r shrink-0 transition-transform`}
           style={{
-            width: sidebarCollapsed ? 72 : 220,
-            background: "rgba(8,6,14,0.55)",
-            borderColor: `${palette.accent}22`,
+            width: 220,
+            background: PALETTE.surface,
+            borderColor: PALETTE.border,
           }}
         >
-          <div className="p-4 flex items-center justify-between border-b" style={{ borderColor: `${palette.accent}1a` }}>
-            {!sidebarCollapsed && (
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg flex items-center justify-center"
-                  style={{ background: `${palette.accent}22`, border: `1px solid ${palette.accent}55` }}>
-                  <Zap size={14} style={{ color: palette.accent }} strokeWidth={2.4} />
-                </div>
-                <div>
-                  <p className="text-[9px] uppercase tracking-[2.5px] opacity-60 leading-none">Foco</p>
-                  <p className="text-[11px] font-bold transition-all duration-1000 leading-tight" style={{ color: palette.accent }}>
-                    {palette.label}
-                  </p>
-                </div>
-              </div>
-            )}
-            <button
-              onClick={() => setSidebarCollapsed(v => !v)}
-              className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-white/10 transition-colors shrink-0"
-              aria-label="Recolher menu"
-            >
-              <ChevronLeft size={14} className={`transition-transform ${sidebarCollapsed ? "rotate-180" : ""}`} />
-            </button>
+          <div className="p-4 flex items-center gap-2 border-b" style={{ borderColor: PALETTE.border }}>
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+              style={{ background: `${PALETTE.primary}14`, border: `1px solid ${PALETTE.primary}55` }}>
+              <Sparkle />
+            </div>
+            <div>
+              <p className="text-[9px] uppercase tracking-[2.5px] leading-none" style={{ color: PALETTE.textDim }}>Modo</p>
+              <p className="text-[12px] font-bold leading-tight" style={{ color: PALETTE.primary }}>FOCO</p>
+            </div>
           </div>
 
           <div className="flex-1 p-2 space-y-1 overflow-y-auto no-scrollbar">
-            {!sidebarCollapsed && (
-              <p className="text-[9px] uppercase tracking-[2.5px] opacity-40 px-2 pt-2 pb-1">Abrir painel</p>
-            )}
+            <p className="text-[9px] uppercase tracking-[2.5px] px-2 pt-2 pb-1" style={{ color: PALETTE.textDim }}>Atalhos</p>
             {MODES.map(m => {
-              const active = openPanels.includes(m.key);
               const Icon = m.icon;
+              const active = tab === m.key;
               return (
                 <button
                   key={m.key}
-                  onClick={() => {
-                    haptic("light");
-                    if (active) closePanel(m.key); else openPanel(m.key);
-                  }}
-                  className="w-full flex items-center gap-3 p-3 rounded-xl transition-all text-left hover:scale-[1.02] active:scale-95"
+                  onClick={() => { setTab(m.key as FocusTab); setSidebarOpen(false); haptic("light"); }}
+                  className="w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all hover:scale-[1.02] active:scale-95"
                   style={{
-                    background: active ? `${palette.accent}22` : "transparent",
-                    border: active ? `1px solid ${palette.accent}55` : "1px solid transparent",
-                    color: active ? palette.accent : "rgba(255,255,255,0.75)",
-                    boxShadow: active ? `0 0 24px -8px ${palette.accent}88` : undefined,
+                    background: active ? `${PALETTE.primary}14` : "transparent",
+                    border: active ? `1px solid ${PALETTE.primary}55` : "1px solid transparent",
+                    color: active ? PALETTE.primary : PALETTE.text,
                   }}
                 >
-                  <Icon size={17} className="shrink-0" strokeWidth={active ? 2.2 : 1.6} />
-                  {!sidebarCollapsed && (
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[13px] font-bold leading-tight">{m.label}</p>
-                      <p className="text-[10px] opacity-70 truncate leading-tight mt-0.5">{m.description}</p>
-                    </div>
-                  )}
-                  {active && !sidebarCollapsed && (
-                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: palette.accent, boxShadow: `0 0 8px ${palette.accent}` }} />
-                  )}
+                  <Icon size={16} className="shrink-0" strokeWidth={active ? 2.2 : 1.7} />
+                  <span className="text-[13px] font-bold leading-tight">{m.label}</span>
                 </button>
               );
             })}
           </div>
 
-          {!sidebarCollapsed && (
-            <div className="p-4 border-t" style={{ borderColor: `${palette.accent}1a` }}>
-              <div className="flex items-center gap-2 text-xs">
-                <Timer size={12} style={{ color: palette.accent }} />
-                <span className="opacity-70">Foco hoje:</span>
-                <span className="font-bold tabular-nums" style={{ color: palette.accent }}>
-                  {todayMin}min
-                </span>
-              </div>
-              <div className="mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider"
-                style={{ background: `${palette.accent}18`, color: palette.accent, border: `1px solid ${palette.accent}33` }}>
-                <Sparkles size={9} /> Imersão ativa
-              </div>
+          <div className="p-3 border-t" style={{ borderColor: PALETTE.border }}>
+            <div className="flex items-center gap-2 text-xs">
+              <Timer size={12} style={{ color: PALETTE.primary }} />
+              <span style={{ color: PALETTE.textDim }}>Foco hoje:</span>
+              <span className="font-bold tabular-nums" style={{ color: PALETTE.primary }}>{todayMin}min</span>
             </div>
-          )}
+          </div>
         </aside>
 
-        {/* ─── MAIN AREA: Pomodoro topbar + chat hub ─── */}
-        <main className="flex-1 flex flex-col overflow-hidden min-w-0 relative">
-          {/* Top bar */}
-          <div className="flex items-center gap-3 px-4 py-3 border-b backdrop-blur-xl shrink-0"
-            style={{ background: "rgba(8,6,14,0.55)", borderColor: `${palette.accent}1a` }}>
-            <div className="flex items-center gap-3 shrink-0">
-              <div className="relative w-20 h-20 shrink-0">
+        {/* Mobile drawer overlay */}
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 z-[210] focus-mobile-overlay"
+            style={{ background: "rgba(0,0,0,0.55)" }}
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+
+        {/* ─── MAIN AREA ─── */}
+        <main className="flex-1 flex flex-col overflow-hidden min-w-0">
+          {/* Top bar — Pomodoro + music + controls */}
+          <div
+            className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 border-b shrink-0 flex-wrap sm:flex-nowrap"
+            style={{ background: PALETTE.surface, borderColor: PALETTE.border }}
+          >
+            {/* Mobile menu button */}
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="focus-mobile-menu w-9 h-9 rounded-lg flex items-center justify-center transition-colors shrink-0"
+              style={{ background: PALETTE.surfaceLight, color: PALETTE.text }}
+              aria-label="Abrir menu"
+            >
+              <Menu size={16} />
+            </button>
+
+            {/* Pomodoro */}
+            <div className="flex items-center gap-2.5 shrink-0">
+              <div className="relative w-[60px] h-[60px] sm:w-[70px] sm:h-[70px] shrink-0">
                 <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
-                  <circle cx="50" cy="50" r={ringRadius} fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="4" />
+                  <circle cx="50" cy="50" r={ringRadius} fill="none" stroke={PALETTE.border} strokeWidth="5" />
                   <circle
                     cx="50" cy="50" r={ringRadius} fill="none"
-                    stroke={palette.accent} strokeWidth="4" strokeLinecap="round"
+                    stroke={PALETTE.primary} strokeWidth="5" strokeLinecap="round"
                     strokeDasharray={ringCirc}
                     strokeDashoffset={ringCirc * (1 - progress)}
-                    style={{ transition: "stroke-dashoffset 1s linear, stroke 6s", filter: `drop-shadow(0 0 8px ${palette.accent})` }}
+                    style={{ transition: "stroke-dashoffset 1s linear", filter: `drop-shadow(0 0 6px ${PALETTE.primary}88)` }}
                   />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-lg font-bold tabular-nums leading-none" style={{ color: palette.accent }}>
+                  <span className="text-[14px] sm:text-[16px] font-bold tabular-nums leading-none" style={{ color: PALETTE.primary }}>
                     {mm}:{ss}
                   </span>
-                  <span className="text-[8px] uppercase tracking-[2px] opacity-60 mt-0.5">
+                  <span className="text-[7px] sm:text-[8px] uppercase tracking-[2px] mt-0.5" style={{ color: PALETTE.textDim }}>
                     {phase === "focus" ? "Foco" : "Pausa"}
                   </span>
                 </div>
               </div>
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-1">
                 <button
                   onClick={() => { setRunning(r => !r); haptic("light"); }}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all hover:scale-105 active:scale-95"
+                  className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold transition-all hover:scale-105 active:scale-95"
                   style={{
-                    background: running ? `${palette.accent}22` : "rgba(255,255,255,0.08)",
-                    color: running ? palette.accent : "rgba(255,255,255,0.8)",
-                    border: `1px solid ${running ? palette.accent + "55" : "rgba(255,255,255,0.15)"}`,
+                    background: running ? `${PALETTE.primary}14` : PALETTE.surfaceLight,
+                    color: running ? PALETTE.primary : PALETTE.text,
+                    border: `1px solid ${running ? PALETTE.primary + "55" : PALETTE.border}`,
                   }}>
                   {running ? <><Pause size={10} /> Pausar</> : <><Play size={10} /> Continuar</>}
                 </button>
@@ -370,44 +292,43 @@ export default function FocusWorkspace({ open, onClose, tab, setTab, children }:
                   onClick={() => {
                     setPhase("focus"); setSecondsLeft(POMODORO_MIN.focus * 60); setRunning(true); haptic("medium");
                   }}
-                  className="px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider opacity-70 hover:opacity-100 transition-opacity"
-                  style={{ border: "1px solid rgba(255,255,255,0.15)" }}>
+                  className="px-2 py-1 rounded-md text-[9px] font-bold uppercase tracking-wider transition-colors"
+                  style={{ color: PALETTE.textDim, border: `1px solid ${PALETTE.border}` }}>
                   Reiniciar
                 </button>
               </div>
             </div>
 
-            <div className="flex-1" />
+            <div className="flex-1 min-w-0" />
 
-            {/* Music mini-player */}
-            <div className="hidden md:flex items-center gap-2 px-3 py-2 rounded-xl backdrop-blur-md"
-              style={{ background: "rgba(0,0,0,0.35)", border: `1px solid ${palette.accent}33` }}>
-              <button onClick={toggle} className="text-white/80 hover:text-white transition-colors">
+            {/* Music mini-player — hidden on small mobile, visible from sm */}
+            <div
+              className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl shrink-0"
+              style={{ background: PALETTE.surfaceLight, border: `1px solid ${PALETTE.border}` }}
+            >
+              <button onClick={toggle} className="hover:opacity-100 transition-opacity" style={{ color: PALETTE.text }}>
                 {playing ? <Pause size={13} /> : <Play size={13} />}
               </button>
-              <button onClick={skip} className="text-white/80 hover:text-white transition-colors">
+              <button onClick={skip} className="hover:opacity-100 transition-opacity" style={{ color: PALETTE.text }}>
                 <SkipForward size={13} />
               </button>
-              <div className="text-[10px] font-ui opacity-80 min-w-[90px]">
-                {trackKey === "custom"
-                  ? <>🎧 Custom</>
-                  : <>{FOCUS_TRACKS[trackKey].emoji} {FOCUS_TRACKS[trackKey].label}</>}
+              <div className="text-[10px] min-w-[70px]" style={{ color: PALETTE.textDim }}>
+                {trackKey === "custom" ? "🎧 Custom" : `${FOCUS_TRACKS[trackKey].emoji} ${FOCUS_TRACKS[trackKey].label}`}
               </div>
-              <div className="flex items-center gap-1.5">
-                <Volume2 size={10} className="opacity-60" />
-                <input
-                  type="range" min={0} max={100} value={volume}
-                  onChange={(e) => changeVolume(parseInt(e.target.value, 10))}
-                  className="w-12 accent-white/70"
-                />
-              </div>
-              <div className="w-px h-4 bg-white/10" />
+              <Volume2 size={10} style={{ color: PALETTE.textDim }} />
+              <input
+                type="range" min={0} max={100} value={volume}
+                onChange={(e) => changeVolume(parseInt(e.target.value, 10))}
+                className="w-12"
+                style={{ accentColor: PALETTE.primary }}
+              />
+              <div className="w-px h-4" style={{ background: PALETTE.border }} />
               {(["lofi", "piano", "ambient"] as FocusTrackKey[]).map(k => (
                 <button key={k} onClick={() => setTrack(k)}
                   className="w-6 h-6 rounded-full text-xs transition-all hover:scale-110 flex items-center justify-center"
                   style={{
-                    background: trackKey === k ? `${palette.accent}33` : "transparent",
-                    border: `1px solid ${trackKey === k ? palette.accent + "66" : "rgba(255,255,255,0.15)"}`,
+                    background: trackKey === k ? `${PALETTE.primary}22` : "transparent",
+                    border: `1px solid ${trackKey === k ? PALETTE.primary + "66" : PALETTE.border}`,
                   }}>
                   {FOCUS_TRACKS[k as Exclude<FocusTrackKey, "custom">].emoji}
                 </button>
@@ -416,18 +337,30 @@ export default function FocusWorkspace({ open, onClose, tab, setTab, children }:
                 onClick={() => setShowYtInput(v => !v)}
                 className="w-6 h-6 rounded-full flex items-center justify-center transition-all hover:scale-110"
                 style={{
-                  background: trackKey === "custom" ? `${palette.accent}33` : "transparent",
-                  border: `1px solid ${trackKey === "custom" ? palette.accent + "66" : "rgba(255,255,255,0.15)"}`,
-                  color: trackKey === "custom" ? palette.accent : "white",
+                  background: trackKey === "custom" ? `${PALETTE.primary}22` : "transparent",
+                  border: `1px solid ${trackKey === "custom" ? PALETTE.primary + "66" : PALETTE.border}`,
+                  color: trackKey === "custom" ? PALETTE.primary : PALETTE.text,
                 }}
-                title="Adicionar link do YouTube">
+                title="Adicionar link do YouTube"
+              >
                 <Youtube size={10} />
               </button>
             </div>
 
+            {/* Mobile compact music toggle */}
+            <button
+              onClick={toggle}
+              className="sm:hidden w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+              style={{ background: PALETTE.surfaceLight, color: PALETTE.text, border: `1px solid ${PALETTE.border}` }}
+              aria-label={playing ? "Pausar música" : "Tocar música"}
+            >
+              {playing ? <Pause size={14} /> : <Play size={14} />}
+            </button>
+
             <button
               onClick={toggleFullscreen}
-              className="w-9 h-9 rounded-full flex items-center justify-center bg-white/10 hover:bg-white/20 transition-colors shrink-0"
+              className="hidden sm:flex w-9 h-9 rounded-lg items-center justify-center transition-colors shrink-0"
+              style={{ background: PALETTE.surfaceLight, color: PALETTE.text, border: `1px solid ${PALETTE.border}` }}
               aria-label={isFullscreen ? "Sair da tela cheia" : "Tela cheia"}
               title={isFullscreen ? "Sair da tela cheia" : "Tela cheia"}
             >
@@ -435,7 +368,8 @@ export default function FocusWorkspace({ open, onClose, tab, setTab, children }:
             </button>
             <button
               onClick={onClose}
-              className="w-9 h-9 rounded-full flex items-center justify-center bg-white/10 hover:bg-white/20 transition-colors shrink-0"
+              className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors shrink-0"
+              style={{ background: PALETTE.surfaceLight, color: PALETTE.text, border: `1px solid ${PALETTE.border}` }}
               aria-label="Sair do Modo Foco"
               title="Sair do Modo Foco"
             >
@@ -445,73 +379,39 @@ export default function FocusWorkspace({ open, onClose, tab, setTab, children }:
 
           {/* YouTube input row */}
           {showYtInput && (
-            <div className="px-4 py-3 border-b animate-fade-in flex items-center gap-2 shrink-0"
-              style={{ background: "rgba(0,0,0,0.4)", borderColor: `${palette.accent}1a` }}>
-              <Youtube size={15} style={{ color: palette.accent }} />
+            <div
+              className="px-4 py-2.5 border-b animate-fade-in flex items-center gap-2 shrink-0"
+              style={{ background: PALETTE.surface, borderColor: PALETTE.border }}
+            >
+              <Youtube size={15} style={{ color: PALETTE.primary }} />
               <input
                 value={ytInput}
                 onChange={e => setYtInput(e.target.value)}
                 onKeyDown={e => { if (e.key === "Enter") submitCustomYt(); }}
-                placeholder="Cole uma URL do YouTube ou ID (ex: https://youtu.be/...)"
-                className="flex-1 bg-transparent border-none outline-none text-sm text-white/95 placeholder:text-white/30"
+                placeholder="Cole uma URL do YouTube ou ID"
+                className="flex-1 bg-transparent border-none outline-none text-sm placeholder:opacity-40"
+                style={{ color: PALETTE.text }}
               />
-              <button onClick={submitCustomYt}
+              <button
+                onClick={submitCustomYt}
                 className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all hover:scale-105"
-                style={{ background: `${palette.accent}22`, color: palette.accent, border: `1px solid ${palette.accent}55` }}>
+                style={{ background: `${PALETTE.primary}22`, color: PALETTE.primary, border: `1px solid ${PALETTE.primary}55` }}
+              >
                 Ativar
               </button>
-              <button onClick={() => setShowYtInput(false)}
-                className="text-white/50 hover:text-white">
+              <button onClick={() => setShowYtInput(false)} style={{ color: PALETTE.textDim }}>
                 <X size={13} />
               </button>
             </div>
           )}
 
-          {/* ─── COMMAND CHAT (always visible — the hub) ─── */}
+          {/* COMMAND CHAT — the hub */}
           <div className="flex-1 overflow-hidden relative min-h-0">
-            <FocusCommandChat accent={palette.accent} onOpenPanel={openPanel} />
+            <FocusCommandChat
+              renderPanel={(key) => renderTab(key)}
+              onPanelFocus={(key) => setTab(key as FocusTab)}
+            />
           </div>
-
-          {/* ─── FLOATING PANELS for each open mode ─── */}
-          {openPanels.map((key) => {
-            const z = 220 + panelOrder.indexOf(key);
-            // Stagger initial positions so panels don't overlap perfectly
-            const offset = openPanels.indexOf(key) * 32;
-            const isCurrentTab = tab === key;
-            return (
-              <FloatingPanel
-                key={key}
-                open
-                onClose={() => closePanel(key)}
-                onFocus={() => focusPanel(key)}
-                title={PANEL_LABEL[key]}
-                icon={PANEL_ICON[key]}
-                accent={palette.accent}
-                zIndex={z}
-                initialX={Math.max(120, (typeof window !== "undefined" ? window.innerWidth : 1400) / 2 - 440 + offset)}
-                initialY={120 + offset}
-                initialWidth={Math.min(900, typeof window !== "undefined" ? window.innerWidth - 280 : 900)}
-                initialHeight={Math.min(640, typeof window !== "undefined" ? window.innerHeight - 180 : 640)}
-              >
-                {/* Only render the live `children` for the currently-active tab; show placeholder for stacked panels */}
-                {isCurrentTab ? (
-                  <div className="h-full w-full overflow-auto bg-background">
-                    {children}
-                  </div>
-                ) : (
-                  <div className="h-full w-full flex items-center justify-center bg-background">
-                    <button
-                      onClick={() => focusPanel(key)}
-                      className="px-5 py-2.5 rounded-xl text-sm font-bold transition-all hover:scale-105"
-                      style={{ background: `${palette.accent}22`, color: palette.accent, border: `1px solid ${palette.accent}55` }}
-                    >
-                      Trazer {PANEL_LABEL[key]} para frente
-                    </button>
-                  </div>
-                )}
-              </FloatingPanel>
-            );
-          })}
         </main>
       </div>
 
@@ -520,22 +420,43 @@ export default function FocusWorkspace({ open, onClose, tab, setTab, children }:
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[400] animate-fade-in">
           <div className="text-center">
             <div className="text-7xl mb-3">🧠✨</div>
-            <p className="text-xl font-bold" style={{ color: palette.accent }}>
+            <p className="text-xl font-bold" style={{ color: PALETTE.primary }}>
               +25min de foco profundo
             </p>
-            <p className="text-sm opacity-70 mt-1">Você está construindo seu segundo cérebro</p>
+            <p className="text-sm mt-1" style={{ color: PALETTE.textDim }}>Você está construindo seu segundo cérebro</p>
           </div>
         </div>
       )}
 
       <style>{`
-        @keyframes focus-float {
-          0% { transform: translateY(0) translateX(0); }
-          100% { transform: translateY(-40px) translateX(25px); }
-        }
+        .focus-workspace-root { color-scheme: dark; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Mobile responsive: sidebar becomes drawer */
+        @media (max-width: 767px) {
+          .focus-sidebar {
+            position: fixed;
+            top: 0; bottom: 0; left: 0;
+            z-index: 220;
+            transform: translateX(${sidebarOpen ? "0" : "-100%"});
+            transition: transform 0.3s ease;
+          }
+          .focus-mobile-menu { display: flex; }
+        }
+        @media (min-width: 768px) {
+          .focus-mobile-menu { display: none; }
+          .focus-mobile-overlay { display: none; }
+        }
       `}</style>
     </div>
+  );
+}
+
+function Sparkle() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={PALETTE.primary} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M5.6 18.4L18.4 5.6" opacity="0.6" />
+    </svg>
   );
 }

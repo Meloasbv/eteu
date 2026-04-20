@@ -643,9 +643,8 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
               onClose={() => setFocusOpen(false)}
               tab={tab === "biblioteca" ? "anotacoes" : (tab as any)}
               setTab={(t) => setTab(t)}
-            >
-              {renderContent()}
-            </FocusWorkspace>
+              renderTab={(key) => { if (tab !== key) setTab(key as any); return renderContent(); }}
+            />
           </Suspense>
         ) : (
           renderContent()
@@ -737,9 +736,8 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
             onClose={() => setFocusOpen(false)}
             tab={tab === "biblioteca" ? "anotacoes" : (tab as any)}
             setTab={(t) => setTab(t)}
-          >
-            {renderContent()}
-          </FocusWorkspace>
+            renderTab={(key) => { if (tab !== key) setTab(key as any); return renderContent(); }}
+          />
         </Suspense>
       ) : (
         renderContent()
