@@ -281,10 +281,6 @@ export default function FocusWorkspace({ open, onClose, tab, setTab, userCodeId,
               );
             })}
           </div>
-                </button>
-              );
-            })}
-          </div>
 
           <div className="p-3 border-t" style={{ borderColor: PALETTE.border }}>
             <div className="flex items-center gap-2 text-xs">
