@@ -48,7 +48,7 @@ const MODES: { key: FocusPanelKey; label: string; icon: any }[] = [
   { key: "cerebro", label: "Cérebro", icon: Brain },
 ];
 
-export default function FocusWorkspace({ open, onClose, tab, setTab, renderTab }: Props) {
+export default function FocusWorkspace({ open, onClose, tab, setTab, userCodeId, weeks }: Props) {
   const [sidebarOpen, setSidebarOpen] = useState(false); // mobile drawer
 
   // Pomodoro
