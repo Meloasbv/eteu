@@ -320,18 +320,63 @@ export default function NotePanel({
           </div>
         )}
 
+        {detailedExplanation && (
+          <>
+            <SectionLabel>EXPLICAÇÃO</SectionLabel>
+            <div className="mb-6">
+              {detailedExplanation.split("\n\n").map((para, i) => (
+                <p key={i} className="font-body text-[15px] mb-3" style={{ color: "#d4c8b0", lineHeight: 1.75 }}>
+                  <InlineVerseText text={para} onVerseClick={handleVerseClick} />
+                </p>
+              ))}
+            </div>
+          </>
+        )}
+
+        {historicalContext && (
+          <>
+            <SectionLabel>CONTEXTO</SectionLabel>
+            <div className="mb-6 rounded-lg p-4" style={{ background: "rgba(123,163,201,0.05)", borderLeft: "2px solid rgba(123,163,201,0.4)" }}>
+              <p className="font-body text-[14.5px]" style={{ color: "#c4b89e", lineHeight: 1.7 }}>
+                <InlineVerseText text={historicalContext} onVerseClick={handleVerseClick} />
+              </p>
+            </div>
+          </>
+        )}
+
+        {examples.length > 0 && (
+          <>
+            <SectionLabel>EXEMPLOS</SectionLabel>
+            <ul className="space-y-3 mb-6">
+              {examples.map((ex, i) => (
+                <li key={i} className="flex gap-3 items-start rounded-md px-3 py-2" style={{ background: "rgba(196,164,106,0.04)" }}>
+                  <span className="font-display text-[13px] font-bold mt-0.5" style={{ color: "#c4a46a" }}>
+                    {i + 1}.
+                  </span>
+                  <p className="font-body text-[14px]" style={{ color: "#d4c8b0", lineHeight: 1.6 }}>
+                    <InlineVerseText text={ex} onVerseClick={handleVerseClick} />
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+
         {keyPoints.length > 0 && (
           <>
             <SectionLabel>PONTOS PRINCIPAIS</SectionLabel>
             <ul className="space-y-2 mb-6 pl-1">
-              {keyPoints.map((p, i) => (
-                <li key={i} className="flex gap-2.5 items-start">
-                  <span className="mt-2 w-1 h-1 rounded-full shrink-0" style={{ background: "#c4a46a" }} />
-                  <p className="font-body text-[14.5px]" style={{ color: "#d4c8b0", lineHeight: 1.55 }}>
-                    <InlineVerseText text={p} onVerseClick={handleVerseClick} />
-                  </p>
-                </li>
-              ))}
+              {keyPoints.map((p, i) => {
+                const deep = keyPointsDeep.find(kpd => kpd.point === p)?.detail;
+                return (
+                  <DeepKeyPoint
+                    key={i}
+                    point={p}
+                    detail={deep}
+                    onVerseClick={handleVerseClick}
+                  />
+                );
+              })}
             </ul>
           </>
         )}
