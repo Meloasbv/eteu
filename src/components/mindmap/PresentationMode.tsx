@@ -220,6 +220,7 @@ function getStopSlide(stop: TourStop): number | null {
 }
 
 function PresentationCanvas({ analysis, onExit }: PresentationModeProps) {
+  const isMobile = useIsMobile();
   const { nodes: initN, edges: initE } = useMemo(() => buildPresentationGraph(analysis), [analysis]);
   const [nodes, setNodes, onNodesChange] = useNodesState(initN);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initE);
@@ -299,6 +300,7 @@ function PresentationCanvas({ analysis, onExit }: PresentationModeProps) {
     const dwell =
       current.kind === "topic-intro" ? 4500 :
       current.kind === "subsection" ? 5500 :
+      current.kind === "story" ? 7000 :
       current.kind === "verses" ? 4000 :
       current.kind === "quote" ? 4500 :
       current.kind === "slides-overview" ? 6000 :
@@ -563,6 +565,7 @@ function PresentationCanvas({ analysis, onExit }: PresentationModeProps) {
     current.kind === "root" ? "Tema" :
     current.kind === "topic-intro" ? "Tópico" :
     current.kind === "subsection" ? "Conteúdo" :
+    current.kind === "story" ? "História" :
     current.kind === "verses" ? "Versículos" :
     current.kind === "quote" ? "Citação" :
     current.kind === "slides-overview" ? "Visão geral" :
