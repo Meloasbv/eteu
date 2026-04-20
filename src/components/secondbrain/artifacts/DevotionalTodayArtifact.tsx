@@ -2,6 +2,7 @@ import { Flame, Search, PenLine, BookOpen } from "lucide-react";
 import { ArtifactShell, ArtifactAction } from "./ArtifactShell";
 import { FOCUS_PALETTE as P } from "./types";
 import { todayDayName } from "@/lib/readingPlan";
+import ListenButton from "./ListenButton";
 
 interface Props {
   data: {
@@ -47,6 +48,15 @@ export default function DevotionalTodayArtifact({ data, sendAsUser }: Props) {
             </p>
           )}
           <div className="flex flex-wrap gap-2">
+            {(data.verseText || data.summary) && (
+              <ListenButton
+                id={`dev-${ref}`}
+                text={[data.verseText && `"${data.verseText}" — ${ref}.`, data.summary]
+                  .filter(Boolean)
+                  .join(" ")}
+                label={ref}
+              />
+            )}
             <ArtifactAction onClick={() => sendAsUser(`exegese de ${ref}`)} variant="primary">
               <Search size={11} /> Exegese completa
             </ArtifactAction>

@@ -3,6 +3,7 @@ import { BookOpen, Microscope } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { ArtifactShell, ArtifactAction } from "./ArtifactShell";
 import { FOCUS_PALETTE as P } from "./types";
+import ListenButton from "./ListenButton";
 
 interface Data {
   reference: string;
@@ -128,6 +129,11 @@ export default function ExegeseArtifact({ data, sendAsUser }: Props) {
             {exegesis}
           </div>
           <div className="flex flex-wrap gap-2">
+            <ListenButton
+              id={`exegese-${data.reference}`}
+              text={`${verseText ? `"${verseText}" — ${data.reference}. ` : ""}${exegesis}`}
+              label={data.reference}
+            />
             <ArtifactAction
               onClick={() => sendAsUser(`anotar: Exegese de ${data.reference} — ${exegesis.slice(0, 200)}…`)}
               variant="primary"

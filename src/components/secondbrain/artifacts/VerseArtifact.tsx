@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { BookOpen, Loader2, PenLine, Search } from "lucide-react";
 import { ArtifactShell, ArtifactAction } from "./ArtifactShell";
 import { FOCUS_PALETTE as P } from "./types";
+import ListenButton from "./ListenButton";
 
 interface Props {
   data: { reference: string; text?: string };
@@ -46,6 +47,9 @@ export default function VerseArtifact({ data, sendAsUser }: Props) {
         </p>
       )}
       <div className="flex flex-wrap gap-2">
+        {text && !loading && (
+          <ListenButton id={`verse-${data.reference}`} text={text} label={data.reference} />
+        )}
         <ArtifactAction onClick={() => sendAsUser(`exegese de ${data.reference}`)} variant="primary">
           <Search size={11} /> Exegese
         </ArtifactAction>
