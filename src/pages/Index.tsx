@@ -645,6 +645,7 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
               setTab={(t) => setTab(t)}
               userCodeId={userCodeId}
               weeks={WEEKS}
+              devotionals={DEVOTIONALS}
             />
           </Suspense>
         ) : (
@@ -739,6 +740,7 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
             setTab={(t) => setTab(t)}
             userCodeId={userCodeId}
             weeks={WEEKS}
+            devotionals={DEVOTIONALS}
           />
         </Suspense>
       ) : (
