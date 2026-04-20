@@ -110,3 +110,12 @@ export function getCategoryColor(category?: string): string {
 export function getCategoryName(category?: string): string {
   return categoryPalette[category || "teologia"]?.name || "TEOLOGIA";
 }
+
+// Helper: extract just the reference string from VerseRef|string
+export function verseRefString(v: string | VerseRef): string {
+  return typeof v === "string" ? v : v.ref;
+}
+
+export function verseRefList(verses: (string | VerseRef)[] | undefined): string[] {
+  return (verses || []).map(verseRefString);
+}
