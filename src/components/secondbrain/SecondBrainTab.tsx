@@ -1,12 +1,15 @@
 import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { haptic } from "@/hooks/useHaptic";
-import { Brain, Mic, MicOff, Sparkles, ChevronDown, ChevronUp, Link2, Search, X, MessageSquare, Map, BarChart3, MoreHorizontal, Pencil, Archive, Trash2, Unlink, ArchiveRestore, Check } from "lucide-react";
+import { Brain, Mic, MicOff, Sparkles, ChevronDown, ChevronUp, Link2, Search, X, MessageSquare, Map, BarChart3, MoreHorizontal, Pencil, Archive, Trash2, Unlink, ArchiveRestore, Check, Sun, LayoutGrid, Zap } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Json } from "@/integrations/supabase/types";
 
 const ThoughtGraph = lazy(() => import("./ThoughtGraph"));
 const PatternsView = lazy(() => import("./PatternsView"));
+const TodayDashboard = lazy(() => import("./TodayDashboard"));
+const ParaBoard = lazy(() => import("./ParaBoard"));
+const FocusMode = lazy(() => import("./FocusMode"));
 
 // ── Types ──
 type ThoughtType = "problema" | "insight" | "estudo" | "reflexão" | "oração" | "decisão" | "emocional" | "ideia" | "pergunta";
@@ -68,11 +71,12 @@ function timeAgo(dateStr: string): string {
   return `há ${days} dias`;
 }
 
-type ViewMode = "capture" | "graph" | "patterns";
+type ViewMode = "today" | "para" | "capture" | "graph" | "patterns";
 
 // ── Main Component ──
 export default function SecondBrainTab({ userCodeId }: { userCodeId: string }) {
-  const [viewMode, setViewMode] = useState<ViewMode>("capture");
+  const [viewMode, setViewMode] = useState<ViewMode>("today");
+  const [focusOpen, setFocusOpen] = useState(false);
   const [content, setContent] = useState("");
   const [selectedType, setSelectedType] = useState<ThoughtType | "auto">("auto");
   const [thoughts, setThoughts] = useState<Thought[]>([]);
@@ -269,6 +273,8 @@ export default function SecondBrainTab({ userCodeId }: { userCodeId: string }) {
     : visible;
 
   const TABS: { key: ViewMode; icon: any; label: string }[] = [
+    { key: "today", icon: Sun, label: "Hoje" },
+    { key: "para", icon: LayoutGrid, label: "PARA" },
     { key: "capture", icon: MessageSquare, label: "Captura" },
     { key: "graph", icon: Map, label: "Grafo" },
     { key: "patterns", icon: BarChart3, label: "Padrões" },
@@ -277,7 +283,7 @@ export default function SecondBrainTab({ userCodeId }: { userCodeId: string }) {
   return (
     <div className="w-full h-full flex flex-col">
       {/* Tab navigation */}
-      <div className="flex items-center gap-1 px-4 pt-3 pb-2 flex-shrink-0">
+      <div className="flex items-center gap-1 px-4 pt-3 pb-2 flex-shrink-0 flex-wrap">
         <Brain size={18} className="text-primary mr-1" />
         {TABS.map(tab => (
           <button
@@ -294,7 +300,40 @@ export default function SecondBrainTab({ userCodeId }: { userCodeId: string }) {
             {tab.label}
           </button>
         ))}
+        <div className="flex-1" />
+        <button
+          onClick={() => { setFocusOpen(true); haptic("medium"); }}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold font-ui transition-all hover:scale-[1.02] active:scale-95"
+          style={{
+            background: "linear-gradient(135deg, hsl(var(--primary) / 0.2), hsl(var(--primary) / 0.08))",
+            color: "hsl(var(--primary))",
+            border: "1px solid hsl(var(--primary) / 0.4)",
+            boxShadow: "0 0 20px -8px hsl(var(--primary) / 0.5)",
+          }}
+        >
+          <Zap size={13} /> Modo Foco
+        </button>
       </div>
+
+      {viewMode === "today" && (
+        <div className="flex-1 overflow-y-auto">
+          <Suspense fallback={<div className="flex items-center justify-center py-20"><span className="text-muted-foreground/50 text-sm">Carregando...</span></div>}>
+            <TodayDashboard userCodeId={userCodeId} onJumpToCapture={() => setViewMode("capture")} onJumpToPara={() => setViewMode("para")} />
+          </Suspense>
+        </div>
+      )}
+
+      {viewMode === "para" && (
+        <div className="flex-1 overflow-y-auto">
+          <Suspense fallback={<div className="flex items-center justify-center py-20"><span className="text-muted-foreground/50 text-sm">Carregando...</span></div>}>
+            <ParaBoard userCodeId={userCodeId} />
+          </Suspense>
+        </div>
+      )}
+
+      <Suspense fallback={null}>
+        {focusOpen && <FocusMode userCodeId={userCodeId} open={focusOpen} onClose={() => setFocusOpen(false)} />}
+      </Suspense>
 
       {/* Content */}
       {viewMode === "capture" && (
