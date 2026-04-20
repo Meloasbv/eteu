@@ -526,14 +526,83 @@ function MobileBottomSheet({
   );
 }
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
+function SectionLabel({ children, slideRef }: { children: React.ReactNode; slideRef?: string }) {
   return (
     <div className="flex items-center gap-3 mt-7 mb-3">
       <div className="h-px flex-1" style={{ background: "rgba(92,83,71,0.3)" }} />
       <span className="text-[10px] font-sans font-bold tracking-[2px] uppercase" style={{ color: "#5c5347" }}>
         {children}
       </span>
+      {slideRef && (
+        <span className="text-[10px] font-sans tracking-[1px]" style={{ color: "#5c5347" }}>
+          {slideRef}
+        </span>
+      )}
       <div className="h-px flex-1" style={{ background: "rgba(92,83,71,0.3)" }} />
+    </div>
+  );
+}
+
+function formatSlideRange(slides: number[]): string {
+  if (!slides || slides.length === 0) return "";
+  const sorted = [...slides].sort((a, b) => a - b);
+  const min = sorted[0];
+  const max = sorted[sorted.length - 1];
+  if (min === max) return `Sl. ${min}`;
+  return `Sl. ${min}-${max}`;
+}
+
+function SubsectionBlock({
+  sub,
+  onVerseClick,
+}: {
+  sub: import("./types").NoteSubsection;
+  onVerseClick: (ref: string, el: HTMLElement) => void;
+}) {
+  const [expanded, setExpanded] = useState(true);
+  const range = formatSlideRange(sub.source_slides || []);
+  const visiblePoints = expanded ? sub.points : sub.points.slice(0, 2);
+
+  return (
+    <div className="mb-5">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-baseline justify-between gap-2 mb-2 group"
+      >
+        <span className="flex items-center gap-1.5">
+          <ChevronDown
+            size={13}
+            style={{
+              color: "#c4a46a",
+              transform: expanded ? "rotate(0deg)" : "rotate(-90deg)",
+              transition: "transform 0.18s ease",
+            }}
+          />
+          <span className="font-display text-[14px] font-semibold uppercase tracking-wide" style={{ color: "#c4a46a" }}>
+            {sub.subtitle}
+          </span>
+        </span>
+        {range && (
+          <span className="text-[10px] font-sans tracking-[1px]" style={{ color: "#5c5347" }}>
+            {range}
+          </span>
+        )}
+      </button>
+      <ul className="space-y-1.5 pl-4" style={{ borderLeft: "1px solid rgba(196,164,106,0.1)" }}>
+        {visiblePoints.map((p, i) => (
+          <li key={i} className="flex gap-2 items-start pl-2">
+            <span className="mt-2 w-1 h-1 rounded-full shrink-0" style={{ background: "#8a7d6a" }} />
+            <p className="font-body text-[14px]" style={{ color: "#c4b89e", lineHeight: 1.55 }}>
+              <InlineVerseText text={p} onVerseClick={onVerseClick} />
+            </p>
+          </li>
+        ))}
+        {!expanded && sub.points.length > 2 && (
+          <li className="pl-2 text-[11px] font-sans" style={{ color: "#5c5347" }}>
+            +{sub.points.length - 2} pontos…
+          </li>
+        )}
+      </ul>
     </div>
   );
 }
