@@ -266,6 +266,8 @@ function PresentationCanvas({ analysis, onExit }: PresentationModeProps) {
       current.kind === "subsection" ? 5500 :
       current.kind === "verses" ? 4000 :
       current.kind === "quote" ? 4500 :
+      current.kind === "slides-overview" ? 6000 :
+      current.kind === "slide-summary" ? 3000 :
       3500;
     autoPlayRef.current = window.setTimeout(() => {
       if (stopIdx < tour.length - 1) goNext();
