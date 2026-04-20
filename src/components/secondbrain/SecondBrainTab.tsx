@@ -343,19 +343,7 @@ export default function SecondBrainTab({
         </div>
       )}
 
-      <Suspense fallback={null}>
-        {focusOpen && (
-          <FocusWorkspace
-            userCodeId={userCodeId}
-            open={focusOpen}
-            onClose={() => setFocusOpen(false)}
-            onRequestReading={() => { setFocusOpen(false); onRequestReading?.(); }}
-            onRequestDevotional={() => { setFocusOpen(false); onRequestDevotional?.(); }}
-            onRequestNotes={() => { setFocusOpen(false); onRequestNotes?.(); }}
-            onRequestMindMap={() => { setFocusOpen(false); onRequestMindMap?.(); }}
-          />
-        )}
-      </Suspense>
+      {/* Focus Mode is now controlled at Index.tsx level (app-wide overlay) */}
 
       {/* Content */}
       {viewMode === "capture" && (
