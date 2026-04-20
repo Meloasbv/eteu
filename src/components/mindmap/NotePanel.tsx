@@ -1,8 +1,8 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import { X, ChevronLeft, ChevronRight, BookOpen } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, BookOpen, ChevronDown } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
-import type { KeyConcept } from "./types";
-import { getCategoryColor, getCategoryName } from "./types";
+import type { KeyConcept, VerseRef } from "./types";
+import { getCategoryColor, getCategoryName, verseRefString } from "./types";
 import VersePopover from "./VersePopover";
 
 // Regex to detect Bible references inline
@@ -88,8 +88,11 @@ export default function NotePanel({
     siblings: string[];
   } | null>(null);
 
-  const allVerses = concept
-    ? [...(concept.expanded_note?.verses || concept.bible_refs || [])]
+  const allVerses: string[] = concept
+    ? [
+        ...((concept.expanded_note?.verses || []).map(verseRefString)),
+        ...(concept.bible_refs || []),
+      ]
     : [];
 
   const handleVerseClick = useCallback(
@@ -109,11 +112,19 @@ export default function NotePanel({
   const total = topicConcepts.length;
 
   const coreIdea = note?.core_idea || concept.coreIdea || "";
-  const explanation = note?.explanation || concept.description || "";
-  const affirmations = note?.affirmations || concept.keyPoints || [];
-  const verses = note?.verses || concept.bible_refs || [];
+  const explanation = note?.explanation || "";
+  const keyPoints = note?.key_points || note?.affirmations || concept.keyPoints || [];
+  const subsections = note?.subsections || [];
+  const versesRich: VerseRef[] = (note?.verses || []).map(v =>
+    typeof v === "string" ? { ref: v } : v
+  );
+  const legacyVerses = !note?.verses?.length ? (concept.bible_refs || []).map(r => ({ ref: r } as VerseRef)) : [];
+  const verses: VerseRef[] = versesRich.length > 0 ? versesRich : legacyVerses;
+  const authorQuotes = note?.author_quotes || [];
   const application = note?.application || concept.practicalApplication || "";
   const impactPhrase = note?.impact_phrase || concept.impactPhrase || "";
+  const sourceSlides = concept.source_slides || (concept.page_ref ? [concept.page_ref] : []);
+  const slideRange = formatSlideRange(sourceSlides);
 
   const canPrev = currentIndex > 0;
   const canNext = currentIndex < concepts.length - 1;
