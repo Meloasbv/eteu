@@ -267,55 +267,6 @@ export default function MindMapCanvas({ analysis, mapId, onEnsureSavedForShare, 
 
   // Image generation removed — the map shows only topic bubbles for fast scanning.
 
-  // Generate AI images for the root + key topics in the background (non-blocking)
-  useEffect(() => {
-    let cancelled = false;
-    const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-card-image`;
-    const headers = {
-      "Content-Type": "application/json",
-      apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-      Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-    };
-
-    const targets: { key: string; body: Record<string, unknown> }[] = [
-      { key: "__root__", body: { title: analysis.main_theme || "Tema", summary: analysis.summary, role: "root" } },
-      ...topicConcepts
-        .filter(c => c.is_key)
-        .map((c, i) => ({
-          key: `topic-${c.id || i}`,
-          body: { title: c.title, summary: c.summary || c.expanded_note?.core_idea, category: c.category, role: "topic" },
-        })),
-    ];
-
-    const todo = targets.filter(t => !images[t.key] && !loadingImages[t.key]);
-    if (todo.length === 0) return;
-
-    setLoadingImages(prev => {
-      const next = { ...prev };
-      todo.forEach(t => { next[t.key] = true; });
-      return next;
-    });
-
-    todo.forEach(async (t) => {
-      try {
-        const res = await fetch(url, { method: "POST", headers, body: JSON.stringify(t.body) });
-        const data = await res.json();
-        if (cancelled) return;
-        if (data?.image) {
-          setImages(prev => ({ ...prev, [t.key]: data.image }));
-        }
-      } catch (e) {
-        console.warn("card image failed", t.key, e);
-      } finally {
-        if (!cancelled) {
-          setLoadingImages(prev => { const n = { ...prev }; delete n[t.key]; return n; });
-        }
-      }
-    });
-
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [analysis]);
 
   const onNodeClick = useCallback((_: any, node: Node) => {
     if (node.type === "topicCard") {
