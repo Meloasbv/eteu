@@ -174,7 +174,12 @@ function buildTour(analysis: AnalysisResult): TourStop[] {
       stops.push({ kind: "subsection", nodeId, concept, topicIndex: i, subsection, subIndex });
     });
 
-    // 3) Consolidated verses slide (if any)
+    // 3) Stories — each narrative becomes its own slide (cinematic moments)
+    (note.stories || []).forEach(story => {
+      stops.push({ kind: "story", nodeId, concept, topicIndex: i, story });
+    });
+
+    // 4) Consolidated verses slide (if any)
     if (note.verses && note.verses.length > 0) {
       stops.push({ kind: "verses", nodeId, concept, topicIndex: i, verses: note.verses });
     }
@@ -203,6 +208,7 @@ function buildTour(analysis: AnalysisResult): TourStop[] {
 function getStopSlide(stop: TourStop): number | null {
   if (stop.kind === "topic-intro") return stop.concept.page_ref || stop.concept.source_slides?.[0] || null;
   if (stop.kind === "subsection") return stop.subsection.source_slides?.[0] || stop.concept.page_ref || null;
+  if (stop.kind === "story") return stop.story.source_slide || stop.concept.page_ref || null;
   if (stop.kind === "verses") {
     const v = stop.verses[0];
     if (typeof v !== "string" && v?.source_slide) return v.source_slide;
