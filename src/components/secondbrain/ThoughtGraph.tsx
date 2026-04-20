@@ -495,8 +495,10 @@ export default function ThoughtGraph({ userCodeId, theme = "gold", embedded = fa
     setFocusNodeId(null);
   };
 
+  const isNeon = theme === "neon";
   return (
-    <div className="w-full h-full flex flex-col relative" style={{ minHeight: 400 }}>
+    <div className="w-full h-full flex flex-col relative" style={{ minHeight: 400, background: isNeon ? "transparent" : undefined }}>
+      {!embedded && (<>
       {/* Top bar: filters OR focus mode header */}
       {focusNodeId ? (
         <div className="flex items-center gap-2 px-3 py-2 flex-shrink-0"
@@ -571,9 +573,11 @@ export default function ThoughtGraph({ userCodeId, theme = "gold", embedded = fa
         </>
       )}
 
+      </>)}
+
       {/* Canvas + side panel layout */}
       <div className="flex-1 flex overflow-hidden">
-        <div ref={containerRef} className="flex-1 relative overflow-hidden" style={{ background: "hsl(var(--background))" }}>
+        <div ref={containerRef} className="flex-1 relative overflow-hidden" style={{ background: isNeon ? "transparent" : "hsl(var(--background))" }}>
           <canvas
             ref={canvasRef}
             onMouseDown={handlePointerDown}
