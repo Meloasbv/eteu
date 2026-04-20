@@ -29,9 +29,44 @@ const PALETTE = {
   textFaint: "#4A5868",
 };
 
+interface DevDay {
+  day: string;
+  ref: string;
+  verseText?: string;
+  summary?: string;
+}
+interface DevWeek {
+  period: string;
+  days: DevDay[];
+}
+
 interface Props {
   userCodeId: string;
   weeks: any[];
+  devotionals?: DevWeek[];
+}
+
+function findDevotionalForToday(devotionals: DevWeek[] | undefined, dayName: string): (DevDay & { period: string }) | null {
+  if (!devotionals || devotionals.length === 0) return null;
+  // Try matching by current weekday name first across all weeks (closest period)
+  const now = Date.now();
+  // Heuristic: pick the week whose period range contains today's date if parseable
+  for (const w of devotionals) {
+    const m = w.period.match(/(\d{2})\/(\d{2})\s*a\s*(\d{2})\/(\d{2})/);
+    if (!m) continue;
+    const [_, sd, sm, ed, em] = m;
+    const year = new Date().getFullYear();
+    const start = new Date(year, parseInt(sm) - 1, parseInt(sd)).getTime();
+    const end = new Date(year, parseInt(em) - 1, parseInt(ed), 23, 59).getTime();
+    if (now >= start && now <= end) {
+      const day = w.days.find((d) => d.day.toLowerCase() === dayName.toLowerCase()) ?? w.days[0];
+      return { ...day, period: w.period };
+    }
+  }
+  // Fallback: most recent period's matching weekday
+  const last = devotionals[devotionals.length - 1];
+  const day = last.days.find((d) => d.day.toLowerCase() === dayName.toLowerCase()) ?? last.days[0];
+  return { ...day, period: last.period };
 }
 
 let MSG_ID = 0;
