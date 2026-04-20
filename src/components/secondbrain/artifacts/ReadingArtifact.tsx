@@ -182,7 +182,7 @@ export default function ReadingArtifact({ data, sendAsUser }: Props) {
             >
               {week.map(({ offset, date, reading }) => {
                 const isSel = offset === dayOffset;
-                const isToday = offset === 0;
+                const isCurrentDay = offset === 0;
                 const total = reading?.readings.length ?? 0;
                 const ratio = reading ? dayProgress(reading.weekIdx, reading.dayIdx, total) : 0;
                 const dayLetter = SHORT_DAYS[date.getDay()];
