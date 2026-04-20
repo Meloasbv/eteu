@@ -274,7 +274,7 @@ export default function ReadingArtifact({ data, sendAsUser }: Props) {
                   </button>
 
                   <button
-                    onClick={() => toggle(i)}
+                    onClick={() => sendAsUser(`ler ${r}`)}
                     className="flex-1 text-left text-[13.5px] font-semibold transition-all hover:translate-x-0.5"
                     style={{
                       color: isThis ? P.primary : done ? P.primary : P.text,
