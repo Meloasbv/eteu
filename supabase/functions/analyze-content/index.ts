@@ -89,37 +89,51 @@ RETORNE APENAS JSON válido, sem markdown:
 Marque is_key=true APENAS para os 3-4 topics MAIS centrais.`;
 
 const EXPAND_PROMPT = (topicTitle: string, slideRange: [number, number], category: string) =>
-  `Você é um especialista em análise teológica. Recebe os slides ${slideRange[0]} a ${slideRange[1]} de uma aula sobre "${topicTitle}" (categoria: ${category}).
+  `Você é um teólogo reformado preparando MATERIAL DE ESTUDO PROFUNDO sobre "${topicTitle}" (categoria: ${category}), baseado nos slides ${slideRange[0]}-${slideRange[1]}.
 
-TAREFA: Extraia TODO o conteúdo destes slides em formato escaneável e completo. Não omita nada relevante.
+TAREFA: Produza conteúdo em DOIS NÍVEIS de profundidade. NÃO seja superficial. Cada campo deve trazer densidade real, pronto para estudo sério.
 
-REGRAS:
-1. key_points: 6 a 12 bullets curtos (≤18 palavras cada). Capture TODOS os pontos importantes dos slides.
-2. subsections: SE houver sub-temas claros nos slides, divida em 2-5 subsections, cada uma com seu range próprio e 4-8 bullets.
-3. verses: TODOS os versículos mencionados, com referência exata, contexto curto e source_slide.
-4. author_quotes: TODAS as citações de autores (nome + texto literal + slide). Ex: Jonathan Edwards, Sheperd, Agostinho.
-5. application: 2-3 frases curtas de aplicação prática.
-6. impact_phrase: 1 frase memorizável (máx 14 palavras).
-7. core_idea: 1 frase essencial (máx 22 palavras).
+═══ NÍVEL 1 — Visão sintética ═══
+1. core_idea: 1 frase essencial (≤22 palavras) — a tese central.
+2. key_points: 4 a 6 bullets escaneáveis (≤18 palavras cada).
+3. impact_phrase: 1 frase memorizável (≤14 palavras).
 
-NUNCA escreva parágrafos longos. Sempre bullets escaneáveis.
+═══ NÍVEL 2 — Exploração detalhada ═══
+4. detailed_explanation: parágrafo denso de 4 a 7 frases, explicando o conceito com profundidade teológica. NUNCA genérico — sempre específico ao tema.
+5. historical_context: 2 a 4 frases sobre contexto histórico, cultural ou bíblico relevante (autor, época, escola teológica, prática original).
+6. examples: 2 a 4 exemplos concretos OU ilustrações OU aplicações específicas (não frases abstratas).
+7. key_points_deep: para CADA bullet de key_points, repita o ponto e adicione 'detail' com 1-2 frases de aprofundamento.
+8. subsections: se houver sub-temas claros, divida em 2-5 subsections com 3-6 bullets cada.
+
+═══ Conteúdo bíblico ═══
+9. verses: TODOS os versículos mencionados, com referência exata + contexto curto + source_slide.
+10. author_quotes: TODAS as citações de autores (texto literal + nome + slide).
+11. application: 2-3 frases de aplicação prática real (não chavões).
+
+REGRAS DE QUALIDADE:
+- Evite frases genéricas tipo "Deus é bom" ou "isto é importante"
+- Sempre nomeie autores, datas, escolas, livros quando relevante
+- Linguagem teológica precisa, mas acessível
+- Cada campo deve agregar conteúdo NOVO — nunca repita literalmente outro campo
 
 RETORNE APENAS JSON válido:
 {
   "core_idea": "string",
-  "key_points": ["bullet ≤18 palavras", "..."],
+  "key_points": ["bullet ≤18 palavras"],
+  "key_points_deep": [
+    { "point": "mesmo bullet", "detail": "1-2 frases que aprofundam o ponto" }
+  ],
+  "detailed_explanation": "parágrafo denso 4-7 frases",
+  "historical_context": "2-4 frases de contexto",
+  "examples": ["exemplo concreto", "ilustração"],
   "subsections": [
-    { "subtitle": "Sub-tema", "points": ["bullet", "..."], "source_slides": [N, M] }
+    { "subtitle": "Sub-tema", "points": ["bullet"], "source_slides": [N] }
   ],
-  "verses": [
-    { "ref": "Os 1:2-3", "context": "contexto curto", "source_slide": N }
-  ],
-  "author_quotes": [
-    { "text": "citação literal", "author": "Nome", "source_slide": N }
-  ],
-  "application": "string curta",
-  "impact_phrase": "string ≤14 palavras",
-  "child_highlights": ["1 a 3 frases citáveis e memoráveis"]
+  "verses": [{ "ref": "Os 1:2-3", "context": "curto", "source_slide": N }],
+  "author_quotes": [{ "text": "literal", "author": "Nome", "source_slide": N }],
+  "application": "2-3 frases práticas",
+  "impact_phrase": "≤14 palavras",
+  "child_highlights": ["1-3 frases citáveis"]
 }`;
 
 const SLIDES_SUMMARY_PROMPT = `Você recebe os slides de um PDF de aula bíblica, marcados [[SLIDE N]].
