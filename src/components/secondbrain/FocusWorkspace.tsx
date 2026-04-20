@@ -8,6 +8,7 @@ import { haptic } from "@/hooks/useHaptic";
 import { toast } from "@/hooks/use-toast";
 import { useFocusMusic, FOCUS_TRACKS, type FocusTrackKey } from "@/hooks/useFocusMusic";
 import FocusCommandChat, { type FocusPanelKey } from "./FocusCommandChat";
+import FocusTTSPlayer from "./FocusTTSPlayer";
 import type { FocusOpenToolDetail, FocusToolKey } from "@/lib/focusTools";
 
 const MindMapTab = lazy(() => import("@/components/mindmap/MindMapTab"));
@@ -157,6 +158,30 @@ export default function FocusWorkspace({ open, onClose, tab, setTab, userCodeId,
       window.removeEventListener("focus-timer-reset", onReset);
     };
   }, []);
+
+  // TTS audio ducking: lower YouTube music volume while reading
+  const preDuckVolumeRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDuck = (e: Event) => {
+      const active = (e as CustomEvent<{ active: boolean }>).detail?.active;
+      if (active) {
+        if (preDuckVolumeRef.current == null) preDuckVolumeRef.current = volume;
+        changeVolume(Math.min(volume, 30));
+      } else if (preDuckVolumeRef.current != null) {
+        changeVolume(preDuckVolumeRef.current);
+        preDuckVolumeRef.current = null;
+      }
+    };
+    window.addEventListener("focus-tts-ducking", onDuck as EventListener);
+    return () => window.removeEventListener("focus-tts-ducking", onDuck as EventListener);
+  }, [open, volume, changeVolume]);
+
+  // Stop TTS when leaving Focus Mode
+  useEffect(() => {
+    if (open) return;
+    window.dispatchEvent(new CustomEvent("focus-tts-stop"));
+  }, [open]);
 
   // Listen for "focus-open-tool" events dispatched from artifacts/sidebar
   useEffect(() => {
@@ -468,8 +493,11 @@ export default function FocusWorkspace({ open, onClose, tab, setTab, userCodeId,
           )}
 
           {/* COMMAND CHAT — the hub */}
-          <div className="flex-1 overflow-hidden relative min-h-0">
-            <FocusCommandChat userCodeId={userCodeId} weeks={weeks} devotionals={devotionals} />
+          <div className="flex-1 overflow-hidden relative min-h-0 flex flex-col">
+            <FocusTTSPlayer />
+            <div className="flex-1 overflow-hidden min-h-0">
+              <FocusCommandChat userCodeId={userCodeId} weeks={weeks} devotionals={devotionals} />
+            </div>
           </div>
         </main>
       </div>
