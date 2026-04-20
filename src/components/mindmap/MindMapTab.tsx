@@ -323,7 +323,6 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
       />
     );
   }
-  }
 
   if (mode === "ai-canvas" && analysis) {
     return (
