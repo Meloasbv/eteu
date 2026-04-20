@@ -326,6 +326,22 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
     );
   }
 
+  if (mode === "ai-guide" && analysis) {
+    return (
+      <div className="h-full w-full">
+        <Suspense fallback={fallback}>
+          <StudyGuide
+            analysis={analysis}
+            activeSectionId={activeSectionId}
+            onActiveSectionChange={setActiveSectionId}
+            onBack={() => { setAnalysis(null); setAiMapId(null); setActiveSectionId(null); setMode("select"); }}
+            onSwitchToMap={() => setMode("ai-canvas")}
+          />
+        </Suspense>
+      </div>
+    );
+  }
+
   if (mode === "ai-canvas" && analysis) {
     return (
       <div className="h-full w-full">
@@ -334,7 +350,7 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
             analysis={analysis}
             mapId={aiMapId}
             onEnsureSavedForShare={() => saveAiMap(analysis, aiMapId)}
-            onClose={() => { setAnalysis(null); setAiMapId(null); setMode("select"); }}
+            onClose={() => setMode("ai-guide")}
           />
         </Suspense>
       </div>
