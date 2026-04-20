@@ -10,13 +10,36 @@ export type ThoughtCategory =
 
 export type ConceptType = "topic" | "highlight" | "verse";
 
+export interface VerseRef {
+  ref: string;
+  context?: string;
+  source_slide?: number;
+}
+
+export interface AuthorQuote {
+  text: string;
+  author: string;
+  source_slide?: number;
+}
+
+export interface NoteSubsection {
+  subtitle: string;
+  points: string[];
+  source_slides?: number[];
+}
+
 export interface ExpandedNote {
   core_idea: string;
-  explanation: string;
-  affirmations: string[];
-  verses: string[];
+  explanation?: string;
+  affirmations?: string[];
+  // verses can be either legacy string[] or new VerseRef[]
+  verses: (string | VerseRef)[];
   application: string;
   impact_phrase: string;
+  // New rich fields
+  key_points?: string[];
+  subsections?: NoteSubsection[];
+  author_quotes?: AuthorQuote[];
 }
 
 export interface KeyConcept {
@@ -34,6 +57,7 @@ export interface KeyConcept {
   // PDF / source enrichment
   is_key?: boolean;
   page_ref?: number;
+  source_slides?: number[];
   quotes?: string[];
   // Legacy StudyNote fields
   coreIdea?: string;

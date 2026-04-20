@@ -40,75 +40,99 @@ serve(async (req) => {
 
     const pdfRules = isPdf ? `
 
-REGRAS ESPECÍFICAS PARA PDF (você recebeu o texto marcado por [[PÁGINA N]]):
-- COBERTURA TOTAL: gere um topic para CADA seção/subtópico relevante do PDF. Não pule conteúdo. Se há 12 seções no PDF, devem haver ~12 topics. Mínimo 8 topics quando o PDF for denso.
-- Para CADA topic, preencha "page_ref" com o número da página onde o conceito aparece principalmente.
-- Para CADA topic, preencha "quotes" com 2-3 CITAÇÕES LITERAIS curtas (máx 25 palavras cada) extraídas do texto da página, com aspas duplas no JSON. Não invente — copie do corpus.
-- Marque "is_key": true APENAS para os 3-5 topics MAIS centrais do documento (esses recebem imagem ilustrativa). Os demais ficam com is_key: false mas mantêm o mesmo nível de detalhe textual.
+REGRAS ESPECÍFICAS PARA PDF DE AULA (slides marcados por [[PÁGINA N]]):
+
+1. AGRUPAMENTO POR TÍTULO (CRÍTICO):
+   - Slides consecutivos com o MESMO título de seção pertencem ao MESMO topic.
+   - Exemplo: se slides 16, 17, 18, 19, 20 têm "Convicção de pecado" como título, gere UM ÚNICO topic chamado "Convicção de pecado" com source_slides=[16,17,18,19,20] que agrega TODO o conteúdo desses slides.
+   - JAMAIS crie um topic para cada slide.
+
+2. POUCOS TOPICS DENSOS:
+   - Para 30-60 slides, gere ENTRE 5 E 8 topics. Nunca mais que 8.
+   - Ignore slide de capa (vira main_theme) e slides puramente decorativos.
+   - Cada topic deve cobrir um bloco contíguo de slides (use source_slides para indicar o range).
+
+3. VERSÍCULOS NUNCA SÃO TOPICS:
+   - Versículos vão DENTRO do expanded_note.verses do topic correspondente, com contexto curto e source_slide.
+   - NUNCA gere objetos com type="verse" no key_concepts. Zero VerseCards.
+   - child_verses deve ficar VAZIO ([]) — versículos só vivem no expanded_note.
+
+4. CITAÇÕES DE AUTORES:
+   - Citações (Jonathan Edwards, Sheperd, etc) vão em expanded_note.author_quotes (com text, author, source_slide).
+   - Pode também escolher 1-2 das mais marcantes para virar child_highlights.
+
+5. CONTEÚDO ESCANEÁVEL (CRÍTICO):
+   - expanded_note.key_points: array de 4-8 bullets de NO MÁXIMO 15 PALAVRAS cada. Quebre parágrafos longos em pontos curtos. NUNCA escreva blocos de texto.
+   - expanded_note.subsections: use quando um topic tem sub-temas internos claros (ex: "Os filhos de Gômer" → subsections para Jezreel, Lo-Ruama, Lo-Ami). Cada subsection tem subtitle, points (bullets ≤15 palavras) e source_slides.
+   - explanation deve ser CURTO (1-2 parágrafos no máximo) ou omitido — preferir key_points.
+
+6. HIGHLIGHTS LIMITADOS:
+   - child_highlights: APENAS 1-2 frases REALMENTE citáveis e memoráveis por topic. Não toda frase em negrito.
+   - NÃO gere objetos type="highlight" standalone para PDF (mantenha key_concepts apenas com type="topic").
+
+7. is_key: marque true APENAS para 3-4 topics centrais (recebem imagem).
 ` : `
 
-REGRAS:
-- COBERTURA TOTAL: extraia TODOS os subtemas presentes. Não resuma de forma demais. Mínimo 6 topics, idealmente 8-12 quando o texto comportar.
-- Marque "is_key": true para os 3-5 topics MAIS importantes (esses recebem imagem). Os demais ficam com is_key: false mas igualmente detalhados.
-- "quotes" e "page_ref" podem ser omitidos quando não houver fonte estruturada.
+REGRAS PARA TEXTO LIVRE:
+- Gere 5-8 topics densos cobrindo os subtemas principais.
+- Cada topic com expanded_note.key_points (4-8 bullets de ≤15 palavras).
+- Versículos sempre dentro de expanded_note.verses, NUNCA como type="verse".
+- child_highlights: 1-2 frases citáveis por topic.
+- Marque is_key=true para 3-4 topics centrais.
 `;
 
-    const systemPrompt = `Você é um assistente especializado em análise de conteúdo bíblico e teológico. Sua tarefa é fazer uma análise PROFUNDA e COMPLETA do texto, não um resumo superficial. Cada subtema importante deve virar um topic — nada deve ser deixado de fora.
+    const systemPrompt = `Você é um especialista em análise de conteúdo bíblico e teológico. Organize o texto em formato de mapa mental otimizado para estudo: poucos topics densos, conteúdo em bullets curtos escaneáveis, versículos agrupados dentro das notas.
 
-REGRAS PARA OS KEY_CONCEPTS:
-- Cada conceito principal é type="topic" e DEVE ter expanded_note completo (mesmo os topics não-chave)
-- Para cada topic, gere 3-5 child_highlights (frases citáveis, máx 14 palavras, estilo tweet teológico)
-- Para cada topic, gere 2-4 child_verses (referências bíblicas relevantes no formato "Livro C:V")
-- Gere também 3-6 conceitos type="highlight" standalone para frases marcantes globais do texto
-- Gere também 2-5 conceitos type="verse" standalone para versículos centrais do documento
+CATEGORIAS válidas: teologia, cristologia, pneumatologia, exegese, contexto, aplicacao, escatologia, soteriologia
 ${pdfRules}
-REGRAS PARA CATEGORIAS:
-Use estas categorias teológicas: teologia, cristologia, pneumatologia, exegese, contexto, aplicacao, escatologia, soteriologia
+SUMMARY DO TOPIC: gancho curto provocativo (máx 80 chars), NÃO resumo acadêmico.
 
-REGRAS PARA O SUMMARY DE CADA TOPIC:
-- NÃO é resumo acadêmico. É um GANCHO de 1 linha (máx 80 chars)
-- Exemplo BOM: "O Verbo se fez carne — adição, não subtração"
+EXPANDED_NOTE — formato detalhado:
+- core_idea: 1 frase essencial (máx 20 palavras)
+- key_points: array de 4-8 bullets, CADA UM com NO MÁXIMO 15 palavras. OBRIGATÓRIO.
+- subsections (opcional): array de { subtitle, points[], source_slides[] } quando o topic tem sub-temas internos
+- verses: array de { ref: "Livro C:V", context: "contexto curto", source_slide: N }
+- author_quotes (opcional): array de { text, author, source_slide }
+- application: 1-2 frases curtas de aplicação prática
+- impact_phrase: 1 frase memorizável (máx 12 palavras)
 
-REGRAS PARA EXPANDED_NOTE:
-- core_idea: 1 frase essencial, máx 20 palavras
-- explanation: 4-6 parágrafos densos (separados por \\n\\n), cada um máx 5 linhas. Mencione versículos inline (Jo 1:14, Rm 8:28). Vá fundo no conceito.
-- affirmations: 3-5 frases curtas (máx 15 palavras cada), citáveis
-- verses: 3-6 referências bíblicas no formato "Livro C:V"
-- application: 1-2 parágrafos de aplicação prática/espiritual
-- impact_phrase: 1 frase memorizável (máx 15 palavras)
-
-RETORNE APENAS um JSON válido (sem markdown, sem \`\`\`), com esta estrutura exata:
+RETORNE APENAS JSON válido (sem markdown, sem \`\`\`):
 {
-  "main_theme": "string",
-  "summary": "string",
+  "main_theme": "Título da aula/texto",
+  "summary": "string curta",
   "key_concepts": [
     {
       "id": "concept_1",
-      "type": "topic|highlight|verse",
-      "title": "string",
-      "description": "string",
+      "type": "topic",
+      "title": "Título curto (2-5 palavras)",
       "summary": "gancho curto max 80 chars",
-      "category": "teologia|cristologia|pneumatologia|exegese|contexto|aplicacao|escatologia|soteriologia",
-      "icon_suggestion": "emoji",
+      "category": "teologia",
+      "icon_suggestion": "📖",
       "is_key": true,
-      "page_ref": 3,
-      "quotes": ["citação literal 1", "citação literal 2"],
-      "bible_refs": ["Livro C:V"],
+      "page_ref": 16,
+      "source_slides": [16, 17, 18, 19, 20],
       "expanded_note": {
         "core_idea": "string",
-        "explanation": "string com \\n\\n entre parágrafos",
-        "affirmations": ["frase 1"],
-        "verses": ["Livro C:V"],
-        "application": "string",
-        "impact_phrase": "string"
+        "key_points": ["bullet ≤15 palavras", "bullet ≤15 palavras"],
+        "subsections": [
+          { "subtitle": "Sub-tema", "points": ["bullet"], "source_slides": [42, 43] }
+        ],
+        "verses": [
+          { "ref": "Os 1:2-3", "context": "Deus ordena casamento com Gômer", "source_slide": 10 }
+        ],
+        "author_quotes": [
+          { "text": "citação literal curta", "author": "Jonathan Edwards", "source_slide": 18 }
+        ],
+        "application": "string curta",
+        "impact_phrase": "string ≤12 palavras"
       },
-      "child_highlights": ["frase citável 1"],
-      "child_verses": ["Livro C:V"]
+      "child_highlights": ["1-2 frases marcantes apenas"],
+      "child_verses": []
     }
   ],
   "hierarchy": { "root": { "label": "string", "children": [] } },
   "keywords": ["string"],
-  "structured_notes": [{"section_title": "string", "points": ["string"]}]
+  "structured_notes": []
 }`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
