@@ -6,6 +6,7 @@ import { routeIntent, LOADING_MESSAGES, type FocusIntent } from "@/lib/focusInte
 import ArtifactRenderer from "./artifacts/ArtifactRenderer";
 import type { FocusMsg, ArtifactPayload } from "./artifacts/types";
 import { computeTodayReading, greetingByHour } from "@/lib/readingPlan";
+import { findRecentSession, createSession, updateSession } from "@/lib/focusSession";
 
 export type FocusPanelKey = "leitura" | "devocional" | "anotacoes" | "cerebro";
 
