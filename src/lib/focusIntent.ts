@@ -107,6 +107,25 @@ export function detectIntentLocal(raw: string): IntentResult | null {
     };
   }
 
+  // Verse view explicit ("ver versículo X", "ler X", "mostrar X")
+  const verseMatch = text.match(/^(?:ver|ler|mostrar|abrir)\s+(?:vers[íi]culo\s+)?(.+)/i);
+  if (verseMatch && VERSE_RE.test(verseMatch[1])) {
+    return {
+      intent: "versiculo",
+      params: { reference: verseMatch[1].trim() },
+      response_text: "",
+    };
+  }
+
+  // Bare reference like "João 3:16"
+  if (wordCount <= 4 && VERSE_RE.test(text) && /^\S+\s*\d/.test(text)) {
+    return {
+      intent: "versiculo",
+      params: { reference: text },
+      response_text: "",
+    };
+  }
+
   return null;
 }
 

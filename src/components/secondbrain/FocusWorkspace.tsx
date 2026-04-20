@@ -37,6 +37,7 @@ interface Props {
   setTab: (t: FocusTab) => void;
   userCodeId: string;
   weeks: any[];
+  devotionals?: any[];
   /** Legacy, unused */
   renderTab?: (key: FocusPanelKey) => ReactNode;
 }
@@ -48,7 +49,7 @@ const MODES: { key: FocusPanelKey; label: string; icon: any }[] = [
   { key: "cerebro", label: "Cérebro", icon: Brain },
 ];
 
-export default function FocusWorkspace({ open, onClose, tab, setTab, userCodeId, weeks }: Props) {
+export default function FocusWorkspace({ open, onClose, tab, setTab, userCodeId, weeks, devotionals }: Props) {
   const [sidebarOpen, setSidebarOpen] = useState(false); // mobile drawer
 
   // Pomodoro
@@ -122,6 +123,25 @@ export default function FocusWorkspace({ open, onClose, tab, setTab, userCodeId,
     const onFs = () => setIsFullscreen(!!document.fullscreenElement);
     document.addEventListener("fullscreenchange", onFs);
     return () => document.removeEventListener("fullscreenchange", onFs);
+  }, []);
+
+  // Timer control events from artifacts
+  useEffect(() => {
+    const onPause = () => setRunning(false);
+    const onResume = () => setRunning(true);
+    const onReset = () => {
+      setPhase("focus");
+      setSecondsLeft(POMODORO_MIN.focus * 60);
+      setRunning(true);
+    };
+    window.addEventListener("focus-timer-pause", onPause);
+    window.addEventListener("focus-timer-resume", onResume);
+    window.addEventListener("focus-timer-reset", onReset);
+    return () => {
+      window.removeEventListener("focus-timer-pause", onPause);
+      window.removeEventListener("focus-timer-resume", onResume);
+      window.removeEventListener("focus-timer-reset", onReset);
+    };
   }, []);
 
   useEffect(() => {
@@ -412,7 +432,7 @@ export default function FocusWorkspace({ open, onClose, tab, setTab, userCodeId,
 
           {/* COMMAND CHAT — the hub */}
           <div className="flex-1 overflow-hidden relative min-h-0">
-            <FocusCommandChat userCodeId={userCodeId} weeks={weeks} />
+            <FocusCommandChat userCodeId={userCodeId} weeks={weeks} devotionals={devotionals} />
           </div>
         </main>
       </div>

@@ -4,6 +4,12 @@ import ExegeseArtifact from "./ExegeseArtifact";
 import AnswerArtifact from "./AnswerArtifact";
 import LoadingArtifact from "./LoadingArtifact";
 import SaudacaoArtifact from "./SaudacaoArtifact";
+import DevotionalTodayArtifact from "./DevotionalTodayArtifact";
+import NoteArtifact from "./NoteArtifact";
+import VerseArtifact from "./VerseArtifact";
+import MindMapListArtifact from "./MindMapListArtifact";
+import MindMapPreviewArtifact from "./MindMapPreviewArtifact";
+import TimerArtifact from "./TimerArtifact";
 import type { ArtifactPayload } from "./types";
 
 interface Props {
@@ -25,23 +31,24 @@ export default function ArtifactRenderer({ artifact, userCodeId, sendAsUser }: P
       return <AnswerArtifact data={data} sendAsUser={sendAsUser} />;
     case "loading":
       return <LoadingArtifact data={data} />;
-    // Bloco 2 placeholders — render a friendly stub for now
     case "devotional_today":
-    case "mindmap_list":
-    case "mindmap_preview":
+      return <DevotionalTodayArtifact data={data} sendAsUser={sendAsUser} />;
     case "note_saved":
+      return <NoteArtifact data={data} userCodeId={userCodeId} sendAsUser={sendAsUser} />;
     case "verse":
+      return <VerseArtifact data={data} sendAsUser={sendAsUser} />;
+    case "mindmap_list":
+      return <MindMapListArtifact data={data} userCodeId={userCodeId} sendAsUser={sendAsUser} />;
+    case "mindmap_preview":
+      return <MindMapPreviewArtifact data={data} userCodeId={userCodeId} sendAsUser={sendAsUser} />;
     case "timer":
+      return <TimerArtifact data={data} sendAsUser={sendAsUser} />;
+    default:
       return (
         <SaudacaoArtifact
-          data={{
-            greeting:
-              "Esta ferramenta ainda está sendo construída. Por enquanto, use os atalhos abaixo:",
-          }}
+          data={{ greeting: "Hmm, não consegui montar essa resposta. Tente reformular?" }}
           sendAsUser={sendAsUser}
         />
       );
-    default:
-      return null;
   }
 }

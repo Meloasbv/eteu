@@ -29,9 +29,44 @@ const PALETTE = {
   textFaint: "#4A5868",
 };
 
+interface DevDay {
+  day: string;
+  ref: string;
+  verseText?: string;
+  summary?: string;
+}
+interface DevWeek {
+  period: string;
+  days: DevDay[];
+}
+
 interface Props {
   userCodeId: string;
   weeks: any[];
+  devotionals?: DevWeek[];
+}
+
+function findDevotionalForToday(devotionals: DevWeek[] | undefined, dayName: string): (DevDay & { period: string }) | null {
+  if (!devotionals || devotionals.length === 0) return null;
+  // Try matching by current weekday name first across all weeks (closest period)
+  const now = Date.now();
+  // Heuristic: pick the week whose period range contains today's date if parseable
+  for (const w of devotionals) {
+    const m = w.period.match(/(\d{2})\/(\d{2})\s*a\s*(\d{2})\/(\d{2})/);
+    if (!m) continue;
+    const [_, sd, sm, ed, em] = m;
+    const year = new Date().getFullYear();
+    const start = new Date(year, parseInt(sm) - 1, parseInt(sd)).getTime();
+    const end = new Date(year, parseInt(em) - 1, parseInt(ed), 23, 59).getTime();
+    if (now >= start && now <= end) {
+      const day = w.days.find((d) => d.day.toLowerCase() === dayName.toLowerCase()) ?? w.days[0];
+      return { ...day, period: w.period };
+    }
+  }
+  // Fallback: most recent period's matching weekday
+  const last = devotionals[devotionals.length - 1];
+  const day = last.days.find((d) => d.day.toLowerCase() === dayName.toLowerCase()) ?? last.days[0];
+  return { ...day, period: last.period };
 }
 
 let MSG_ID = 0;
@@ -41,7 +76,7 @@ const newId = () => `m_${Date.now()}_${++MSG_ID}`;
  * Chat-native artifact hub. Each user message is routed to an intent and
  * responded to with an inline interactive artifact card.
  */
-export default function FocusCommandChat({ userCodeId, weeks }: Props) {
+export default function FocusCommandChat({ userCodeId, weeks, devotionals }: Props) {
   const [messages, setMessages] = useState<FocusMsg[]>([]);
   const [input, setInput] = useState("");
   const [captureMode, setCaptureMode] = useState(false);
@@ -130,21 +165,53 @@ export default function FocusCommandChat({ userCodeId, weeks }: Props) {
             break;
           }
           case "versiculo": {
-            // Treat as exegese-lite for now
             const ref = result.params?.reference || raw;
-            finalArtifact = {
-              type: "exegese",
-              data: { reference: ref, loading: true },
-            };
+            finalArtifact = { type: "verse", data: { reference: ref } };
             if (!assistantText) assistantText = `Aqui está ${ref}.`;
             break;
           }
-          case "saudacao": {
+          case "devocional": {
+            const today = computeTodayReading(weeks);
+            const dev = findDevotionalForToday(devotionals, today.day);
             finalArtifact = {
-              type: "loading",
-              data: { message: "Olá" },
+              type: "devotional_today",
+              data: dev
+                ? {
+                    ref: dev.ref,
+                    verseText: dev.verseText,
+                    summary: dev.summary,
+                    day: dev.day,
+                    period: dev.period,
+                  }
+                : { day: today.day },
             };
-            // Replace with a static greeting card
+            if (!assistantText) assistantText = "Sua reflexão de hoje:";
+            break;
+          }
+          case "nota": {
+            const content = result.params?.content || raw;
+            finalArtifact = { type: "note_saved", data: { content } };
+            if (!assistantText) assistantText = "Salvei sua nota.";
+            break;
+          }
+          case "mapa_mental": {
+            const action = result.params?.action;
+            const topic = result.params?.topic;
+            if (action === "open" || (action === "preview" && topic)) {
+              finalArtifact = { type: "mindmap_preview", data: { title: topic } };
+              if (!assistantText) assistantText = `Mapa: ${topic ?? "selecionado"}.`;
+            } else {
+              finalArtifact = { type: "mindmap_list", data: { topic } };
+              if (!assistantText) assistantText = "Seus mapas mentais:";
+            }
+            break;
+          }
+          case "timer": {
+            finalArtifact = { type: "timer", data: { action: result.params?.action ?? "show" } };
+            if (!assistantText) assistantText = result.response_text || "Controles do Pomodoro:";
+            break;
+          }
+          case "saudacao": {
             finalArtifact = {
               type: "answer",
               data: {
@@ -156,21 +223,10 @@ export default function FocusCommandChat({ userCodeId, weeks }: Props) {
             assistantText = "";
             break;
           }
-          case "timer":
-            // Timer is handled at FocusWorkspace level — show a hint card
-            assistantText = result.response_text || "Use os controles do timer no topo.";
-            finalArtifact = null;
-            break;
           case "pergunta":
-          case "mapa_mental":
-          case "devocional":
-          case "nota":
           default: {
             const question = result.params?.question || result.params?.content || raw;
-            finalArtifact = {
-              type: "answer",
-              data: { question },
-            };
+            finalArtifact = { type: "answer", data: { question } };
             if (!assistantText) assistantText = "Refletindo...";
             break;
           }
