@@ -69,6 +69,7 @@ export default function VerseReaderArtifact({ data, sendAsUser }: Props) {
 
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
+  const wasPlayingRef = useRef(false);
 
   // Fetch chapter text using the SAME backend as ReadingFocusView (fetch-reading-text)
   // with bible-api.com as fallback.
