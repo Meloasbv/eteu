@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo } from "react";
 import { ArrowLeft, Shuffle, RotateCcw, CheckCircle2, XCircle, Trophy } from "lucide-react";
 import type { AnalysisResult, KeyConcept } from "./types";
-import { getCategoryColor, getCategoryName } from "./types";
+import { getCategoryColor, getCategoryName, verseRefList } from "./types";
 
 interface QuizQuestion {
   id: string;
@@ -24,7 +24,7 @@ function generateQuiz(analysis: AnalysisResult): QuizQuestion[] {
     const affirmations = note?.affirmations || [];
     const application = note?.application || concept.practicalApplication || "";
     const impactPhrase = note?.impact_phrase || concept.impactPhrase || "";
-    const verses = note?.verses || concept.bible_refs || [];
+    const verses = verseRefList(note?.verses) .length > 0 ? verseRefList(note?.verses) : (concept.bible_refs || []);
 
     // Q1: "O que é [título]?" → core_idea correct, distractors from other concepts
     if (coreIdea) {
@@ -80,7 +80,7 @@ function generateQuiz(analysis: AnalysisResult): QuizQuestion[] {
       const correctVerse = verses[0];
       const wrongVerses = topics
         .filter((_, j) => j !== i)
-        .flatMap(c => c.expanded_note?.verses || c.bible_refs || [])
+        .flatMap(c => verseRefList(c.expanded_note?.verses).length > 0 ? verseRefList(c.expanded_note?.verses) : (c.bible_refs || []))
         .filter(Boolean)
         .sort(() => Math.random() - 0.5)
         .slice(0, 3);
