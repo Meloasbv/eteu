@@ -66,11 +66,23 @@ serve(async (req) => {
     }
 
     const data = await response.json();
-    const imageUrl: string | undefined = data?.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    const choice = data?.choices?.[0];
+    const inlineError = choice?.error;
+    const imageUrl: string | undefined = choice?.message?.images?.[0]?.image_url?.url;
 
-    if (!imageUrl) {
-      console.error("no image in response", JSON.stringify(data).slice(0, 400));
-      throw new Error("Sem imagem na resposta");
+    // Gateway sometimes returns HTTP 200 with an embedded error (e.g. 429 rate limit)
+    if (inlineError || !imageUrl) {
+      const code = inlineError?.code;
+      const isRate = code === 429 || inlineError?.metadata?.error_type === "rate_limit_exceeded";
+      console.warn("image generation skipped:", code || "no_image", inlineError?.message || "");
+      return new Response(
+        JSON.stringify({
+          image: null,
+          fallback: true,
+          reason: isRate ? "rate_limited" : "no_image",
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     return new Response(
@@ -79,9 +91,15 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error("generate-card-image error:", error);
+    // Return 200 with fallback so the client just skips the image instead of crashing
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Erro desconhecido" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({
+        image: null,
+        fallback: true,
+        reason: "service_error",
+        error: error instanceof Error ? error.message : "Erro desconhecido",
+      }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
