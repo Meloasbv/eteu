@@ -1,4 +1,4 @@
-import { BookOpen, Flame, PenLine, Brain, Sun, Moon, LogOut, ChevronLeft, ChevronRight } from "lucide-react";
+import { BookOpen, Flame, PenLine, Brain, Sun, Moon, LogOut, ChevronLeft, ChevronRight, Zap } from "lucide-react";
 import { useState } from "react";
 
 type Tab = "leitura" | "devocional" | "anotacoes" | "biblioteca" | "cerebro";
@@ -9,6 +9,8 @@ interface Props {
   theme: "light" | "dark";
   setTheme: (t: "light" | "dark") => void;
   onLogout: () => void;
+  onOpenFocus?: () => void;
+  focusActive?: boolean;
 }
 
 const NAV_ITEMS: { key: Tab; icon: React.ElementType; label: string }[] = [
@@ -18,7 +20,7 @@ const NAV_ITEMS: { key: Tab; icon: React.ElementType; label: string }[] = [
   { key: "cerebro", icon: Brain, label: "Segundo Cérebro" },
 ];
 
-export default function DesktopSidebar({ tab, setTab, theme, setTheme, onLogout }: Props) {
+export default function DesktopSidebar({ tab, setTab, theme, setTheme, onLogout, onOpenFocus, focusActive }: Props) {
   const [collapsed, setCollapsed] = useState(false);
 
   return (
@@ -44,9 +46,41 @@ export default function DesktopSidebar({ tab, setTab, theme, setTheme, onLogout 
 
       <div className="h-px bg-border/30 mx-3" />
 
+      {/* FOCUS button — destacado no topo */}
+      {onOpenFocus && (
+        <div className="px-2 pt-3">
+          <button
+            onClick={onOpenFocus}
+            className={`group w-full flex items-center gap-3 px-3 py-3 rounded-xl text-[13px] font-ui font-bold transition-all duration-300 relative overflow-hidden
+              ${focusActive ? "ring-1 ring-primary/50" : ""}`}
+            style={{
+              background: "linear-gradient(135deg, hsl(var(--primary) / 0.22), hsl(var(--primary) / 0.06))",
+              border: "1px solid hsl(var(--primary) / 0.45)",
+              color: "hsl(var(--primary))",
+              boxShadow: focusActive
+                ? "0 0 32px -6px hsl(var(--primary) / 0.6), inset 0 0 20px -6px hsl(var(--primary) / 0.3)"
+                : "0 0 24px -10px hsl(var(--primary) / 0.5)",
+            }}
+            title="Entrar em Modo Foco imersivo"
+          >
+            {/* Shimmer */}
+            <span
+              className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out pointer-events-none"
+              style={{ background: "linear-gradient(90deg, transparent, hsl(var(--primary) / 0.25), transparent)" }}
+            />
+            <Zap size={17} className="shrink-0 relative z-10" strokeWidth={2.2} />
+            {!collapsed && (
+              <span className="truncate relative z-10 tracking-wide uppercase text-[11px]">
+                Modo Foco
+              </span>
+            )}
+          </button>
+        </div>
+      )}
+
       {/* Navigation */}
       <nav className="flex-1 px-2 py-3 space-y-0.5">
-        <p className={`text-[9px] tracking-[2px] uppercase text-muted-foreground/50 font-ui px-2 mb-2 ${collapsed ? "hidden" : ""}`}>
+        <p className={`text-[9px] tracking-[2px] uppercase text-muted-foreground/50 font-ui px-2 mb-2 mt-2 ${collapsed ? "hidden" : ""}`}>
           Navegação
         </p>
         {NAV_ITEMS.map(item => {
