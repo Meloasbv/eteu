@@ -319,6 +319,11 @@ export default function FocusCommandChat({ userCodeId, weeks, devotionals }: Pro
     setCaptureMode(false);
   }, [input, captureMode, handleIntent]);
 
+  // Keep ref to latest handleIntent for window event listener
+  useEffect(() => {
+    handleIntentRef.current = handleIntent;
+  }, [handleIntent]);
+
   const onTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);
     e.target.style.height = "44px";
