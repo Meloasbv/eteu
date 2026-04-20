@@ -31,6 +31,7 @@ interface GroupResultOk {
   title: string;
   summary?: string;
   category?: string;
+  importance?: "primary" | "secondary" | "tertiary";
   pageRange: [number, number];
   core_idea?: string;
   key_points?: string[];
@@ -40,6 +41,8 @@ interface GroupResultOk {
   stories?: any[];
   key_dates?: any[];
   key_people?: any[];
+  key_terms?: any[];
+  analogy?: string;
   application?: string;
   impact_phrase?: string;
   highlights?: string[];
@@ -124,6 +127,8 @@ function toKeyConcept(r: GroupResultOk, idx: number): KeyConcept {
     stories: r.stories || [],
     key_dates: r.key_dates || [],
     key_people: r.key_people || [],
+    key_terms: Array.isArray(r.key_terms) ? r.key_terms : [],
+    analogy: typeof r.analogy === "string" ? r.analogy : "",
   };
 
   const safeStart = r.pageRange[0];
@@ -142,6 +147,7 @@ function toKeyConcept(r: GroupResultOk, idx: number): KeyConcept {
     category: (r.category as any) || "contexto",
     icon_suggestion: "📖",
     is_key: false,
+    importance: r.importance || "primary",
     page_ref: safeStart,
     source_slides: slidesArr,
     expanded_note: expanded,
@@ -219,21 +225,28 @@ export async function runMindMapPipeline({
 
   const concepts: KeyConcept[] = nonQuiz.map((r, i) => toKeyConcept(r, i));
 
-  // Mark 3-4 most substantial as is_key
-  const ranked = concepts
-    .map((c, i) => ({
-      i,
-      score:
-        (c.expanded_note?.key_points?.length || 0) * 2 +
-        (c.expanded_note?.stories?.length || 0) * 3 +
-        (c.expanded_note?.key_dates?.length || 0) +
-        (c.expanded_note?.key_people?.length || 0),
-    }))
-    .sort((a, b) => b.score - a.score)
-    .slice(0, Math.min(4, Math.max(2, Math.floor(concepts.length / 3))));
-  ranked.forEach(({ i }) => {
-    if (concepts[i]) concepts[i].is_key = true;
-  });
+  // Mark "primary" blocks as is_key; if AI didn't classify, fall back to ranking by content density
+  const hasImportance = concepts.some(c => c.importance && c.importance !== "primary");
+  if (hasImportance) {
+    concepts.forEach(c => {
+      if (c.importance === "primary") c.is_key = true;
+    });
+  } else {
+    const ranked = concepts
+      .map((c, i) => ({
+        i,
+        score:
+          (c.expanded_note?.key_points?.length || 0) * 2 +
+          (c.expanded_note?.stories?.length || 0) * 3 +
+          (c.expanded_note?.key_dates?.length || 0) +
+          (c.expanded_note?.key_people?.length || 0),
+      }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, Math.min(4, Math.max(2, Math.floor(concepts.length / 3))));
+    ranked.forEach(({ i }) => {
+      if (concepts[i]) concepts[i].is_key = true;
+    });
+  }
 
   // Build slide_summaries from groups (one per slide, not via AI)
   const slideSummaries = groups.flatMap((g, gi) =>

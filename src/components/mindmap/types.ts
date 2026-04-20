@@ -65,6 +65,11 @@ export interface ConceptConnection {
   relation: string; // e.g. "complementa", "contrasta com", "fundamenta"
 }
 
+export interface KeyTerm {
+  term: string;          // e.g. "Justificação"
+  definition: string;    // 1-2 sentences explaining
+}
+
 export interface ExpandedNote {
   core_idea: string;
   explanation?: string;
@@ -80,6 +85,9 @@ export interface ExpandedNote {
   stories?: StoryNarrative[];        // histórias/narrativas importantes do material
   key_dates?: KeyDate[];             // datas/eventos cronológicos
   key_people?: KeyPerson[];          // personagens com papel relevante
+  // Didactic enrichment for theological/conceptual content
+  key_terms?: KeyTerm[];             // glossário visual de termos técnicos
+  analogy?: string;                  // analogia/ilustração didática para tornar tangível
   // ── Level 2 (expanded view) ──
   detailed_explanation?: string;     // full paragraph (3-6 sentences)
   historical_context?: string;       // historical / cultural background
@@ -91,6 +99,8 @@ export interface ExpandedNote {
   reflection_questions?: string[];   // 3-5 reflective questions
   deep_loaded?: boolean;             // marker so UI knows L3 was fetched
 }
+
+export type SectionImportance = "primary" | "secondary" | "tertiary";
 
 export interface KeyConcept {
   id: string;
@@ -109,6 +119,8 @@ export interface KeyConcept {
   page_ref?: number;
   source_slides?: number[];
   quotes?: string[];
+  // Importance level (drives visual treatment + summarization depth)
+  importance?: SectionImportance;
   // Legacy StudyNote fields
   coreIdea?: string;
   keyPoints?: string[];
