@@ -1,5 +1,5 @@
-import { Trophy, Flame, BookOpen, Star, TrendingUp, PanelRightClose, PanelRightOpen, Heart, MessageSquare, X, Check } from "lucide-react";
-import { useState, useEffect, useCallback } from "react";
+import { Trophy, Flame, BookOpen, Star, TrendingUp, PanelRightClose, PanelRightOpen, Heart, MessageSquare, X, Check, Trash2, Filter } from "lucide-react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface FavoriteVerse {
@@ -38,6 +38,16 @@ function getBookOrder(ref: string): number {
   return 999;
 }
 
+// Extract book name from a verse reference (e.g. "Sl 23:1" → "Sl", "1 Coríntios 13:4" → "1 Coríntios")
+function extractBook(ref: string): string {
+  // Match longest known book prefix
+  let best = "";
+  for (const key of Object.keys(BOOK_ORDER)) {
+    if (ref.startsWith(key) && key.length > best.length) best = key;
+  }
+  return best || ref.split(/\s+\d/)[0] || ref;
+}
+
 interface Props {
   totalProgress: number;
   weekProgress: number;
@@ -57,7 +67,27 @@ export default function DesktopRightPanel({
   const [favorites, setFavorites] = useState<FavoriteVerse[]>([]);
   const [editingComment, setEditingComment] = useState<string | null>(null);
   const [commentText, setCommentText] = useState("");
+  const [bookFilter, setBookFilter] = useState<string>("all");
   const completedDays = Object.values(checked).filter(Boolean).length;
+
+  // Unique books present in favorites (sorted by canonical order)
+  const availableBooks = useMemo(() => {
+    const set = new Set<string>();
+    favorites.forEach(f => set.add(extractBook(f.verse_reference)));
+    return Array.from(set).sort((a, b) => getBookOrder(a) - getBookOrder(b));
+  }, [favorites]);
+
+  const filteredFavorites = useMemo(() => {
+    if (bookFilter === "all") return favorites;
+    return favorites.filter(f => extractBook(f.verse_reference) === bookFilter);
+  }, [favorites, bookFilter]);
+
+  const deleteFavorite = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm("Remover este versículo dos favoritos?")) return;
+    await supabase.from("favorite_verses").delete().eq("id", id);
+    setFavorites(prev => prev.filter(f => f.id !== id));
+  };
 
   const fetchFavorites = useCallback(async () => {
     const { data } = await supabase
