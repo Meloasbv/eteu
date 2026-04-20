@@ -82,6 +82,7 @@ export default function FocusCommandChat({ userCodeId, weeks, devotionals }: Pro
   const [input, setInput] = useState("");
   const [captureMode, setCaptureMode] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
 
@@ -89,24 +90,46 @@ export default function FocusCommandChat({ userCodeId, weeks, devotionals }: Pro
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages]);
 
-  // Welcome message — auto-fires once when chat is empty
-  const welcomedRef = useRef(false);
+  // Bootstrap: restore recent session (<2h) OR seed welcome + create new session
+  const bootstrappedRef = useRef(false);
   useEffect(() => {
-    if (welcomedRef.current) return;
-    welcomedRef.current = true;
-    const today = computeTodayReading(weeks);
-    const greeting = greetingByHour();
-    const reads = today.readings.length ? today.readings.join(", ") : "descanso";
-    setMessages([
-      {
-        id: newId(),
-        role: "assistant",
-        text: `${greeting}. Sua leitura de hoje é ${reads}. Semana ${today.weekNum}.`,
-        artifact: { type: "reading", data: today },
-        timestamp: Date.now(),
-      },
-    ]);
-  }, [weeks]);
+    if (bootstrappedRef.current) return;
+    if (!userCodeId) return;
+    bootstrappedRef.current = true;
+
+    (async () => {
+      const recent = await findRecentSession(userCodeId);
+      if (recent && Array.isArray(recent.messages) && recent.messages.length > 0) {
+        setMessages(recent.messages);
+        setSessionId(recent.id);
+        return;
+      }
+      const today = computeTodayReading(weeks);
+      const greeting = greetingByHour();
+      const reads = today.readings.length ? today.readings.join(", ") : "descanso";
+      const initial: FocusMsg[] = [
+        {
+          id: newId(),
+          role: "assistant",
+          text: `${greeting}. Sua leitura de hoje é ${reads}. Semana ${today.weekNum}.`,
+          artifact: { type: "reading", data: today },
+          timestamp: Date.now(),
+        },
+      ];
+      setMessages(initial);
+      const newSessionId = await createSession(userCodeId, initial);
+      if (newSessionId) setSessionId(newSessionId);
+    })();
+  }, [userCodeId, weeks]);
+
+  // Debounced persistence: write messages every ~1.2s after change
+  useEffect(() => {
+    if (!sessionId || messages.length === 0) return;
+    const t = setTimeout(() => {
+      updateSession(sessionId, messages);
+    }, 1200);
+    return () => clearTimeout(t);
+  }, [sessionId, messages]);
 
   const replaceArtifact = useCallback((id: string, artifact: ArtifactPayload, text?: string) => {
     setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, artifact, text: text ?? m.text } : m)));
