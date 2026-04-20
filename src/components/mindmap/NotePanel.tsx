@@ -509,6 +509,23 @@ export default function NotePanel({
           </>
         )}
 
+        {/* ── Deep Study (Level 3) ── */}
+        <DeepStudyBlock
+          isOpen={deepOpen}
+          isLoading={deepLoading}
+          onToggle={() => (effectiveDeep ? setDeepOpen(o => !o) : loadDeep())}
+          data={effectiveDeep}
+          onVerseClick={handleVerseClick}
+        />
+
+        {/* ── Transform actions ── */}
+        <TransformBlock
+          open={transformOpen}
+          onToggle={() => setTransformOpen(o => !o)}
+          loading={transformLoading}
+          onTransform={transformAndSave}
+        />
+
         <div className="h-20" />
       </div>
 
