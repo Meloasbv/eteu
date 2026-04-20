@@ -595,7 +595,15 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
         {tab === "anotacoes" && <StudyTab userCodeId={userCodeId} />}
 
         {/* ── SEGUNDO CÉREBRO TAB ── */}
-        {tab === "cerebro" && <SecondBrainTab userCodeId={userCodeId} />}
+        {tab === "cerebro" && (
+          <SecondBrainTab
+            userCodeId={userCodeId}
+            onRequestReading={() => setTab("leitura")}
+            onRequestDevotional={() => setTab("devocional")}
+            onRequestNotes={() => setTab("anotacoes")}
+            onRequestMindMap={() => setTab("anotacoes")}
+          />
+        )}
 
       </div>
     </div>
