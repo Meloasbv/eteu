@@ -1,10 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, ReactNode } from "react";
 import {
-  X, Mic, MicOff, SkipForward, Pause, Play, Sparkles, Volume2, Youtube,
-  BookOpen, Flame, PenLine, Brain, Network, Timer, Maximize2, Minimize2,
-  ChevronLeft,
+  X, SkipForward, Pause, Play, Volume2, Youtube,
+  BookOpen, Flame, PenLine, Brain, Timer, Maximize2, Minimize2,
+  ChevronLeft, Sparkles, Zap,
 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { haptic } from "@/hooks/useHaptic";
 import { toast } from "@/hooks/use-toast";
 import { useFocusMusic, FOCUS_TRACKS, type FocusTrackKey } from "@/hooks/useFocusMusic";
@@ -17,52 +16,31 @@ const PALETTES = [
   { key: "sunset", label: "Crepúsculo", from: "#2a0f1a", via: "#7a2a35", to: "#1a0508", accent: "#ff8a5c" },
 ];
 
-type FocusModeKey = "reading" | "devotional" | "notes" | "mindmap" | "capture";
+export type FocusTab = "leitura" | "devocional" | "anotacoes" | "cerebro";
 
 const POMODORO_MIN: Record<"focus" | "break", number> = { focus: 25, break: 5 };
 const FOCUS_MIN_KEY = "fascinacao-focus-minutes-today";
 const FOCUS_DATE_KEY = "fascinacao-focus-date";
 
 interface Props {
-  userCodeId: string;
   open: boolean;
   onClose: () => void;
-  onRequestReading?: () => void;
-  onRequestDevotional?: () => void;
-  onRequestNotes?: () => void;
-  onRequestMindMap?: () => void;
+  tab: FocusTab;
+  setTab: (t: FocusTab) => void;
+  children: ReactNode; // the actual tab content from Index.tsx
 }
 
-interface Mode {
-  key: FocusModeKey;
-  label: string;
-  icon: any;
-  description: string;
-}
-
-const MODES: Mode[] = [
-  { key: "capture", label: "Captura", icon: Brain, description: "Pensamentos, orações, insights" },
-  { key: "reading", label: "Leitura", icon: BookOpen, description: "Plano bíblico do dia" },
-  { key: "devotional", label: "Devocional", icon: Flame, description: "Meditação e reflexão" },
-  { key: "notes", label: "Caderno", icon: PenLine, description: "Anotações de estudo" },
-  { key: "mindmap", label: "Mapa Mental", icon: Network, description: "Conectar ideias" },
+const MODES: { key: FocusTab; label: string; icon: any; description: string }[] = [
+  { key: "leitura", label: "Leitura", icon: BookOpen, description: "Plano bíblico do dia" },
+  { key: "devocional", label: "Devocional", icon: Flame, description: "Meditação diária" },
+  { key: "anotacoes", label: "Estudo", icon: PenLine, description: "Caderno & Mapa mental" },
+  { key: "cerebro", label: "Cérebro", icon: Brain, description: "Captura & conexões" },
 ];
 
-export default function FocusWorkspace({
-  userCodeId, open, onClose,
-  onRequestReading, onRequestDevotional, onRequestNotes, onRequestMindMap,
-}: Props) {
+export default function FocusWorkspace({ open, onClose, tab, setTab, children }: Props) {
   const [paletteIdx, setPaletteIdx] = useState(0);
   const palette = PALETTES[paletteIdx];
-  const [mode, setMode] = useState<FocusModeKey>("capture");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-
-  // Capture state
-  const [content, setContent] = useState("");
-  const [streak, setStreak] = useState(0);
-  const [isListening, setIsListening] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const recognitionRef = useRef<any>(null);
 
   // Pomodoro
   const [phase, setPhase] = useState<"focus" | "break">("focus");
@@ -77,7 +55,7 @@ export default function FocusWorkspace({
 
   // Music
   const {
-    iframeRef, trackKey, customVideoId, currentVideoId,
+    iframeRef, trackKey, currentVideoId,
     playing, toggle, setTrack, setCustom, skip, volume, changeVolume,
   } = useFocusMusic(open);
   const [showYtInput, setShowYtInput] = useState(false);
@@ -144,7 +122,7 @@ export default function FocusWorkspace({
     return () => document.removeEventListener("fullscreenchange", onFs);
   }, []);
 
-  // ESC closes (only if not fullscreen — in fullscreen, ESC exits fullscreen)
+  // ESC closes (only if not in fullscreen — ESC exits fullscreen first)
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -162,60 +140,6 @@ export default function FocusWorkspace({
     }
   };
 
-  const totalSeconds = POMODORO_MIN[phase] * 60;
-  const progress = 1 - secondsLeft / totalSeconds;
-  const mm = Math.floor(secondsLeft / 60).toString().padStart(2, "0");
-  const ss = (secondsLeft % 60).toString().padStart(2, "0");
-
-  // Quick capture
-  const captureThought = async () => {
-    if (!content.trim() || submitting) return;
-    setSubmitting(true); haptic("medium");
-    const { data: inserted, error } = await supabase
-      .from("thoughts")
-      .insert({ user_code_id: userCodeId, content: content.trim(), type: "reflexão", keywords: [] as string[] })
-      .select().single();
-    if (error || !inserted) {
-      toast({ title: "Erro ao salvar", variant: "destructive" });
-      setSubmitting(false); return;
-    }
-    setContent(""); setStreak(s => s + 1);
-    setSubmitting(false); haptic("light");
-    supabase.functions.invoke("analyze-thought", {
-      body: { content: inserted.content, pastThoughts: [] },
-    }).then(({ data }) => {
-      if (data?.analysis) {
-        supabase.from("thoughts").update({
-          analysis: data.analysis,
-          keywords: data.analysis.keywords || [],
-          emotion_valence: data.analysis.emotion_score?.valence ?? 0,
-          emotion_intensity: data.analysis.emotion_score?.intensity ?? 0,
-        }).eq("id", inserted.id);
-      }
-    }).catch(() => {});
-  };
-
-  const toggleVoice = () => {
-    if (isListening) { recognitionRef.current?.stop(); setIsListening(false); return; }
-    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SR) { toast({ title: "Navegador não suporta voz" }); return; }
-    const r = new SR();
-    r.lang = "pt-BR"; r.continuous = true; r.interimResults = true;
-    r.onresult = (e: any) => { let t = ""; for (let i = 0; i < e.results.length; i++) t += e.results[i][0].transcript; setContent(t); };
-    r.onerror = () => setIsListening(false);
-    r.onend = () => setIsListening(false);
-    r.start(); recognitionRef.current = r; setIsListening(true); haptic("light");
-  };
-
-  const handleModeSelect = (k: FocusModeKey) => {
-    setMode(k); haptic("light");
-    // Mode that need external components: trigger callbacks to open them within platform
-    if (k === "reading") onRequestReading?.();
-    else if (k === "devotional") onRequestDevotional?.();
-    else if (k === "notes") onRequestNotes?.();
-    else if (k === "mindmap") onRequestMindMap?.();
-  };
-
   const submitCustomYt = () => {
     const ok = setCustom(ytInput);
     if (ok) {
@@ -228,6 +152,10 @@ export default function FocusWorkspace({
 
   if (!open) return null;
 
+  const totalSeconds = POMODORO_MIN[phase] * 60;
+  const progress = 1 - secondsLeft / totalSeconds;
+  const mm = Math.floor(secondsLeft / 60).toString().padStart(2, "0");
+  const ss = (secondsLeft % 60).toString().padStart(2, "0");
   const ringRadius = 42;
   const ringCirc = 2 * Math.PI * ringRadius;
 
@@ -246,7 +174,7 @@ export default function FocusWorkspace({
       />
       {/* Floating particles */}
       {!reduceMotion && (
-        <div className="absolute inset-0 pointer-events-none opacity-40">
+        <div className="absolute inset-0 pointer-events-none opacity-30">
           {Array.from({ length: 18 }).map((_, i) => (
             <span
               key={i} className="absolute block rounded-full"
@@ -262,7 +190,7 @@ export default function FocusWorkspace({
         </div>
       )}
 
-      {/* Lazy YouTube iframe */}
+      {/* Lazy YouTube iframe for music */}
       <iframe
         ref={iframeRef}
         src={`https://www.youtube.com/embed/${currentVideoId}?enablejsapi=1&autoplay=1&loop=1&playlist=${currentVideoId}&controls=0`}
@@ -275,41 +203,50 @@ export default function FocusWorkspace({
       <div className="relative z-10 flex h-full w-full">
         {/* ─── SIDEBAR: modes picker ─── */}
         <aside
-          className="h-full flex flex-col border-r backdrop-blur-xl transition-all duration-300"
+          className="h-full flex flex-col border-r backdrop-blur-xl transition-all duration-300 shrink-0"
           style={{
-            width: sidebarCollapsed ? 72 : 240,
-            background: "rgba(0,0,0,0.35)",
+            width: sidebarCollapsed ? 72 : 220,
+            background: "rgba(8,6,14,0.55)",
             borderColor: `${palette.accent}22`,
           }}
         >
           {/* Sidebar header */}
           <div className="p-4 flex items-center justify-between border-b" style={{ borderColor: `${palette.accent}1a` }}>
             {!sidebarCollapsed && (
-              <div>
-                <p className="text-[10px] uppercase tracking-[3px] opacity-60">Modo Foco</p>
-                <p className="text-xs font-bold transition-all duration-1000" style={{ color: palette.accent }}>
-                  {palette.label}
-                </p>
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+                  style={{ background: `${palette.accent}22`, border: `1px solid ${palette.accent}55` }}>
+                  <Zap size={14} style={{ color: palette.accent }} strokeWidth={2.4} />
+                </div>
+                <div>
+                  <p className="text-[9px] uppercase tracking-[2.5px] opacity-60 leading-none">Foco</p>
+                  <p className="text-[11px] font-bold transition-all duration-1000 leading-tight" style={{ color: palette.accent }}>
+                    {palette.label}
+                  </p>
+                </div>
               </div>
             )}
             <button
               onClick={() => setSidebarCollapsed(v => !v)}
-              className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/10 transition-colors"
+              className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-white/10 transition-colors shrink-0"
               aria-label="Recolher menu"
             >
-              <ChevronLeft size={16} className={`transition-transform ${sidebarCollapsed ? "rotate-180" : ""}`} />
+              <ChevronLeft size={14} className={`transition-transform ${sidebarCollapsed ? "rotate-180" : ""}`} />
             </button>
           </div>
 
           {/* Mode list */}
           <div className="flex-1 p-2 space-y-1 overflow-y-auto no-scrollbar">
+            {!sidebarCollapsed && (
+              <p className="text-[9px] uppercase tracking-[2.5px] opacity-40 px-2 pt-2 pb-1">Seções imersivas</p>
+            )}
             {MODES.map(m => {
-              const active = mode === m.key;
+              const active = tab === m.key;
               const Icon = m.icon;
               return (
                 <button
                   key={m.key}
-                  onClick={() => handleModeSelect(m.key)}
+                  onClick={() => { setTab(m.key); haptic("light"); }}
                   className="w-full flex items-center gap-3 p-3 rounded-xl transition-all text-left hover:scale-[1.02] active:scale-95"
                   style={{
                     background: active ? `${palette.accent}22` : "transparent",
@@ -318,11 +255,11 @@ export default function FocusWorkspace({
                     boxShadow: active ? `0 0 24px -8px ${palette.accent}88` : undefined,
                   }}
                 >
-                  <Icon size={18} className="shrink-0" />
+                  <Icon size={17} className="shrink-0" strokeWidth={active ? 2.2 : 1.6} />
                   {!sidebarCollapsed && (
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold">{m.label}</p>
-                      <p className="text-[10px] opacity-70 truncate">{m.description}</p>
+                      <p className="text-[13px] font-bold leading-tight">{m.label}</p>
+                      <p className="text-[10px] opacity-70 truncate leading-tight mt-0.5">{m.description}</p>
                     </div>
                   )}
                 </button>
@@ -340,24 +277,22 @@ export default function FocusWorkspace({
                   {todayMin}min
                 </span>
               </div>
-              {streak > 0 && (
-                <div className="mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold"
-                  style={{ background: `${palette.accent}22`, color: palette.accent, border: `1px solid ${palette.accent}55` }}>
-                  ⚡ +{streak} streak
-                </div>
-              )}
+              <div className="mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider"
+                style={{ background: `${palette.accent}18`, color: palette.accent, border: `1px solid ${palette.accent}33` }}>
+                <Sparkles size={9} /> Imersão ativa
+              </div>
             </div>
           )}
         </aside>
 
-        {/* ─── MAIN AREA ─── */}
-        <main className="flex-1 flex flex-col overflow-hidden">
-          {/* Top bar: Pomodoro + controls */}
-          <div className="flex items-center gap-4 p-4 border-b backdrop-blur-xl"
-            style={{ background: "rgba(0,0,0,0.25)", borderColor: `${palette.accent}1a` }}>
+        {/* ─── MAIN AREA: Pomodoro topbar + live tab content ─── */}
+        <main className="flex-1 flex flex-col overflow-hidden min-w-0">
+          {/* Top bar: Pomodoro (BIG) + music + controls */}
+          <div className="flex items-center gap-3 px-4 py-3 border-b backdrop-blur-xl shrink-0"
+            style={{ background: "rgba(8,6,14,0.55)", borderColor: `${palette.accent}1a` }}>
             {/* HUGE Pomodoro ring */}
-            <div className="flex items-center gap-4">
-              <div className="relative w-24 h-24 shrink-0">
+            <div className="flex items-center gap-3 shrink-0">
+              <div className="relative w-20 h-20 shrink-0">
                 <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
                   <circle cx="50" cy="50" r={ringRadius} fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="4" />
                   <circle
@@ -369,30 +304,30 @@ export default function FocusWorkspace({
                   />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-xl font-bold tabular-nums" style={{ color: palette.accent }}>
+                  <span className="text-lg font-bold tabular-nums leading-none" style={{ color: palette.accent }}>
                     {mm}:{ss}
                   </span>
-                  <span className="text-[9px] uppercase tracking-[2px] opacity-60 mt-0.5">
+                  <span className="text-[8px] uppercase tracking-[2px] opacity-60 mt-0.5">
                     {phase === "focus" ? "Foco" : "Pausa"}
                   </span>
                 </div>
               </div>
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-1.5">
                 <button
                   onClick={() => { setRunning(r => !r); haptic("light"); }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all hover:scale-105 active:scale-95"
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all hover:scale-105 active:scale-95"
                   style={{
                     background: running ? `${palette.accent}22` : "rgba(255,255,255,0.08)",
                     color: running ? palette.accent : "rgba(255,255,255,0.8)",
                     border: `1px solid ${running ? palette.accent + "55" : "rgba(255,255,255,0.15)"}`,
                   }}>
-                  {running ? <><Pause size={12} /> Pausar</> : <><Play size={12} /> Continuar</>}
+                  {running ? <><Pause size={10} /> Pausar</> : <><Play size={10} /> Continuar</>}
                 </button>
                 <button
                   onClick={() => {
                     setPhase("focus"); setSecondsLeft(POMODORO_MIN.focus * 60); setRunning(true); haptic("medium");
                   }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider opacity-70 hover:opacity-100 transition-opacity"
+                  className="px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider opacity-70 hover:opacity-100 transition-opacity"
                   style={{ border: "1px solid rgba(255,255,255,0.15)" }}>
                   Reiniciar
                 </button>
@@ -403,30 +338,30 @@ export default function FocusWorkspace({
 
             {/* Music mini-player */}
             <div className="flex items-center gap-2 px-3 py-2 rounded-xl backdrop-blur-md"
-              style={{ background: "rgba(0,0,0,0.3)", border: `1px solid ${palette.accent}33` }}>
+              style={{ background: "rgba(0,0,0,0.35)", border: `1px solid ${palette.accent}33` }}>
               <button onClick={toggle} className="text-white/80 hover:text-white transition-colors">
-                {playing ? <Pause size={14} /> : <Play size={14} />}
+                {playing ? <Pause size={13} /> : <Play size={13} />}
               </button>
               <button onClick={skip} className="text-white/80 hover:text-white transition-colors">
-                <SkipForward size={14} />
+                <SkipForward size={13} />
               </button>
-              <div className="text-[11px] font-ui opacity-80 min-w-[100px]">
+              <div className="text-[10px] font-ui opacity-80 min-w-[90px]">
                 {trackKey === "custom"
                   ? <>🎧 Custom</>
                   : <>{FOCUS_TRACKS[trackKey].emoji} {FOCUS_TRACKS[trackKey].label}</>}
               </div>
               <div className="flex items-center gap-1.5">
-                <Volume2 size={11} className="opacity-60" />
+                <Volume2 size={10} className="opacity-60" />
                 <input
                   type="range" min={0} max={100} value={volume}
                   onChange={(e) => changeVolume(parseInt(e.target.value, 10))}
-                  className="w-14 accent-white/70"
+                  className="w-12 accent-white/70"
                 />
               </div>
-              <div className="w-px h-5 bg-white/10" />
+              <div className="w-px h-4 bg-white/10" />
               {(["lofi", "piano", "ambient"] as FocusTrackKey[]).map(k => (
                 <button key={k} onClick={() => setTrack(k)}
-                  className="w-7 h-7 rounded-full text-xs transition-all hover:scale-110"
+                  className="w-6 h-6 rounded-full text-xs transition-all hover:scale-110 flex items-center justify-center"
                   style={{
                     background: trackKey === k ? `${palette.accent}33` : "transparent",
                     border: `1px solid ${trackKey === k ? palette.accent + "66" : "rgba(255,255,255,0.15)"}`,
@@ -436,40 +371,41 @@ export default function FocusWorkspace({
               ))}
               <button
                 onClick={() => setShowYtInput(v => !v)}
-                className="w-7 h-7 rounded-full flex items-center justify-center transition-all hover:scale-110"
+                className="w-6 h-6 rounded-full flex items-center justify-center transition-all hover:scale-110"
                 style={{
                   background: trackKey === "custom" ? `${palette.accent}33` : "transparent",
                   border: `1px solid ${trackKey === "custom" ? palette.accent + "66" : "rgba(255,255,255,0.15)"}`,
                   color: trackKey === "custom" ? palette.accent : "white",
                 }}
                 title="Adicionar link do YouTube">
-                <Youtube size={12} />
+                <Youtube size={10} />
               </button>
             </div>
 
             {/* Fullscreen + close */}
             <button
               onClick={toggleFullscreen}
-              className="w-10 h-10 rounded-full flex items-center justify-center bg-white/10 hover:bg-white/20 transition-colors"
+              className="w-9 h-9 rounded-full flex items-center justify-center bg-white/10 hover:bg-white/20 transition-colors shrink-0"
               aria-label={isFullscreen ? "Sair da tela cheia" : "Tela cheia"}
               title={isFullscreen ? "Sair da tela cheia" : "Tela cheia"}
             >
-              {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+              {isFullscreen ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
             </button>
             <button
               onClick={onClose}
-              className="w-10 h-10 rounded-full flex items-center justify-center bg-white/10 hover:bg-white/20 transition-colors"
+              className="w-9 h-9 rounded-full flex items-center justify-center bg-white/10 hover:bg-white/20 transition-colors shrink-0"
               aria-label="Sair do Modo Foco"
+              title="Sair do Modo Foco"
             >
-              <X size={16} />
+              <X size={15} />
             </button>
           </div>
 
           {/* YouTube input row */}
           {showYtInput && (
-            <div className="px-4 py-3 border-b animate-fade-in flex items-center gap-2"
-              style={{ background: "rgba(0,0,0,0.3)", borderColor: `${palette.accent}1a` }}>
-              <Youtube size={16} style={{ color: palette.accent }} />
+            <div className="px-4 py-3 border-b animate-fade-in flex items-center gap-2 shrink-0"
+              style={{ background: "rgba(0,0,0,0.4)", borderColor: `${palette.accent}1a` }}>
+              <Youtube size={15} style={{ color: palette.accent }} />
               <input
                 value={ytInput}
                 onChange={e => setYtInput(e.target.value)}
@@ -484,98 +420,32 @@ export default function FocusWorkspace({
               </button>
               <button onClick={() => setShowYtInput(false)}
                 className="text-white/50 hover:text-white">
-                <X size={14} />
+                <X size={13} />
               </button>
             </div>
           )}
 
-          {/* Main content area */}
-          <div className="flex-1 overflow-y-auto p-6 flex items-center justify-center">
-            {mode === "capture" && (
-              <div
-                className="w-full max-w-3xl rounded-3xl p-8 backdrop-blur-md border animate-fade-in"
-                style={{
-                  background: "rgba(0,0,0,0.35)",
-                  borderColor: `${palette.accent}33`,
-                  boxShadow: `0 0 120px -30px ${palette.accent}88`,
-                  animation: reduceMotion ? undefined : "focus-breathe 10s ease-in-out infinite",
-                }}
-              >
-                <div className="flex items-center gap-2 mb-4">
-                  <Sparkles size={16} style={{ color: palette.accent }} />
-                  <span className="text-[11px] uppercase tracking-[3px] opacity-60">O que está na sua mente?</span>
-                </div>
-                <textarea
-                  value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                  onKeyDown={(e) => { if (e.ctrlKey && e.key === "Enter") captureThought(); }}
-                  placeholder="Capture aqui um pensamento, oração, insight…"
-                  className="w-full bg-transparent border-none outline-none resize-none text-white/95 placeholder:text-white/30 text-lg leading-relaxed font-body"
-                  style={{ minHeight: 200 }}
-                />
-                <div className="flex items-center gap-2 mt-4">
-                  <button onClick={toggleVoice}
-                    className="w-11 h-11 rounded-full flex items-center justify-center transition-all hover:scale-105"
-                    style={{ background: isListening ? "rgba(255,80,80,0.2)" : "rgba(255,255,255,0.08)", color: isListening ? "#ff8a8a" : "white" }}>
-                    {isListening ? <MicOff size={18} /> : <Mic size={18} />}
-                  </button>
-                  <div className="flex-1" />
-                  <button
-                    onClick={captureThought}
-                    disabled={!content.trim() || submitting}
-                    className="flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold transition-all disabled:opacity-40 active:scale-95 hover:scale-105"
-                    style={{
-                      background: `${palette.accent}22`,
-                      color: palette.accent,
-                      border: `1px solid ${palette.accent}66`,
-                      boxShadow: `0 0 24px -8px ${palette.accent}aa`,
-                    }}
-                  >
-                    <Sparkles size={14} />
-                    {submitting ? "Salvando..." : "Capturar (Ctrl+Enter)"}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {mode !== "capture" && (
-              <div className="w-full max-w-2xl rounded-3xl p-10 backdrop-blur-md border animate-fade-in text-center"
-                style={{
-                  background: "rgba(0,0,0,0.35)",
-                  borderColor: `${palette.accent}33`,
-                  boxShadow: `0 0 80px -20px ${palette.accent}66`,
-                }}>
-                {(() => {
-                  const m = MODES.find(x => x.key === mode)!;
-                  const Icon = m.icon;
-                  return (
-                    <>
-                      <div className="w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6"
-                        style={{ background: `${palette.accent}22`, border: `1px solid ${palette.accent}55` }}>
-                        <Icon size={36} style={{ color: palette.accent }} />
-                      </div>
-                      <h2 className="text-2xl font-bold mb-2" style={{ color: palette.accent }}>{m.label}</h2>
-                      <p className="text-sm opacity-70 mb-6">{m.description}</p>
-                      <button
-                        onClick={() => handleModeSelect(m.key)}
-                        className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold transition-all hover:scale-105 active:scale-95"
-                        style={{
-                          background: `${palette.accent}22`,
-                          color: palette.accent,
-                          border: `1px solid ${palette.accent}66`,
-                          boxShadow: `0 0 24px -8px ${palette.accent}aa`,
-                        }}>
-                        <Icon size={16} />
-                        Abrir {m.label}
-                      </button>
-                      <p className="text-[10px] uppercase tracking-[2px] opacity-40 mt-6">
-                        O timer e a música continuam ativos enquanto você estuda
-                      </p>
-                    </>
-                  );
-                })()}
-              </div>
-            )}
+          {/* ─── LIVE PLATFORM CONTENT (the actual Bible reading / devotional / study / brain) ─── */}
+          <div
+            key={tab}
+            className="flex-1 overflow-hidden animate-fade-in relative focus-content-surface"
+            style={{
+              background: "hsl(var(--background))",
+              borderTop: `1px solid ${palette.accent}22`,
+            }}
+          >
+            {/* subtle accent glow at top edge */}
+            <div
+              className="absolute top-0 left-0 right-0 h-[2px] pointer-events-none"
+              style={{
+                background: `linear-gradient(90deg, transparent, ${palette.accent}, transparent)`,
+                filter: `blur(0.5px)`,
+                opacity: 0.6,
+              }}
+            />
+            <div className="h-full w-full overflow-hidden">
+              {children}
+            </div>
           </div>
         </main>
       </div>
@@ -598,12 +468,10 @@ export default function FocusWorkspace({
           0% { transform: translateY(0) translateX(0); }
           100% { transform: translateY(-40px) translateX(25px); }
         }
-        @keyframes focus-breathe {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.008); }
-        }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        /* Ensure inner platform content scrolls properly inside the focus container */
+        .focus-content-surface > div { height: 100%; }
       `}</style>
     </div>
   );
