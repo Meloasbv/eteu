@@ -137,6 +137,12 @@ PROIBIDO:
 
 9. author_quotes: APENAS citações de terceiros (autores, livros) que APARECEM nos slides. Texto LITERAL, nome do autor, slide. Se nenhuma, retorne [].
 
+9b. stories: TODAS as HISTÓRIAS, NARRATIVAS, EPISÓDIOS, ANEDOTAS ou CASOS contados no material (ex: "Resgate do incêndio aos 5 anos", "Conversão em Aldersgate", "Encontro com Whitefield"). Para cada uma:
+   - title: nome curto da história (3-7 palavras)
+   - narrative: a narrativa COMPLETA contada no slide, em 2-6 frases, FIEL ao texto original (mantendo datas, nomes, lugares, falas literais). NÃO resuma agressivamente — preserve os detalhes narrativos.
+   - source_slide: número do slide onde aparece
+   Se o material não tem histórias narradas (apenas conceitos abstratos), retorne []. NÃO INVENTE histórias.
+
 10. application: SOMENTE se o material traz aplicação. Caso contrário, "".
 
 11. impact_phrase: uma frase memorizável (≤14 palavras) — preferencialmente CITAÇÃO direta do material. Se não houver, condense a tese.
@@ -162,6 +168,7 @@ RETORNE APENAS JSON válido:
   ],
   "verses": [{ "ref": "exatamente como no slide", "context": "curto", "source_slide": N }],
   "author_quotes": [{ "text": "literal", "author": "Nome", "source_slide": N }],
+  "stories": [{ "title": "Nome curto", "narrative": "Narrativa completa fiel ao slide com datas, nomes, lugares (2-6 frases)", "source_slide": N }],
   "application": "apenas se aparece no material",
   "impact_phrase": "≤14 palavras, idealmente citação",
   "child_highlights": ["frase LITERAL do material"]
@@ -343,6 +350,7 @@ serve(async (req) => {
             subsections: Array.isArray(expanded.subsections) ? expanded.subsections : [],
             verses: Array.isArray(expanded.verses) ? expanded.verses : [],
             author_quotes: Array.isArray(expanded.author_quotes) ? expanded.author_quotes : [],
+            stories: Array.isArray(expanded.stories) ? expanded.stories : [],
             application: expanded.application || "",
             impact_phrase: expanded.impact_phrase || "",
             detailed_explanation: expanded.detailed_explanation || "",
