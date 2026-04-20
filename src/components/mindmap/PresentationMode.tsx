@@ -139,7 +139,9 @@ function buildTour(analysis: AnalysisResult): TourStop[] {
       stops.push({ nodeId: `hl-${i}-${j}`, kind: "highlight", topicIndex: i, childIndex: j, concept, text: hl });
     });
 
-    const childVerses = concept.child_verses || concept.expanded_note?.verses || concept.bible_refs || [];
+    const childVerses = (concept.child_verses && concept.child_verses.length > 0)
+      ? concept.child_verses
+      : (concept.expanded_note?.verses ? concept.expanded_note.verses.map(v => typeof v === "string" ? v : v.ref) : (concept.bible_refs || []));
     childVerses.forEach((v, j) => {
       stops.push({ nodeId: `verse-${i}-${j}`, kind: "verse", topicIndex: i, childIndex: j, concept, text: v });
     });
