@@ -120,6 +120,7 @@ type TourStop =
   | { kind: "root"; nodeId: string }
   | { kind: "topic-intro"; nodeId: string; concept: KeyConcept; topicIndex: number }
   | { kind: "subsection"; nodeId: string; concept: KeyConcept; topicIndex: number; subsection: NoteSubsection; subIndex: number }
+  | { kind: "story"; nodeId: string; concept: KeyConcept; topicIndex: number; story: StoryNarrative }
   | { kind: "verses"; nodeId: string; concept: KeyConcept; topicIndex: number; verses: (string | VerseRef)[] }
   | { kind: "quote"; nodeId: string; concept: KeyConcept; topicIndex: number; quote: AuthorQuote }
   | { kind: "slides-overview"; nodeId: string; slides: SlideSummary[] }
@@ -127,7 +128,13 @@ type TourStop =
 
 function buildTour(analysis: AnalysisResult): TourStop[] {
   const stops: TourStop[] = [{ kind: "root", nodeId: "node-root" }];
-  const topics = (analysis.key_concepts || []).filter(c => !c.type || c.type === "topic");
+  const allTopics = (analysis.key_concepts || []).filter(c => !c.type || c.type === "topic");
+  // Sort topics by source slide so the tour follows the PDF order
+  const topics = [...allTopics].sort((a, b) => {
+    const aSlide = a.source_slides?.[0] ?? a.page_ref ?? 999;
+    const bSlide = b.source_slides?.[0] ?? b.page_ref ?? 999;
+    return aSlide - bSlide;
+  });
   const topicById = new Map<string, KeyConcept>();
   topics.forEach((t, i) => topicById.set(t.id || `concept_${i + 1}`, t));
 
