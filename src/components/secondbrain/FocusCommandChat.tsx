@@ -76,7 +76,7 @@ const newId = () => `m_${Date.now()}_${++MSG_ID}`;
  * Chat-native artifact hub. Each user message is routed to an intent and
  * responded to with an inline interactive artifact card.
  */
-export default function FocusCommandChat({ userCodeId, weeks }: Props) {
+export default function FocusCommandChat({ userCodeId, weeks, devotionals }: Props) {
   const [messages, setMessages] = useState<FocusMsg[]>([]);
   const [input, setInput] = useState("");
   const [captureMode, setCaptureMode] = useState(false);
