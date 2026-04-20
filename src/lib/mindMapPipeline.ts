@@ -31,6 +31,7 @@ interface GroupResultOk {
   title: string;
   summary?: string;
   category?: string;
+  importance?: "primary" | "secondary" | "tertiary";
   pageRange: [number, number];
   core_idea?: string;
   key_points?: string[];
@@ -40,6 +41,8 @@ interface GroupResultOk {
   stories?: any[];
   key_dates?: any[];
   key_people?: any[];
+  key_terms?: any[];
+  analogy?: string;
   application?: string;
   impact_phrase?: string;
   highlights?: string[];
@@ -124,6 +127,8 @@ function toKeyConcept(r: GroupResultOk, idx: number): KeyConcept {
     stories: r.stories || [],
     key_dates: r.key_dates || [],
     key_people: r.key_people || [],
+    key_terms: Array.isArray(r.key_terms) ? r.key_terms : [],
+    analogy: typeof r.analogy === "string" ? r.analogy : "",
   };
 
   const safeStart = r.pageRange[0];
@@ -142,6 +147,7 @@ function toKeyConcept(r: GroupResultOk, idx: number): KeyConcept {
     category: (r.category as any) || "contexto",
     icon_suggestion: "📖",
     is_key: false,
+    importance: r.importance || "primary",
     page_ref: safeStart,
     source_slides: slidesArr,
     expanded_note: expanded,
