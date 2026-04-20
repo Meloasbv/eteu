@@ -1,9 +1,11 @@
 import { useState, useCallback, useEffect, lazy, Suspense } from "react";
-import { Loader2, Sparkles, PenTool, Clock, Trash2, Edit3, FileText, Upload, CheckCircle2 } from "lucide-react";
+import { Loader2, Sparkles, PenTool, Clock, Trash2, Edit3, FileText } from "lucide-react";
 import MindMapInput from "./MindMapInput";
+import PipelineProgressView from "./PipelineProgress";
 import type { AnalysisResult } from "./types";
 import { supabase } from "@/integrations/supabase/client";
 import { setCachedMap, getCachedMap, setInflight, getInflight } from "./mapCache";
+import { runMindMapPipeline, type PipelineProgress } from "@/lib/mindMapPipeline";
 
 const MindMapCanvas = lazy(() => import("./MindMapCanvas"));
 const ManualMindMapCanvas = lazy(() => import("./ManualMindMapCanvas"));
@@ -22,11 +24,13 @@ interface SavedMap {
   source_type: string | null;
 }
 
-interface PdfProgress {
-  step: "uploading" | "extracting" | "analyzing" | "generating" | "done";
+type PdfStage = "uploading" | "extracting" | "pipeline";
+
+interface PdfState {
+  stage: PdfStage;
   fileName: string;
   pages?: number;
-  percent: number;
+  pipeline: PipelineProgress | null;
 }
 
 export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
@@ -38,7 +42,7 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
   const [loadingMaps, setLoadingMaps] = useState(true);
   const [editMapId, setEditMapId] = useState<string | null>(null);
   const [aiMapId, setAiMapId] = useState<string | null>(null);
-  const [pdfProgress, setPdfProgress] = useState<PdfProgress | null>(null);
+  const [pdfState, setPdfState] = useState<PdfState | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
   const saveAiMap = useCallback(async (result: AnalysisResult, existingMapId: string | null = null) => {
