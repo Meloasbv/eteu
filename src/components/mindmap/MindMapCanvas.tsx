@@ -83,8 +83,6 @@ function getLayoutedElements(nodes: Node[], edges: Edge[], direction = "TB") {
 function buildFromAnalysis(
   analysis: AnalysisResult,
   selectedNodeId: string | null,
-  images: Record<string, string> = {},
-  loadingImages: Record<string, boolean> = {},
 ) {
   const nodes: Node[] = [];
   const edges: Edge[] = [];
@@ -96,8 +94,6 @@ function buildFromAnalysis(
     position: { x: 0, y: 0 },
     data: {
       label: analysis.main_theme || analysis.hierarchy.root.label,
-      imageUrl: images["__root__"],
-      imageLoading: loadingImages["__root__"],
     },
   });
 
