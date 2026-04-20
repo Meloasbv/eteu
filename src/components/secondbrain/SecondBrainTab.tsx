@@ -9,7 +9,7 @@ const ThoughtGraph = lazy(() => import("./ThoughtGraph"));
 const PatternsView = lazy(() => import("./PatternsView"));
 const TodayDashboard = lazy(() => import("./TodayDashboard"));
 const ParaBoard = lazy(() => import("./ParaBoard"));
-const FocusMode = lazy(() => import("./FocusMode"));
+const FocusWorkspace = lazy(() => import("./FocusWorkspace"));
 
 // ── Types ──
 type ThoughtType = "problema" | "insight" | "estudo" | "reflexão" | "oração" | "decisão" | "emocional" | "ideia" | "pergunta";
