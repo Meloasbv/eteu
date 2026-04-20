@@ -35,8 +35,10 @@ interface Props {
   onClose: () => void;
   tab: FocusTab;
   setTab: (t: FocusTab) => void;
-  /** Render the actual platform tab content for a given focus key */
-  renderTab: (key: FocusPanelKey) => ReactNode;
+  userCodeId: string;
+  weeks: any[];
+  /** Legacy, unused */
+  renderTab?: (key: FocusPanelKey) => ReactNode;
 }
 
 const MODES: { key: FocusPanelKey; label: string; icon: any }[] = [
@@ -46,7 +48,7 @@ const MODES: { key: FocusPanelKey; label: string; icon: any }[] = [
   { key: "cerebro", label: "Cérebro", icon: Brain },
 ];
 
-export default function FocusWorkspace({ open, onClose, tab, setTab, renderTab }: Props) {
+export default function FocusWorkspace({ open, onClose, tab, setTab, userCodeId, weeks }: Props) {
   const [sidebarOpen, setSidebarOpen] = useState(false); // mobile drawer
 
   // Pomodoro
@@ -410,10 +412,7 @@ export default function FocusWorkspace({ open, onClose, tab, setTab, renderTab }
 
           {/* COMMAND CHAT — the hub */}
           <div className="flex-1 overflow-hidden relative min-h-0">
-            <FocusCommandChat
-              renderPanel={(key) => renderTab(key)}
-              onPanelFocus={(key) => setTab(key as FocusTab)}
-            />
+            <FocusCommandChat userCodeId={userCodeId} weeks={weeks} />
           </div>
         </main>
       </div>
