@@ -208,23 +208,58 @@ export default function DesktopRightPanel({
 
         {/* Favorite Verses */}
         <div className="rounded-2xl p-4" style={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border)/0.4)' }}>
-          <div className="flex items-center gap-2 mb-3">
-            <Heart size={14} className="text-destructive/60" />
-            <p className="text-[10px] tracking-[2px] uppercase text-muted-foreground font-ui font-medium">Versículos Favoritos</p>
+          <div className="flex items-center justify-between gap-2 mb-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <Heart size={14} className="text-destructive/60 shrink-0" />
+              <p className="text-[10px] tracking-[2px] uppercase text-muted-foreground font-ui font-medium truncate">Versículos Favoritos</p>
+            </div>
+            {favorites.length > 0 && (
+              <span className="text-[10px] text-muted-foreground/50 font-ui shrink-0">{filteredFavorites.length}</span>
+            )}
           </div>
+
+          {/* Book filter */}
+          {availableBooks.length > 1 && (
+            <div className="mb-3 flex items-center gap-1.5">
+              <Filter size={11} className="text-muted-foreground/40 shrink-0" />
+              <select
+                value={bookFilter}
+                onChange={e => setBookFilter(e.target.value)}
+                className="flex-1 text-[11px] bg-background/40 border border-border/40 rounded-md px-2 py-1 font-ui text-foreground/80 focus:outline-none focus:ring-1 focus:ring-primary/30"
+              >
+                <option value="all">Todos os livros</option>
+                {availableBooks.map(b => (
+                  <option key={b} value={b}>{b}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {favorites.length === 0 ? (
             <p className="text-[12px] text-muted-foreground/50 font-body text-center py-3">
               Nenhum versículo favoritado ainda
             </p>
+          ) : filteredFavorites.length === 0 ? (
+            <p className="text-[12px] text-muted-foreground/50 font-body text-center py-3">
+              Nenhum favorito neste livro
+            </p>
           ) : (
             <div className="space-y-3 max-h-[400px] overflow-y-auto no-scrollbar">
-              {favorites.map(fav => (
-                <div key={fav.id} className="rounded-xl p-3 transition-all hover:bg-muted/20"
+              {filteredFavorites.map(fav => (
+                <div key={fav.id} className="group rounded-xl p-3 transition-all hover:bg-muted/20 relative"
                   style={{ border: '1px solid hsl(var(--border)/0.3)' }}>
-                  <p className="text-[11px] font-semibold text-primary font-ui mb-1">
-                    {fav.verse_reference}
-                  </p>
+                  <div className="flex items-start justify-between gap-2 mb-1">
+                    <p className="text-[11px] font-semibold text-primary font-ui">
+                      {fav.verse_reference}
+                    </p>
+                    <button
+                      onClick={(e) => deleteFavorite(fav.id, e)}
+                      title="Remover dos favoritos"
+                      className="opacity-0 group-hover:opacity-100 p-1 -m-1 rounded text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 transition-all"
+                    >
+                      <Trash2 size={11} />
+                    </button>
+                  </div>
                   <p className="text-[12px] leading-relaxed text-foreground/70 italic font-serif line-clamp-3">
                     "{fav.verse_text}"
                   </p>
