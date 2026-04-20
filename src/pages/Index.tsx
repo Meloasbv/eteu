@@ -631,10 +631,25 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
           theme={theme}
           setTheme={setTheme}
           onLogout={onLogout}
+          onOpenFocus={() => { setFocusOpen(true); haptic("medium"); }}
+          focusActive={focusOpen}
         />
 
-        {/* Center content */}
-        {renderContent()}
+        {/* Center content (wrapped in Focus Workspace when active) */}
+        {focusOpen ? (
+          <Suspense fallback={<div className="flex-1" />}>
+            <FocusWorkspace
+              open={focusOpen}
+              onClose={() => setFocusOpen(false)}
+              tab={tab === "biblioteca" ? "anotacoes" : (tab as any)}
+              setTab={(t) => setTab(t)}
+            >
+              {renderContent()}
+            </FocusWorkspace>
+          </Suspense>
+        ) : (
+          renderContent()
+        )}
 
         {/* Right panel */}
         <DesktopRightPanel
@@ -715,10 +730,41 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
         </div>
       </header>
 
-      {renderContent()}
+      {focusOpen ? (
+        <Suspense fallback={null}>
+          <FocusWorkspace
+            open={focusOpen}
+            onClose={() => setFocusOpen(false)}
+            tab={tab === "biblioteca" ? "anotacoes" : (tab as any)}
+            setTab={(t) => setTab(t)}
+          >
+            {renderContent()}
+          </FocusWorkspace>
+        </Suspense>
+      ) : (
+        renderContent()
+      )}
 
       {/* ── BOTTOM TAB BAR ── */}
       <nav className={`bottom-tab-bar ${hideBar ? "hidden-bar" : ""}`}>
+        {/* Focus button — destacado */}
+        <button
+          onClick={() => { haptic("medium"); setFocusOpen(true); }}
+          className="tab-item"
+          aria-label="Modo Foco"
+        >
+          <span
+            className="tab-icon leading-none flex items-center justify-center w-9 h-9 rounded-full"
+            style={{
+              background: "linear-gradient(135deg, hsl(var(--primary) / 0.25), hsl(var(--primary) / 0.08))",
+              border: "1px solid hsl(var(--primary) / 0.5)",
+              color: "hsl(var(--primary))",
+              boxShadow: "0 0 18px -6px hsl(var(--primary) / 0.6)",
+            }}
+          >
+            <Zap size={18} strokeWidth={2.2} />
+          </span>
+        </button>
         {TABS.map(t => {
           const isActive = tab === t.key;
           return (
