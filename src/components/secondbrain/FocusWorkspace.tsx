@@ -9,6 +9,9 @@ import { toast } from "@/hooks/use-toast";
 import { useFocusMusic, FOCUS_TRACKS, type FocusTrackKey } from "@/hooks/useFocusMusic";
 import FocusCommandChat, { type FocusPanelKey } from "./FocusCommandChat";
 
+// WEEKS data needed by FocusCommandChat to compute today's reading
+const WEEKS_FALLBACK: any[] = [];
+
 // Solid fixed palette — no cycling colors
 const PALETTE = {
   bg: "#0B0F14",
