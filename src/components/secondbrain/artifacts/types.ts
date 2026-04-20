@@ -7,6 +7,7 @@ export type ArtifactType =
   | "exegese"
   | "note_saved"
   | "verse"
+  | "verse_reader"
   | "answer"
   | "timer"
   | "loading";

@@ -204,7 +204,13 @@ export default function FocusCommandChat({ userCodeId, weeks, devotionals }: Pro
           }
           case "versiculo": {
             const ref = result.params?.reference || raw;
-            finalArtifact = { type: "verse", data: { reference: ref } };
+            // If user said "ler ..." OR ref is a whole chapter (no specific verse),
+            // open the verse-by-verse reader. Otherwise, single-verse card.
+            const wantsReader =
+              /^(ler|leia)\b/i.test(raw) || !/[:,]\s*\d/.test(ref);
+            finalArtifact = wantsReader
+              ? { type: "verse_reader", data: { reference: ref } }
+              : { type: "verse", data: { reference: ref } };
             if (!assistantText) assistantText = `Aqui está ${ref}.`;
             break;
           }

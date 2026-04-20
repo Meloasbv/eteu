@@ -7,6 +7,7 @@ import SaudacaoArtifact from "./SaudacaoArtifact";
 import DevotionalTodayArtifact from "./DevotionalTodayArtifact";
 import NoteArtifact from "./NoteArtifact";
 import VerseArtifact from "./VerseArtifact";
+import VerseReaderArtifact from "./VerseReaderArtifact";
 import MindMapListArtifact from "./MindMapListArtifact";
 import MindMapPreviewArtifact from "./MindMapPreviewArtifact";
 import TimerArtifact from "./TimerArtifact";
@@ -37,6 +38,8 @@ export default function ArtifactRenderer({ artifact, userCodeId, sendAsUser }: P
       return <NoteArtifact data={data} userCodeId={userCodeId} sendAsUser={sendAsUser} />;
     case "verse":
       return <VerseArtifact data={data} sendAsUser={sendAsUser} />;
+    case "verse_reader":
+      return <VerseReaderArtifact data={data} sendAsUser={sendAsUser} />;
     case "mindmap_list":
       return <MindMapListArtifact data={data} userCodeId={userCodeId} sendAsUser={sendAsUser} />;
     case "mindmap_preview":
