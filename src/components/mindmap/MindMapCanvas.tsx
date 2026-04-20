@@ -114,16 +114,10 @@ function buildFromAnalysis(
   topicConcepts.forEach((concept, i) => {
     const id = `topic-${concept.id || i}`;
     const catColor = getCategoryColor(concept.category);
-    // Limit highlights to 2 max per topic to keep map clean
-    const childHighlights = (concept.child_highlights || []).slice(0, 2);
     const noteVerses = concept.expanded_note?.verses || [];
     const verseCount = noteVerses.length || (concept.bible_refs || []).length;
     const keyPointsCount = (concept.expanded_note?.key_points || concept.expanded_note?.affirmations || []).length;
     const slides = concept.source_slides || (concept.page_ref ? [concept.page_ref] : []);
-    const stories = (concept.expanded_note?.stories || []).map(s => ({
-      title: s.title,
-      source_slide: s.source_slide,
-    }));
 
     nodes.push({
       id,
@@ -141,10 +135,8 @@ function buildFromAnalysis(
         isKey: concept.is_key === true,
         pageRef: concept.page_ref,
         sourceSlides: slides,
-        imageUrl: images[id],
-        imageLoading: loadingImages[id],
         orderIndex: i + 1,
-        stories,
+        stories: [],
       },
     });
 
@@ -169,24 +161,7 @@ function buildFromAnalysis(
       style: { stroke: `${catColor}66`, strokeWidth: 1.5 },
     });
 
-    // HighlightCard children — only the most quotable (max 2)
-    childHighlights.forEach((hl, j) => {
-      const hlId = `hl-${i}-${j}`;
-      nodes.push({
-        id: hlId,
-        type: "highlightCard",
-        position: { x: 0, y: 0 },
-        data: { label: hl, pageRef: concept.page_ref },
-      });
-      edges.push({
-        id: `edge-${id}-${hlId}`,
-        source: id,
-        target: hlId,
-        style: { stroke: "rgba(196,164,106,0.12)", strokeWidth: 1, strokeDasharray: "6 3" },
-      });
-    });
-
-    // Verses are NEVER nodes — they live inside the note's expanded view as chips
+    // Highlights/verses are NOT shown as nodes — they live inside the note's expanded view.
   });
 
   // Standalone highlight concepts (rare, kept for legacy)
