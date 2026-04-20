@@ -687,7 +687,7 @@ export default function ThoughtGraph({ userCodeId, theme = "gold", embedded = fa
       </div>
 
       {/* Selected node bottom sheet (with Focus button) */}
-      {selectedNode && !focusNodeId && (
+      {selectedNode && !focusNodeId && !embedded && (
         <div
           className="absolute bottom-0 left-0 right-0 rounded-t-2xl p-4 animate-fade-in z-50"
           style={{
@@ -730,7 +730,7 @@ export default function ThoughtGraph({ userCodeId, theme = "gold", embedded = fa
       )}
 
       {/* Focus mode mobile bottom sheet */}
-      {focusNodeId && focusedThought && (
+      {focusNodeId && focusedThought && !embedded && (
         <div className="md:hidden absolute bottom-0 left-0 right-0 rounded-t-2xl z-40 max-h-[55%] flex flex-col"
           style={{
             background: "hsl(var(--card))",

@@ -9,6 +9,7 @@ import { toast } from "@/hooks/use-toast";
 import { useFocusMusic, FOCUS_TRACKS, type FocusTrackKey } from "@/hooks/useFocusMusic";
 import FocusCommandChat, { type FocusPanelKey } from "./FocusCommandChat";
 import FocusTTSPlayer from "./FocusTTSPlayer";
+import BrainFocusMode from "./BrainFocusMode";
 import type { FocusOpenToolDetail, FocusToolKey } from "@/lib/focusTools";
 
 const MindMapTab = lazy(() => import("@/components/mindmap/MindMapTab"));
@@ -54,11 +55,12 @@ type SidebarShortcut = {
   action: { kind: "tool"; detail: FocusOpenToolDetail } | { kind: "chat"; cmd: string };
 };
 
-const SHORTCUTS: SidebarShortcut[] = [
+const SHORTCUTS: (SidebarShortcut | { key: string; label: string; icon: any; action: { kind: "brain" } })[] = [
   { key: "leitura", label: "Leitura", icon: BookOpen, action: { kind: "chat", cmd: "leitura de hoje" } },
   { key: "devocional", label: "Devocional", icon: Flame, action: { kind: "chat", cmd: "devocional do dia" } },
   { key: "mapa", label: "Estudo Guiado", icon: Brain, action: { kind: "tool", detail: { tool: "mindmap" } } },
   { key: "caderno", label: "Caderno", icon: PenLine, action: { kind: "tool", detail: { tool: "notebook" } } },
+  { key: "cerebro", label: "Cérebro", icon: Brain, action: { kind: "brain" } },
 ];
 
 export default function FocusWorkspace({ open, onClose, tab, setTab, userCodeId, weeks, devotionals }: Props) {
@@ -66,6 +68,10 @@ export default function FocusWorkspace({ open, onClose, tab, setTab, userCodeId,
 
   // Tool overlay (mind map / notebook etc.)
   const [activeTool, setActiveTool] = useState<FocusOpenToolDetail | null>(null);
+
+  // Brain mode
+  const [brainMode, setBrainMode] = useState(false);
+  const [brainSeed, setBrainSeed] = useState<string>("");
 
   // Pomodoro
   const [phase, setPhase] = useState<"focus" | "break">("focus");
@@ -192,8 +198,18 @@ export default function FocusWorkspace({ open, onClose, tab, setTab, userCodeId,
       setActiveTool(detail);
       haptic("medium");
     };
+    const onOpenBrain = (e: Event) => {
+      const content = (e as CustomEvent<{ content?: string }>).detail?.content ?? "";
+      setBrainSeed(content);
+      setBrainMode(true);
+      haptic("medium");
+    };
     window.addEventListener("focus-open-tool", onOpenTool as EventListener);
-    return () => window.removeEventListener("focus-open-tool", onOpenTool as EventListener);
+    window.addEventListener("focus-open-brain", onOpenBrain as EventListener);
+    return () => {
+      window.removeEventListener("focus-open-tool", onOpenTool as EventListener);
+      window.removeEventListener("focus-open-brain", onOpenBrain as EventListener);
+    };
   }, [open]);
 
   useEffect(() => {
@@ -289,15 +305,18 @@ export default function FocusWorkspace({ open, onClose, tab, setTab, userCodeId,
                     haptic("light");
                     if (s.action.kind === "tool") {
                       setActiveTool(s.action.detail);
+                    } else if (s.action.kind === "brain") {
+                      setBrainSeed("");
+                      setBrainMode(true);
                     } else {
                       window.dispatchEvent(new CustomEvent("focus-chat-send", { detail: { text: s.action.cmd } }));
                     }
                   }}
                   className="w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all hover:scale-[1.02] active:scale-95"
                   style={{
-                    background: "transparent",
-                    border: "1px solid transparent",
-                    color: PALETTE.text,
+                    background: s.key === "cerebro" ? `${PALETTE.primary}10` : "transparent",
+                    border: `1px solid ${s.key === "cerebro" ? PALETTE.primary + "44" : "transparent"}`,
+                    color: s.key === "cerebro" ? PALETTE.primary : PALETTE.text,
                   }}
                 >
                   <Icon size={16} className="shrink-0" strokeWidth={1.8} />
