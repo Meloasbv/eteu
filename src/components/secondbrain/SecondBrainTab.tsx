@@ -1,12 +1,15 @@
 import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { haptic } from "@/hooks/useHaptic";
-import { Brain, Mic, MicOff, Sparkles, ChevronDown, ChevronUp, Link2, Search, X, MessageSquare, Map, BarChart3, MoreHorizontal, Pencil, Archive, Trash2, Unlink, ArchiveRestore, Check } from "lucide-react";
+import { Brain, Mic, MicOff, Sparkles, ChevronDown, ChevronUp, Link2, Search, X, MessageSquare, Map, BarChart3, MoreHorizontal, Pencil, Archive, Trash2, Unlink, ArchiveRestore, Check, Sun, LayoutGrid, Zap } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Json } from "@/integrations/supabase/types";
 
 const ThoughtGraph = lazy(() => import("./ThoughtGraph"));
 const PatternsView = lazy(() => import("./PatternsView"));
+const TodayDashboard = lazy(() => import("./TodayDashboard"));
+const ParaBoard = lazy(() => import("./ParaBoard"));
+const FocusMode = lazy(() => import("./FocusMode"));
 
 // ── Types ──
 type ThoughtType = "problema" | "insight" | "estudo" | "reflexão" | "oração" | "decisão" | "emocional" | "ideia" | "pergunta";
@@ -68,11 +71,12 @@ function timeAgo(dateStr: string): string {
   return `há ${days} dias`;
 }
 
-type ViewMode = "capture" | "graph" | "patterns";
+type ViewMode = "today" | "para" | "capture" | "graph" | "patterns";
 
 // ── Main Component ──
 export default function SecondBrainTab({ userCodeId }: { userCodeId: string }) {
-  const [viewMode, setViewMode] = useState<ViewMode>("capture");
+  const [viewMode, setViewMode] = useState<ViewMode>("today");
+  const [focusOpen, setFocusOpen] = useState(false);
   const [content, setContent] = useState("");
   const [selectedType, setSelectedType] = useState<ThoughtType | "auto">("auto");
   const [thoughts, setThoughts] = useState<Thought[]>([]);
@@ -269,6 +273,8 @@ export default function SecondBrainTab({ userCodeId }: { userCodeId: string }) {
     : visible;
 
   const TABS: { key: ViewMode; icon: any; label: string }[] = [
+    { key: "today", icon: Sun, label: "Hoje" },
+    { key: "para", icon: LayoutGrid, label: "PARA" },
     { key: "capture", icon: MessageSquare, label: "Captura" },
     { key: "graph", icon: Map, label: "Grafo" },
     { key: "patterns", icon: BarChart3, label: "Padrões" },
