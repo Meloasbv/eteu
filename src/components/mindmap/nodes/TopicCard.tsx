@@ -1,6 +1,11 @@
 import { Handle, Position } from "@xyflow/react";
-import { BookOpen, Loader2, Sparkles } from "lucide-react";
+import { BookOpen, Loader2, Sparkles, BookMarked } from "lucide-react";
 import { getCategoryColor } from "../types";
+
+interface StoryPreview {
+  title: string;
+  source_slide?: number;
+}
 
 interface TopicCardData {
   label: string;
@@ -16,6 +21,10 @@ interface TopicCardData {
   sourceSlides?: number[];
   imageUrl?: string;
   imageLoading?: boolean;
+  // Order in flow (1, 2, 3...) for visual reading line
+  orderIndex?: number;
+  // Stories preview (minimized inside the bubble)
+  stories?: StoryPreview[];
 }
 
 function formatRange(slides?: number[], page?: number): string {
@@ -30,6 +39,9 @@ function formatRange(slides?: number[], page?: number): string {
 
 export default function TopicCard({ data }: { data: TopicCardData }) {
   const catColor = getCategoryColor(data.category);
+  const stories = data.stories || [];
+  const visibleStories = stories.slice(0, 3);
+  const extraStories = stories.length - visibleStories.length;
 
   return (
     <div
@@ -47,6 +59,23 @@ export default function TopicCard({ data }: { data: TopicCardData }) {
       <Handle type="target" position={Position.Left} style={{ background: catColor, width: 6, height: 6, opacity: 0.5 }} />
       <Handle type="source" position={Position.Bottom} style={{ background: catColor, width: 6, height: 6, opacity: 0.5 }} />
       <Handle type="source" position={Position.Right} style={{ background: catColor, width: 6, height: 6, opacity: 0.5 }} />
+
+      {/* Order badge (top-left circle) — visual reading line */}
+      {typeof data.orderIndex === "number" && (
+        <div
+          className="absolute -top-2.5 -left-2.5 flex items-center justify-center rounded-full font-display font-bold text-[11px] z-10"
+          style={{
+            width: 22,
+            height: 22,
+            background: "#1e1a14",
+            color: catColor,
+            border: `2px solid ${catColor}`,
+            boxShadow: "0 2px 4px rgba(0,0,0,0.4)",
+          }}
+        >
+          {data.orderIndex}
+        </div>
+      )}
 
       <div className="p-4 pb-3">
         {/* Image (key cards only) */}
@@ -78,6 +107,48 @@ export default function TopicCard({ data }: { data: TopicCardData }) {
             style={{ color: "#c4b89e", lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
             {data.summary}
           </p>
+        )}
+
+        {/* Stories preview (minimized list inside the bubble) */}
+        {visibleStories.length > 0 && (
+          <div
+            className="mt-2 mb-2 rounded-md px-2 py-1.5"
+            style={{
+              background: "rgba(212,133,74,0.06)",
+              border: "1px solid rgba(212,133,74,0.18)",
+            }}
+          >
+            <div className="flex items-center gap-1 mb-1">
+              <BookMarked size={9} style={{ color: "#d4854a" }} />
+              <span className="text-[8.5px] font-sans font-bold tracking-[1.2px] uppercase" style={{ color: "#d4854a" }}>
+                Histórias
+              </span>
+            </div>
+            <ul className="space-y-0.5">
+              {visibleStories.map((s, i) => (
+                <li key={i} className="flex items-baseline gap-1.5">
+                  <span className="text-[9px] font-sans" style={{ color: "#d4854a", lineHeight: 1 }}>•</span>
+                  <span
+                    className="font-body text-[11px] flex-1 truncate"
+                    style={{ color: "#d4c8b0", lineHeight: 1.35 }}
+                    title={s.title}
+                  >
+                    {s.title}
+                  </span>
+                  {s.source_slide && (
+                    <span className="text-[8px] font-sans tracking-wider shrink-0" style={{ color: "#8a7d6a" }}>
+                      {s.source_slide}
+                    </span>
+                  )}
+                </li>
+              ))}
+              {extraStories > 0 && (
+                <li className="text-[10px] font-sans italic pl-2.5" style={{ color: "#8a7d6a" }}>
+                  +{extraStories} histórias…
+                </li>
+              )}
+            </ul>
+          </div>
         )}
 
         {/* Metadata */}
