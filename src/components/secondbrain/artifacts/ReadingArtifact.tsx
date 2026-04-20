@@ -332,7 +332,7 @@ export default function ReadingArtifact({ data, sendAsUser }: Props) {
               className="ml-auto text-[10.5px] font-bold uppercase tracking-wider"
               style={{ color: allDone ? P.primary : P.textFaint }}
             >
-              {doneCount}/{data.readings.length}
+              {doneCount}/{active.readings.length}
             </span>
           </div>
         </>
