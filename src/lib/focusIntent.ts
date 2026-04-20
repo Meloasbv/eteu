@@ -62,13 +62,16 @@ export function detectIntentLocal(raw: string): IntentResult | null {
     return { intent: "timer", params: { action: "reset" }, response_text: "Timer reiniciado." };
   }
 
-  // Capture prefix → cerebro
+  // Capture prefix → open Brain Mode pre-filled (no longer auto-saves in chat)
   const captureMatch = text.match(/^(?:capturar|capture|registrar|anota[r]?\s*pensamento)\s*[:\-—]\s*(.+)/i);
   if (captureMatch) {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("focus-open-brain", { detail: { content: captureMatch[1].trim() } }));
+    }
     return {
-      intent: "cerebro",
-      params: { action: "capture", content: captureMatch[1].trim() },
-      response_text: "Registrado.",
+      intent: "saudacao",
+      params: {},
+      response_text: "Abrindo o Modo Cérebro com seu pensamento…",
     };
   }
 

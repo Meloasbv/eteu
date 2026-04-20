@@ -557,6 +557,14 @@ export default function FocusWorkspace({ open, onClose, tab, setTab, userCodeId,
         </div>
       )}
 
+      {/* Brain Focus Mode (always overlays the chat when active) */}
+      <BrainFocusMode
+        open={brainMode}
+        userCodeId={userCodeId}
+        initialContent={brainSeed}
+        onExit={() => { setBrainMode(false); setBrainSeed(""); }}
+      />
+
       {/* Celebration */}
       {showCelebration && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[400] animate-fade-in">
