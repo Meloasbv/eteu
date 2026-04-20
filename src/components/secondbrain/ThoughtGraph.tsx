@@ -109,6 +109,14 @@ export default function ThoughtGraph({ userCodeId, theme = "gold", embedded = fa
 
   useEffect(() => { loadData(); }, [userCodeId]);
 
+  // Refresh when thought captured elsewhere (Brain Mode dock/drop)
+  useEffect(() => {
+    const onAdded = () => loadData();
+    window.addEventListener("brain-thought-added", onAdded);
+    return () => window.removeEventListener("brain-thought-added", onAdded);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userCodeId]);
+
   const loadData = async () => {
     const [{ data: t }, { data: c }] = await Promise.all([
       supabase.from("thoughts").select("id, content, type, keywords, created_at, archived")
