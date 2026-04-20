@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Brain } from "lucide-react";
 import type { AnalysisResult } from "@/components/mindmap/types";
 import PresentationMode from "@/components/mindmap/PresentationMode";
+import StudyGuide from "@/components/study-guide/StudyGuide";
 
 export default function SharedMindMap() {
   const { slug } = useParams<{ slug: string }>();
@@ -78,5 +79,15 @@ export default function SharedMindMap() {
     );
   }
 
+  // If the shared analysis has structured concepts, render Estudo Guiado (preferred view).
+  // Otherwise fall back to the older PresentationMode for legacy maps.
+  const hasGuide = Array.isArray(analysis.key_concepts) && analysis.key_concepts.length > 0;
+  if (hasGuide) {
+    return (
+      <div className="h-screen w-screen" style={{ background: "hsl(var(--background))" }}>
+        <StudyGuide analysis={analysis} onBack={() => window.history.back()} />
+      </div>
+    );
+  }
   return <PresentationMode analysis={analysis} onExit={() => window.history.back()} />;
 }

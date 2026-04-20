@@ -265,8 +265,33 @@ export async function runMindMapPipeline({
 
   const allQuestions: QuizQuestion[] = quizResults.flatMap(q => q.questions || []);
 
+  // Smart title: derive from content rather than filename.
+  // Priority: 1) first non-quiz group's title if it looks like a real title (not generic),
+  //           2) first concept's core_idea condensed, 3) fallback to pdfTitle.
+  const isGenericTitle = (t: string) => {
+    if (!t) return true;
+    const lower = t.toLowerCase().trim();
+    return (
+      lower.length < 4 ||
+      /^(slide|p[áa]gina|bloco|introdu[çc][ãa]o|capa|sum[áa]rio|[ií]ndice)\s*\d*$/.test(lower) ||
+      /^\d+$/.test(lower)
+    );
+  };
+  const firstRealTitle = nonQuiz.find(r => !isGenericTitle(r.title))?.title;
+  const coreIdeaShort = concepts[0]?.expanded_note?.core_idea
+    ?.split(/[—.:;]/)[0]
+    ?.trim()
+    ?.split(/\s+/)
+    ?.slice(0, 8)
+    ?.join(" ");
+  const smartTitle =
+    firstRealTitle ||
+    coreIdeaShort ||
+    pdfTitle ||
+    "Estudo";
+
   return {
-    main_theme: pdfTitle || "Estudo",
+    main_theme: smartTitle,
     summary:
       concepts[0]?.expanded_note?.core_idea ||
       concepts[0]?.summary ||
@@ -274,7 +299,7 @@ export async function runMindMapPipeline({
     key_concepts: concepts,
     hierarchy: {
       root: {
-        label: pdfTitle || "Estudo",
+        label: smartTitle,
         children: concepts.map(c => ({ label: c.title })),
       },
     },
