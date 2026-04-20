@@ -9,12 +9,13 @@ import { runMindMapPipeline, type PipelineProgress } from "@/lib/mindMapPipeline
 
 const MindMapCanvas = lazy(() => import("./MindMapCanvas"));
 const ManualMindMapCanvas = lazy(() => import("./ManualMindMapCanvas"));
+const StudyGuide = lazy(() => import("@/components/study-guide/StudyGuide"));
 // Warm canvas chunk in the background so first open is instant
 if (typeof window !== "undefined") {
-  setTimeout(() => { import("./ManualMindMapCanvas"); import("./MindMapCanvas"); }, 800);
+  setTimeout(() => { import("./ManualMindMapCanvas"); import("./MindMapCanvas"); import("@/components/study-guide/StudyGuide"); }, 800);
 }
 
-type Mode = "select" | "ai-input" | "ai-canvas" | "manual" | "pdf-processing";
+type Mode = "select" | "ai-input" | "ai-canvas" | "ai-guide" | "manual" | "pdf-processing";
 
 interface SavedMap {
   id: string;
