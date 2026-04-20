@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
+// WeekSchedule moved into Second Brain → Áreas → Compromissos
 import WeekSchedule from "@/components/WeekSchedule";
 import StudyTab from "@/components/study/StudyTab";
 import CodeLogin from "@/components/CodeLogin";
@@ -13,7 +14,7 @@ import DesktopRightPanel from "@/components/desktop/DesktopRightPanel";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useScrollDirection } from "@/hooks/useScrollDirection";
 import { haptic } from "@/hooks/useHaptic";
-import { BookOpen, Flame, Calendar, PenLine, Check, Sun, Moon, LogOut, Sparkles, CheckCheck, Brain } from "lucide-react";
+import { BookOpen, Flame, PenLine, Check, Sun, Moon, LogOut, Sparkles, CheckCheck, Brain } from "lucide-react";
 import SecondBrainTab from "@/components/secondbrain/SecondBrainTab";
 
 // ── DATA ──────────────────────────────────────────────────────────────────────
