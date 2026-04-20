@@ -41,9 +41,9 @@ const nodeTypes = {
 };
 
 const defaultEdgeOptions = {
-  type: "smoothstep" as const,
+  type: "bezier" as const,
   animated: false,
-  style: { stroke: "rgba(196,164,106,0.15)", strokeWidth: 1.5 },
+  style: { stroke: "rgba(196,164,106,0.18)", strokeWidth: 1.5 },
   markerEnd: { type: MarkerType.ArrowClosed, color: "rgba(196,164,106,0.25)", width: 12, height: 12 },
 };
 
@@ -52,11 +52,11 @@ const defaultEdgeOptions = {
 function getLayoutedElements(nodes: Node[], edges: Edge[], direction = "TB") {
   const g = new dagre.graphlib.Graph();
   g.setDefaultEdgeLabel(() => ({}));
-  g.setGraph({ rankdir: direction, nodesep: 60, ranksep: 80, marginx: 40, marginy: 40 });
+  g.setGraph({ rankdir: direction, nodesep: 80, ranksep: 100, marginx: 60, marginy: 60 });
 
   const sizeMap: Record<string, { w: number; h: number }> = {
     root: { w: 300, h: 90 },
-    topicCard: { w: 280, h: 110 },
+    topicCard: { w: 280, h: 130 },
     highlightCard: { w: 220, h: 70 },
     verseCard: { w: 160, h: 40 },
   };
@@ -108,8 +108,12 @@ function buildFromAnalysis(
   topicConcepts.forEach((concept, i) => {
     const id = `topic-${concept.id || i}`;
     const catColor = getCategoryColor(concept.category);
-    const childHighlights = concept.child_highlights || [];
-    const childVerses = concept.child_verses || concept.expanded_note?.verses || concept.bible_refs || [];
+    // Limit highlights to 2 max per topic to keep map clean
+    const childHighlights = (concept.child_highlights || []).slice(0, 2);
+    const noteVerses = concept.expanded_note?.verses || [];
+    const verseCount = noteVerses.length || (concept.bible_refs || []).length;
+    const keyPointsCount = (concept.expanded_note?.key_points || concept.expanded_note?.affirmations || []).length;
+    const slides = concept.source_slides || (concept.page_ref ? [concept.page_ref] : []);
 
     nodes.push({
       id,
@@ -120,12 +124,13 @@ function buildFromAnalysis(
         summary: concept.summary || concept.expanded_note?.core_idea || concept.coreIdea || concept.description?.substring(0, 80),
         category: concept.category,
         hasNote: true,
-        childCount: childHighlights.length,
-        verseCount: childVerses.length,
+        childCount: keyPointsCount,
+        verseCount,
         selected: selectedNodeId === id,
         nodeId: id,
         isKey: concept.is_key === true,
         pageRef: concept.page_ref,
+        sourceSlides: slides,
         imageUrl: images[id],
         imageLoading: loadingImages[id],
       },
@@ -139,7 +144,7 @@ function buildFromAnalysis(
       style: { stroke: `${catColor}66`, strokeWidth: 1.5 },
     });
 
-    // HighlightCard children
+    // HighlightCard children — only the most quotable (max 2)
     childHighlights.forEach((hl, j) => {
       const hlId = `hl-${i}-${j}`;
       nodes.push({
@@ -156,27 +161,12 @@ function buildFromAnalysis(
       });
     });
 
-    // VerseCard children
-    childVerses.forEach((v, j) => {
-      const vId = `verse-${i}-${j}`;
-      nodes.push({
-        id: vId,
-        type: "verseCard",
-        position: { x: 0, y: 0 },
-        data: { label: v, pageRef: concept.page_ref },
-      });
-      edges.push({
-        id: `edge-${id}-${vId}`,
-        source: id,
-        target: vId,
-        style: { stroke: "rgba(123,163,201,0.15)", strokeWidth: 1 },
-      });
-    });
+    // Verses are NEVER nodes — they live inside the note's expanded view as chips
   });
 
-  // Also process explicit highlight/verse concepts
+  // Standalone highlight concepts (rare, kept for legacy)
   const highlights = (analysis.key_concepts || []).filter(c => c.type === "highlight");
-  highlights.forEach((hl, i) => {
+  highlights.slice(0, 4).forEach((hl, i) => {
     const hlId = `hl-standalone-${i}`;
     nodes.push({
       id: hlId,
@@ -192,22 +182,7 @@ function buildFromAnalysis(
     });
   });
 
-  const verseNodes = (analysis.key_concepts || []).filter(c => c.type === "verse");
-  verseNodes.forEach((v, i) => {
-    const vId = `verse-standalone-${i}`;
-    nodes.push({
-      id: vId,
-      type: "verseCard",
-      position: { x: 0, y: 0 },
-      data: { label: v.title || v.description },
-    });
-    edges.push({
-      id: `edge-root-${vId}`,
-      source: rootId,
-      target: vId,
-      style: { stroke: "rgba(123,163,201,0.15)", strokeWidth: 1 },
-    });
-  });
+  // NOTE: type="verse" concepts are intentionally ignored — verses live in notes only.
 
   return getLayoutedElements(nodes, edges);
 }

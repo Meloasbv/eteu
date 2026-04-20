@@ -13,8 +13,19 @@ interface TopicCardData {
   selected?: boolean;
   isKey?: boolean;
   pageRef?: number;
+  sourceSlides?: number[];
   imageUrl?: string;
   imageLoading?: boolean;
+}
+
+function formatRange(slides?: number[], page?: number): string {
+  if (slides && slides.length > 0) {
+    const sorted = [...slides].sort((a, b) => a - b);
+    const min = sorted[0], max = sorted[sorted.length - 1];
+    return min === max ? `Sl. ${min}` : `Sl. ${min}-${max}`;
+  }
+  if (page) return `Sl. ${page}`;
+  return "";
 }
 
 export default function TopicCard({ data }: { data: TopicCardData }) {
@@ -70,21 +81,27 @@ export default function TopicCard({ data }: { data: TopicCardData }) {
         )}
 
         {/* Metadata */}
-        <div className="flex items-center gap-3 flex-wrap">
-          {(data.childCount ?? 0) > 0 && (
-            <span className="text-[10.5px] font-sans font-medium tracking-[1px] uppercase" style={{ color: "#8a7d6a" }}>
-              {data.childCount} sub-cards
+        <div className="flex items-center gap-2 flex-wrap pt-1">
+          {formatRange(data.sourceSlides, data.pageRef) && (
+            <span className="text-[10.5px] font-sans font-medium tracking-[0.5px]" style={{ color: "#c4a46a" }}>
+              {formatRange(data.sourceSlides, data.pageRef)}
             </span>
+          )}
+          {(data.childCount ?? 0) > 0 && (
+            <>
+              <span className="text-[10px]" style={{ color: "#5c5347" }}>·</span>
+              <span className="text-[10.5px] font-sans font-medium tracking-[0.5px]" style={{ color: "#8a7d6a" }}>
+                {data.childCount} pts
+              </span>
+            </>
           )}
           {(data.verseCount ?? 0) > 0 && (
-            <span className="text-[10.5px] font-sans font-medium tracking-[1px] uppercase" style={{ color: "#8a7d6a" }}>
-              {data.verseCount} versículos
-            </span>
-          )}
-          {data.pageRef && (
-            <span className="text-[10.5px] font-sans font-medium tracking-[1px] uppercase" style={{ color: "#c4a46a" }}>
-              p. {data.pageRef}
-            </span>
+            <>
+              <span className="text-[10px]" style={{ color: "#5c5347" }}>·</span>
+              <span className="text-[10.5px] font-sans font-medium tracking-[0.5px]" style={{ color: "#8a7d6a" }}>
+                {data.verseCount} vers
+              </span>
+            </>
           )}
         </div>
       </div>
