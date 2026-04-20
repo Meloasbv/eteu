@@ -172,17 +172,23 @@ export default function NotePanel({
 
       {/* Scrollable body */}
       <div className="flex-1 overflow-y-auto px-5 py-5 space-y-0">
-        <div className="flex items-baseline gap-3 mb-5 flex-wrap">
+        <div className="flex items-baseline gap-3 mb-2 flex-wrap">
           <h2 className="font-display font-bold" style={{ color: "#ede4d3", fontSize: isMobile ? 24 : 32, lineHeight: 1.2 }}>
             {concept.title}
           </h2>
-          {concept.page_ref && (
+          {slideRange && (
             <span className="text-[10px] font-sans font-bold tracking-[1.5px] uppercase px-2 py-1 rounded"
               style={{ background: "rgba(196,164,106,0.1)", color: "#c4a46a" }}>
-              p. {concept.page_ref}
+              {slideRange}
             </span>
           )}
         </div>
+
+        {concept.summary && (
+          <p className="font-body text-[13px] italic mb-5" style={{ color: "#8a7d6a", lineHeight: 1.5 }}>
+            {concept.summary}
+          </p>
+        )}
 
         {concept.quotes && concept.quotes.length > 0 && (
           <div className="mb-6 space-y-2">
@@ -211,7 +217,31 @@ export default function NotePanel({
           </div>
         )}
 
-        {explanation && (
+        {keyPoints.length > 0 && (
+          <>
+            <SectionLabel>PONTOS PRINCIPAIS</SectionLabel>
+            <ul className="space-y-2 mb-6 pl-1">
+              {keyPoints.map((p, i) => (
+                <li key={i} className="flex gap-2.5 items-start">
+                  <span className="mt-2 w-1 h-1 rounded-full shrink-0" style={{ background: "#c4a46a" }} />
+                  <p className="font-body text-[14.5px]" style={{ color: "#d4c8b0", lineHeight: 1.55 }}>
+                    <InlineVerseText text={p} onVerseClick={handleVerseClick} />
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+
+        {subsections.length > 0 && subsections.map((sub, i) => (
+          <SubsectionBlock
+            key={i}
+            sub={sub}
+            onVerseClick={handleVerseClick}
+          />
+        ))}
+
+        {explanation && !keyPoints.length && (
           <>
             <SectionLabel>EXPLICAÇÃO</SectionLabel>
             <div className="mb-6">
@@ -224,19 +254,6 @@ export default function NotePanel({
           </>
         )}
 
-        {affirmations.length > 0 && (
-          <>
-            <SectionLabel>AFIRMAÇÕES CENTRAIS</SectionLabel>
-            <div className="space-y-2 mb-6">
-              {affirmations.map((a, i) => (
-                <div key={i} style={{ borderLeft: "2px solid #d4b87a", padding: "8px 14px" }}>
-                  <p className="font-body text-[14px] italic" style={{ color: "#d4b87a" }}>{a}</p>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
-
         {verses.length > 0 && (
           <>
             <SectionLabel>VERSÍCULOS</SectionLabel>
@@ -244,13 +261,14 @@ export default function NotePanel({
               {verses.map((v, i) => (
                 <button
                   key={i}
-                  className="inline-flex items-center gap-1.5 rounded-[20px] transition-all"
+                  className="inline-flex items-center gap-1.5 rounded-[20px] transition-all group"
                   style={{
                     background: "rgba(123,163,201,0.06)",
                     border: "1px solid rgba(123,163,201,0.25)",
                     padding: "6px 12px",
                   }}
-                  onClick={(e) => handleVerseClick(v, e.currentTarget as HTMLElement)}
+                  title={v.context ? `${v.context}${v.source_slide ? ` · Sl. ${v.source_slide}` : ""}` : undefined}
+                  onClick={(e) => handleVerseClick(v.ref, e.currentTarget as HTMLElement)}
                   onMouseEnter={(e) => {
                     (e.currentTarget as HTMLElement).style.background = "rgba(123,163,201,0.14)";
                   }}
@@ -259,8 +277,42 @@ export default function NotePanel({
                   }}
                 >
                   <BookOpen size={12} style={{ color: "#7ba3c9" }} />
-                  <span className="font-body italic text-[12.5px]" style={{ color: "#7ba3c9" }}>{v}</span>
+                  <span className="font-body italic text-[12.5px]" style={{ color: "#7ba3c9" }}>{v.ref}</span>
+                  {v.source_slide && (
+                    <span className="text-[9px] font-sans tracking-wider" style={{ color: "#5c5347" }}>
+                      Sl.{v.source_slide}
+                    </span>
+                  )}
                 </button>
+              ))}
+            </div>
+          </>
+        )}
+
+        {authorQuotes.length > 0 && (
+          <>
+            <SectionLabel>CITAÇÕES</SectionLabel>
+            <div className="space-y-3 mb-6">
+              {authorQuotes.map((q, i) => (
+                <div key={i} className="rounded-r-lg" style={{
+                  borderLeft: "2px solid rgba(196,164,106,0.4)",
+                  padding: "10px 16px",
+                  background: "rgba(196,164,106,0.03)",
+                }}>
+                  <p className="font-body italic text-[14px]" style={{ color: "#d4b87a", lineHeight: 1.6 }}>
+                    "{q.text}"
+                  </p>
+                  <div className="mt-1.5 flex items-baseline gap-2">
+                    <span className="text-[11px] font-sans font-semibold" style={{ color: "#8a7d6a" }}>
+                      — {q.author}
+                    </span>
+                    {q.source_slide && (
+                      <span className="text-[10px] font-sans tracking-wider" style={{ color: "#5c5347" }}>
+                        Sl. {q.source_slide}
+                      </span>
+                    )}
+                  </div>
+                </div>
               ))}
             </div>
           </>
