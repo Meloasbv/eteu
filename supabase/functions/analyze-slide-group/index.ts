@@ -51,81 +51,81 @@ async function callGateway(messages: any[], maxTokens = 8000) {
   return data.choices?.[0]?.message?.content || "";
 }
 
-const GROUP_PROMPT = (title: string, pageRange: [number, number], totalGroups: number, groupIndex: number) =>
-`Você é um EXTRATOR fiel de conteúdo. Você está analisando UM trecho de uma aula/material maior.
+const GROUP_PROMPT = (
+  title: string,
+  pageRange: [number, number],
+  totalGroups: number,
+  groupIndex: number,
+) => {
+  const isLong = totalGroups >= 8;
+  return `Você é um EXTRATOR fiel + DIDATA. Extrai conteúdo SEM inventar e enriquece visualmente quando o tema for conceitual/teológico.
 
 ═══ CONTEXTO ═══
 TÍTULO DESTE TRECHO: "${title}"
 SLIDES: ${pageRange[0]}–${pageRange[1]}
 ESTE É O TRECHO ${groupIndex + 1} DE ${totalGroups} DA AULA.
-Não tente resumir a aula inteira — só este trecho.
+${isLong ? "⚠️ AULA LONGA — blocos SECUNDÁRIOS/TERCIÁRIOS devem ser resumidos (3-5 bullets enxutos)." : ""}
 
 ═══ FILTRO ANTI-METADADO ═══
-Se o trecho contiver "FlateDecode", "ColorSpace", "DeviceGray", "MacRomanEncoding", "BaseFont", "StructElem", "MediaBox", "TimesNewRomanPSMT", "/Subtype", "/Filter" — IGNORE COMPLETAMENTE essas palavras. Nunca as inclua em qualquer campo do JSON.
+Se aparecer "FlateDecode", "ColorSpace", "DeviceGray", "MacRomanEncoding", "BaseFont", "StructElem", "MediaBox", "TimesNewRomanPSMT", "/Subtype", "/Filter" — IGNORE. Nunca inclua no JSON.
 
-═══ REGRA SUPREMA — FIDELIDADE ABSOLUTA ═══
-VOCÊ NÃO É AUTOR. VOCÊ É EXTRATOR.
+═══ REGRA SUPREMA — FIDELIDADE ═══
+✓ PERMITIDO: copiar/condensar frases, quebrar parágrafos em bullets fiéis, preservar termos técnicos.
+✓ PERMITIDO PARA DIDÁTICA: criar UMA analogia clara e UM glossário curto explicando termos técnicos QUE APARECEM no material — desde que claramente didáticos, não inventando doutrina nova.
+✗ PROIBIDO: inventar pontos, datas, pessoas, versículos, citações, exemplos, escolas teológicas, autores ou fatos históricos que NÃO estão no slide.
 
-✓ PERMITIDO: copiar frases (encurtadas), quebrar parágrafos em bullets fiéis, preservar termos técnicos, reorganizar para clareza.
-
-✗ PROIBIDO:
-  • Inventar pontos, datas, pessoas, versículos, citações ou exemplos que não estão no slide
-  • Substituir termos específicos por genéricos (ex: "êxodo rural" → "mudanças sociais" é ERRADO)
-  • Adicionar análise teológica/histórica que não aparece no PDF
-  • Reduzir agressivamente — perder pontos é PIOR que ter bullets demais
-  • Resumir várias ideias num único bullet
-
-═══ REGRA DE COMPLETUDE ═══
-Se o texto tem 10 pontos, retorne 10 pontos. Se menciona 5 pessoas, liste as 5. Se cita 8 datas, liste as 8.
-Prefira mais bullets fiéis a poucos resumidos. Não há limite máximo de itens — só fidelidade.
+═══ CLASSIFICAÇÃO DE IMPORTÂNCIA (você decide) ═══
+- "primary": tese central, doutrina-chave, núcleo do argumento, biografia principal. → extrai TUDO em detalhe.
+- "secondary": desdobramento, contexto de apoio, ilustração relevante. → 4-7 bullets enxutos.
+- "tertiary": detalhe periférico, transição, repetição, slide de capa/intro. → 2-4 bullets curtos.
+${isLong ? "Em aulas longas, MARQUE como secondary/tertiary qualquer bloco que não seja claramente central." : "Em aulas curtas, prefira primary."}
 
 ═══ COMO EXTRAIR CADA CAMPO ═══
-
-1. title: copie/condense o título real do bloco (≤6 palavras)
-2. summary: 1 frase EXTRAÍDA do material (≤80 chars), tipo gancho — não interpretação
-3. category: uma de [teologia, cristologia, pneumatologia, exegese, contexto, aplicacao, escatologia, soteriologia, personagem, lugar, evento]
-4. core_idea: tese ou frase-resumo do bloco (≤22 palavras), idealmente CITANDO/condensando frase do material
-5. key_points: TODOS os pontos relevantes (≤25 palavras cada). 5-15 bullets é normal. Cada bullet = uma ideia distinta.
-6. subsections: se o bloco tem sub-divisões visíveis no slide (sub-títulos), use-as. Senão []
-7. verses: APENAS versículos que APARECEM literalmente nos slides
-8. quotes: APENAS citações de terceiros que APARECEM nos slides (texto literal + autor)
-9. stories: TODAS as histórias/narrativas/episódios contados no material. Para cada uma:
-   - title: nome curto (3-7 palavras)
-   - narrative: narrativa COMPLETA em 2-6 frases, FIEL ao texto (datas, nomes, lugares, falas literais preservados)
-   - source_slide: número do slide
-   Não invente histórias.
-10. key_dates: TODAS as datas mencionadas + o evento associado (ex: {"date":"1703","event":"Nascimento de Wesley em Epworth"}). Se nenhuma, []
-11. key_people: TODAS as pessoas com papel relevante no trecho. Para cada uma:
-    - name: nome completo como aparece
-    - role: função/relação em 1 frase (ex: "Mãe de Wesley, educadora rigorosa")
-    - points: bullets sobre essa pessoa extraídos do material (opcional, 1-5)
-    Se nenhuma, []
-12. application: SOMENTE se o material traz; senão ""
-13. impact_phrase: ≤14 palavras, idealmente CITAÇÃO direta
-14. highlights: 1-3 frases CITÁVEIS LITERALMENTE do material (não paráfrases)
+1. title: copie/condense (≤6 palavras)
+2. summary: 1 frase EXTRAÍDA (≤80 chars), gancho
+3. category: [teologia, cristologia, pneumatologia, exegese, contexto, aplicacao, escatologia, soteriologia, personagem, lugar, evento]
+4. importance: "primary" | "secondary" | "tertiary"
+5. core_idea: tese ou frase-resumo (≤22 palavras), idealmente CITANDO frase do material
+6. key_points: bullets fiéis (≤25 palavras cada).
+   - primary: 5-15 bullets
+   - secondary: 4-7 bullets
+   - tertiary: 2-4 bullets
+7. subsections: só se houver sub-divisões visíveis. Senão []
+8. verses: APENAS versículos LITERAIS dos slides
+9. quotes: APENAS citações de terceiros LITERAIS dos slides
+10. stories: TODAS as narrativas/episódios do material (title curto, narrative 2-6 frases fiéis, source_slide). Não invente.
+11. key_dates: TODAS as datas + evento. Senão []
+12. key_people: TODAS as pessoas com papel relevante (name, role 1 frase, points opcionais)
+13. key_terms: GLOSSÁRIO didático — termos técnicos que aparecem no material e merecem definição curta. Cada item: { "term": "Justificação", "definition": "1-2 frases simples". } Use 0-5 termos. Inclua APENAS termos que aparecem no slide. Se for biografia/história sem jargão, []
+14. analogy: UMA analogia/ilustração curta (1-3 frases) que torna o conceito tangível. SOMENTE se o conteúdo é doutrinal/abstrato e ajudaria entendimento. Se for histórico/biográfico/narrativo, "". Não invente fatos — só analogia.
+15. application: SOMENTE se o material traz; senão ""
+16. impact_phrase: ≤14 palavras, idealmente CITAÇÃO direta
+17. highlights: 1-3 frases CITÁVEIS LITERALMENTE
 
 ═══ TESTE FINAL ═══
-Antes de retornar, em cada bullet pergunte: "Isso está no slide, ou eu inventei?" Se inventou, REMOVA.
+Em cada bullet/termo/analogia: "Isso está fiel ao slide?" Se inventou fato, REMOVA. Analogia pode ser sua, mas não pode contradizer/expandir doutrina além do material.
 
 RETORNE APENAS JSON válido, sem markdown:
 {
   "title": "string",
   "summary": "string ≤80",
   "category": "string",
+  "importance": "primary",
   "core_idea": "string ≤22 palavras",
   "key_points": ["bullet fiel", "..."],
-  "subsections": [
-    { "subtitle": "string", "points": ["bullet"], "source_slides": [N] }
-  ],
+  "subsections": [{ "subtitle": "string", "points": ["bullet"], "source_slides": [N] }],
   "verses": [{ "ref": "Zc 3:2", "context": "curto", "source_slide": N }],
   "quotes": [{ "text": "literal", "author": "Nome", "source_slide": N }],
   "stories": [{ "title": "Nome curto", "narrative": "2-6 frases fiéis", "source_slide": N }],
   "key_dates": [{ "date": "1703", "event": "Nascimento em Epworth", "source_slide": N }],
-  "key_people": [{ "name": "Susanna Wesley", "role": "Mãe, educadora, maior influência", "points": ["..."], "source_slide": N }],
-  "application": "string ou \"\"",
+  "key_people": [{ "name": "Susanna Wesley", "role": "Mãe, educadora", "points": ["..."], "source_slide": N }],
+  "key_terms": [{ "term": "Justificação", "definition": "Ato pelo qual Deus declara o pecador justo por causa de Cristo." }],
+  "analogy": "string ou \\"\\"",
+  "application": "string ou \\"\\"",
   "impact_phrase": "string ≤14 palavras",
   "highlights": ["frase literal"]
 }`;
+};
 
 const QUIZ_PROMPT = `Você está extraindo perguntas de revisão de slides de quiz. Não invente perguntas — extraia apenas o que ESTÁ NO MATERIAL.
 
@@ -180,11 +180,16 @@ serve(async (req) => {
 
     const parsed = safeJsonParse(content);
 
+    const importance = ["primary", "secondary", "tertiary"].includes(parsed.importance)
+      ? parsed.importance
+      : "primary";
+
     const result = {
       isQuiz: false,
       title: parsed.title || title || "Bloco",
       summary: parsed.summary || "",
       category: parsed.category || "contexto",
+      importance,
       pageRange,
       core_idea: parsed.core_idea || "",
       key_points: Array.isArray(parsed.key_points) ? parsed.key_points : [],
@@ -194,6 +199,8 @@ serve(async (req) => {
       stories: Array.isArray(parsed.stories) ? parsed.stories : [],
       key_dates: Array.isArray(parsed.key_dates) ? parsed.key_dates : [],
       key_people: Array.isArray(parsed.key_people) ? parsed.key_people : [],
+      key_terms: Array.isArray(parsed.key_terms) ? parsed.key_terms : [],
+      analogy: typeof parsed.analogy === "string" ? parsed.analogy : "",
       application: parsed.application || "",
       impact_phrase: parsed.impact_phrase || "",
       highlights: Array.isArray(parsed.highlights) ? parsed.highlights : [],
