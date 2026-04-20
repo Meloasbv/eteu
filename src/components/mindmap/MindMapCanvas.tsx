@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useEffect, useState, lazy, Suspense } from "react";
+import { useCallback, useMemo, useEffect, useState, useRef, lazy, Suspense } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
