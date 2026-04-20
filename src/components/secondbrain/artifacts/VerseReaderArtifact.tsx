@@ -146,13 +146,30 @@ export default function VerseReaderArtifact({ data, sendAsUser }: Props) {
     (i: number) => {
       if (i < 0 || i >= verses.length) return;
       haptic("light");
-      // Stop reading when jumping verses (avoids overlap)
-      if (focusTTS.getState().playingId?.startsWith(`versereader-${data.reference}`)) {
+      const wasPlaying =
+        focusTTS.getState().playingId?.startsWith(`versereader-${data.reference}`) ?? false;
+      // Always stop current utterance before switching
+      if (wasPlaying) {
+        wasPlayingRef.current = false; // prevent auto-advance handler from firing
         focusTTS.stop();
       }
       setIdx(i);
+      // If user was listening, continue reading the new verse automatically
+      if (wasPlaying) {
+        const v = verses[i];
+        if (v) {
+          // Defer to next tick so state.playingId reset propagates
+          setTimeout(() => {
+            focusTTS.speak(
+              `versereader-${data.reference}-${i}`,
+              v.text,
+              { label: `${data.reference}:${v.number}` },
+            );
+          }, 0);
+        }
+      }
     },
-    [verses.length, data.reference],
+    [verses, data.reference],
   );
 
   const togglePlay = () => {
@@ -163,11 +180,9 @@ export default function VerseReaderArtifact({ data, sendAsUser }: Props) {
       else focusTTS.pause();
       return;
     }
-    focusTTS.speak(
-      ttsId,
-      `Versículo ${current.number}. ${current.text}`,
-      { label: `${data.reference}:${current.number}` },
-    );
+    focusTTS.speak(ttsId, current.text, {
+      label: `${data.reference}:${current.number}`,
+    });
   };
 
   // Auto-advance when TTS finishes the current verse
