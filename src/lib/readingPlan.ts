@@ -47,6 +47,30 @@ export function computeTodayReading(weeks: any[]): TodayReading {
   };
 }
 
+/**
+ * Computes a specific reading by date (used for week-calendar picker).
+ * Returns null if the date is outside the plan range.
+ */
+export function computeReadingForDate(weeks: any[], date: Date): TodayReading | null {
+  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const start = new Date(PLAN_START.getFullYear(), PLAN_START.getMonth(), PLAN_START.getDate());
+  const diffDays = Math.floor((d.getTime() - start.getTime()) / 86_400_000);
+  if (diffDays < 0) return null;
+  const weekIdx = Math.floor(diffDays / 7);
+  if (weekIdx >= weeks.length) return null;
+  const dayIdx = diffDays % 7;
+  const w = weeks[weekIdx];
+  const day = w.days[dayIdx] ?? w.days[0];
+  return {
+    weekIdx,
+    weekNum: w.week,
+    dates: w.dates,
+    dayIdx,
+    day: day.day,
+    readings: day.r ?? [],
+  };
+}
+
 export function todayDayName(): string {
   // Map JS getDay (0=Sun..6=Sat) to plan day order (Sáb..Sex)
   const jsDay = new Date().getDay(); // 0..6
