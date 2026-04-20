@@ -260,10 +260,8 @@ serve(async (req) => {
       );
     }
 
-    if (false) return new Response(JSON.stringify({}),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY missing");
+
 
     const isPdf = Array.isArray(pagesText) && pagesText.length > 0;
 
