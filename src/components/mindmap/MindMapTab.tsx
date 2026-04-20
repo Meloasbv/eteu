@@ -334,6 +334,8 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
             analysis={analysis}
             activeSectionId={activeSectionId}
             onActiveSectionChange={setActiveSectionId}
+            mapId={aiMapId}
+            onEnsureSavedForShare={() => saveAiMap(analysis, aiMapId)}
             onBack={() => { setAnalysis(null); setAiMapId(null); setActiveSectionId(null); setMode("select"); }}
             onSwitchToMap={() => setMode("ai-canvas")}
           />

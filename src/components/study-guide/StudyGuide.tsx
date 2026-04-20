@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Download, Map, BookOpen, ChevronUp, ChevronDown } from "lucide-react";
+import { ArrowLeft, Download, Map, BookOpen, ChevronUp, ChevronDown, Share2 } from "lucide-react";
 import type { AnalysisResult } from "@/components/mindmap/types";
 import StudySummary from "./StudySummary";
 import StudySection from "./StudySection";
 import StudyQuiz from "./StudyQuiz";
 import { exportStudyGuidePDF } from "@/lib/exportStudyGuide";
+import ShareDialog from "@/components/mindmap/ShareDialog";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Props {
   analysis: AnalysisResult;
@@ -12,6 +14,10 @@ interface Props {
   onSwitchToMap?: () => void;
   activeSectionId?: string | null;
   onActiveSectionChange?: (id: string | null) => void;
+  /** Map id for sharing. If omitted, share button is hidden. */
+  mapId?: string | null;
+  /** Called when the dialog needs to ensure the map is saved (returns the id). */
+  onEnsureSavedForShare?: () => Promise<string | null>;
 }
 
 export default function StudyGuide({
@@ -20,11 +26,40 @@ export default function StudyGuide({
   onSwitchToMap,
   activeSectionId,
   onActiveSectionChange,
+  mapId,
+  onEnsureSavedForShare,
 }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
   const [allOpen, setAllOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [shareState, setShareState] = useState<{ isPublic: boolean; slug: string | null }>({
+    isPublic: false,
+    slug: null,
+  });
   const containerRef = useRef<HTMLDivElement>(null);
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  // Load share state when dialog opens
+  useEffect(() => {
+    if (!shareOpen || !mapId) return;
+    let alive = true;
+    (async () => {
+      const { data } = await supabase
+        .from("mind_maps")
+        .select("study_notes")
+        .eq("id", mapId)
+        .maybeSingle();
+      if (!alive) return;
+      const sn = (data?.study_notes as Record<string, unknown> | null) ?? {};
+      setShareState({
+        isPublic: Boolean((sn as any).is_public),
+        slug: ((sn as any).public_slug as string | null) ?? null,
+      });
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [shareOpen, mapId]);
 
   const concepts = analysis.key_concepts || [];
   const sectionId = (id: string) => `study-section-${id}`;
@@ -123,6 +158,21 @@ export default function StudyGuide({
               title="Ver como mapa mental"
             >
               <Map size={13} /> Mapa
+            </button>
+          )}
+          {(mapId !== undefined) && (
+            <button
+              onClick={() => setShareOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-ui transition-all hover:scale-105"
+              style={{
+                background: "hsl(var(--muted))",
+                border: "1px solid hsl(var(--border))",
+                color: "hsl(var(--foreground))",
+              }}
+              title="Compartilhar estudo"
+            >
+              <Share2 size={13} />
+              <span className="hidden sm:inline">Compartilhar</span>
             </button>
           )}
           <button
@@ -227,6 +277,18 @@ export default function StudyGuide({
           </div>
         )}
       </div>
+
+      {shareOpen && (
+        <ShareDialog
+          mapId={mapId ?? null}
+          title={analysis.main_theme || "Estudo"}
+          isPublic={shareState.isPublic}
+          publicSlug={shareState.slug}
+          onClose={() => setShareOpen(false)}
+          onUpdate={(isPublic, slug) => setShareState({ isPublic, slug })}
+          onEnsureSaved={onEnsureSavedForShare}
+        />
+      )}
     </div>
   );
 }
