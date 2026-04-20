@@ -1,169 +1,93 @@
-# Plano: PDFs Completos + Estudo Guiado
 
-## Diagnóstico do problema atual
 
-Hoje o `analyze-content` envia o PDF inteiro para a IA em 1-3 chamadas grandes. Em PDFs longos (Wesley = 19 slides densos) a IA atinge o teto de tokens da resposta e **comprime/corta** seções inteiras. Você viu isso: o mapa do Wesley perdeu metade dos pontos.
+## Leitura por voz (TTS) integrada ao Modo Foco
 
-A solução é **pré-organizar o texto mecanicamente** (sem IA) em grupos por título, e depois chamar a IA **uma vez por grupo em paralelo**. Cada chamada cuida de 1-3 páginas → cabe folgado no orçamento de tokens → nada é cortado.
-
-Como você escolheu **Estudo Guiado como modo padrão**, o foco da renderização vira a leitura linear estruturada. O Mapa Mental continua como toggle alternativo usando os mesmos dados.
+Adiciona uma camada de leitura em voz alta dentro do Modo Foco — visualmente coerente com a paleta neon (#00FF94 / #0B0F14) e os artifacts atuais. Tudo via Web Speech API (sem custo, sem chave) e em PT‑BR, com um mini‑player flutuante no topo do chat.
 
 ---
 
-## Bloco 1 — Pipeline em 2 etapas (resolve o corte)
+### 1. Núcleo: hook + player global
 
-### 1.1 Pré-processamento mecânico (sem IA)
+**`src/hooks/useFocusTTS.ts` (novo)**
+Hook singleton que controla `window.speechSynthesis`:
+- Estado: `playingId | null`, `isPaused`, `rate` (0.85, 1, 1.15, 1.3), `progress` (0–1).
+- API: `speak(id, text, opts?)`, `pause()`, `resume()`, `stop()`, `setRate(n)`.
+- Quebra automática em sentenças (`.`, `!`, `?`, `;`) para permitir pular frase e progresso visível.
+- Auto‑escolha de voz pt‑BR (primeira `voice.lang.startsWith("pt")`).
+- Persiste `rate` em `localStorage[focus-tts-rate]`.
+- Pausa automática se outro `id` chamar `speak()` (apenas um áudio por vez).
+- Limpeza no `unmount` global e quando o Foco fecha.
 
-Novo `src/lib/pdfPreprocess.ts`:
-
-```ts
-interface ExtractedSlide {
-  page: number;
-  title: string;            // 1ª linha substantiva
-  body: string;
-  hasQuote: boolean;
-  detectedVerses: string[];
-}
-
-interface SlideGroup {
-  title: string;
-  slides: ExtractedSlide[];
-  pageRange: [number, number];
-  totalChars: number;
-  isQuiz?: boolean;
-}
-
-export function preprocessPDF(pagesText: {page:number,text:string}[]): SlideGroup[]
-```
-
-Regras:
-- Slides consecutivos com mesmo título → mesmo grupo
-- Slide sem título detectado → continua o grupo anterior
-- `totalChars > 6000` força split
-- Keywords "quiz", "fixando", "perguntas" → grupo `__quiz__`
-
-### 1.2 Nova edge function `analyze-slide-group`
-
-Recebe **um grupo** (1-3 páginas) e devolve estrutura completa, sem cortar. Modelo: `google/gemini-2.5-flash`.
-
-Schema:
-```ts
-{
-  title, summary, category, source_slides,
-  core_idea,
-  key_points: string[],          // TODOS, sem cortar
-  subsections: [{subtitle, points, source_slides}],
-  verses, quotes, stories,        // já existentes
-  key_dates: [{date, event}],     // NOVO
-  key_people: [{name, role, points?}], // NOVO
-  application, impact_phrase,
-  highlights: string[]
-}
-```
-
-Prompt enfatiza: NÃO CORTAR. Extrair TODOS os pontos/datas/pessoas/citações literais.
-
-### 1.3 Orquestração paralela no front
-
-`src/lib/mindMapPipeline.ts` com `Promise.allSettled` + callback `onProgress`. Renderização incremental — cada grupo aparece assim que retorna.
-
-### 1.4 `analyze-content` legado
-
-Continua funcionando para texto colado/manual. Para PDF, front passa a usar: `extract-pdf` → `preprocessPDF` → N x `analyze-slide-group` em paralelo → assemble local.
-
-### 1.5 Loading progressivo
-
-`PipelineProgress.tsx` — lista de grupos com status ✓/⏳/○ + barra "3/11 seções".
+**`src/components/secondbrain/FocusTTSPlayer.tsx` (novo)**
+Mini‑player flutuante posicionado abaixo da top‑bar do `FocusWorkspace`, sticky, só aparece quando há `playingId`:
+- Largura `max-w-[760px]` centralizada, igual ao chat.
+- Card translúcido com borda neon (mesmo estilo do `ArtifactShell`).
+- Conteúdo: ícone pulsante + label do que toca (ex: "Lendo · João 3:16") + barra de progresso fina + controles `Pause/Play`, `Stop`, dropdown de velocidade `1x`, e `X`.
+- Animação de onda sonora (3 barrinhas verdes) quando ativo.
 
 ---
 
-## Bloco 2 — Estudo Guiado (modo padrão)
+### 2. Botão "Ouvir" reutilizável nos artifacts
 
-### Componentes (`src/components/study-guide/`)
+**`src/components/secondbrain/artifacts/ListenButton.tsx` (novo)**
+Componente compacto reutilizável:
+- Estado visual: idle (`Headphones`), playing (`Pause` + onda animada), paused (`Play`).
+- Usa `useFocusTTS` com `id` único por artifact (ex: `verse-${ref}`, `dev-${ref}`, `answer-${id}`).
+- Estilo idêntico ao `ArtifactAction`, variante `primary` quando ativo.
 
-- `StudyGuide.tsx` — container, gerencia activeSection
-- `StudySummary.tsx` — sumário clicável com âncoras
-- `StudySection.tsx` — título + core idea + subsections + datas + pessoas
-- `StudySubsection.tsx` — collapse/expand (Radix Collapsible, **fechado por default**)
-- `StudyPersonCard.tsx` — 👤 nome + role + bullets
-- `StudyDateTimeline.tsx` — timeline horizontal scrollable
-- `StudyQuoteBlock.tsx` — citação + autor + slide ref
-- `StudyVerseChips.tsx` — chips abrem VersePopover existente
-- `StudyQuiz.tsx` — quiz parseado do PDF (não inventado)
+**Integração nos artifacts existentes (cada um ganha "Ouvir" na barra de ações):**
+- `VerseArtifact.tsx` — lê o `text` do versículo. Botão antes de "Exegese".
+- `DevotionalTodayArtifact.tsx` — lê `verseText + summary` concatenados.
+- `ExegeseArtifact.tsx` — lê o resultado completo da exegese (após carregar).
+- `AnswerArtifact.tsx` — lê a resposta do assistente.
+- `ReadingArtifact.tsx` — botão "Ouvir leitura" abre o `ReadingFocusView` já existente (que tem TTS verso a verso) para preservar UX rica.
 
-### Toggle Guiado ↔ Mapa
-
-`MindMapTab.tsx`:
-```tsx
-const [view, setView] = useState<'guide'|'map'>('guide');
-```
-Header: `[ 📚 Estudo Guiado ] [ 🗺️ Mapa Mental ]`. Sincroniza `activeSection` ao trocar.
-
-### Visual
-
-Premium Dark/Gold já estabelecido. Cinzel headings + Crimson body. Cards de pessoa com avatar gold. Timeline com pontos `#c4a46a` sobre linha cinza.
-
-### Quiz auto-detectado
-
-Se grupo `__quiz__` existe, parse mecânico (regex "1.", "a)") → `StudyQuiz`. Se não existe, **não inventar**.
+**Mensagens de texto do assistente (não‑artifact)**
+No `FocusCommandChat.tsx`, ao lado do label "ASSISTENTE", aparece um `ListenButton` minúsculo (12px) que lê `m.text` corrido — útil para perguntas curtas e saudações.
 
 ---
 
-## Bloco 3 — Tipos e integração
+### 3. Comandos de voz no chat
 
-`src/components/mindmap/types.ts`:
-```ts
-export interface KeyDate { date: string; event: string; source_slide?: number }
-export interface KeyPerson { name: string; role: string; points?: string[]; source_slide?: number }
-```
-Estende `KeyConcept` e `AnalysisResult`. Persistência: `mind_maps.study_notes` (jsonb existente, sem migration).
+**`src/lib/focusIntent.ts`** ganha 3 atalhos:
+- `/^(parar|pausar|silenciar)\s+(leitura|voz|áudio)/i` → dispara `useFocusTTS.stop()` via custom event `focus-tts-stop`.
+- `/^(ler|ouvir)\s+em\s+voz/i` (sem argumento) → lê o último artifact/mensagem do assistente.
+- `/^(ler|ouvir)\s+(.+)/i` (com referência bíblica) → cria `verse` artifact e auto‑inicia leitura.
 
-`SharedMindMap.tsx` ganha o mesmo toggle.
+`FocusWorkspace` escuta `focus-tts-stop` e chama o hook.
 
 ---
 
-## Bloco 4 — Export PDF do Estudo Guiado
+### 4. Comportamento e detalhes finos
 
-`src/lib/exportStudyGuide.ts` com jsPDF:
-- Capa, sumário, seções com core idea destacada, bullets, citações em blockquote, timeline renderizada via canvas, quiz no final + gabarito.
-Botão no header do Estudo Guiado.
-
----
-
-## Arquivos
-
-| Arquivo | Ação |
-|---|---|
-| `src/lib/pdfPreprocess.ts` | NOVO |
-| `src/lib/mindMapPipeline.ts` | NOVO |
-| `supabase/functions/analyze-slide-group/index.ts` | NOVO |
-| `src/components/mindmap/PipelineProgress.tsx` | NOVO |
-| `src/components/study-guide/*` (9 arquivos) | NOVOS |
-| `src/lib/exportStudyGuide.ts` | NOVO |
-| `src/components/mindmap/types.ts` | + KeyDate, KeyPerson |
-| `src/components/mindmap/MindMapTab.tsx` | + toggle, padrão = guide |
-| `src/components/mindmap/MindMapInput.tsx` | usa novo pipeline para PDF |
-| `src/pages/SharedMindMap.tsx` | + toggle |
+- **Música de fundo**: ao iniciar TTS, volume do YouTube cai automaticamente para 30 % (via `useFocusMusic.changeVolume`); ao parar, restaura o valor anterior.
+- **Pomodoro**: TTS continua rodando independente do timer.
+- **Mobile**: o mini‑player respeita `safe-area-inset-bottom` do composer e fica acima dele; controles com `min-h-[40px]`.
+- **Iframes/PWA**: Web Speech API funciona sem libs externas, totalmente offline, sem custo.
+- **Reduced motion**: oculta a onda sonora animada se `prefers-reduced-motion`.
+- **Acessibilidade**: `aria-live="polite"` no player, `aria-label` em todos os botões.
 
 ---
 
-## Plano de execução em 3 fases
+### Arquivos
 
-1. **Fase 1 — Pipeline** (Bloco 1): pdfPreprocess + analyze-slide-group + mindMapPipeline + PipelineProgress. Resultado renderizado no Mapa Mental atual. **Você testa o Wesley aqui** e confirma que o corte sumiu antes de eu seguir.
-2. **Fase 2 — Estudo Guiado** (Bloco 2 + 3): componentes + toggle + vira padrão.
-3. **Fase 3 — Export PDF** (Bloco 4).
+**Novos (3):**
+- `src/hooks/useFocusTTS.ts`
+- `src/components/secondbrain/FocusTTSPlayer.tsx`
+- `src/components/secondbrain/artifacts/ListenButton.tsx`
+
+**Editados (7):**
+- `src/components/secondbrain/FocusWorkspace.tsx` — monta o `FocusTTSPlayer`, ducking de música, listener de stop.
+- `src/components/secondbrain/FocusCommandChat.tsx` — `ListenButton` ao lado do label "ASSISTENTE".
+- `src/components/secondbrain/artifacts/VerseArtifact.tsx`
+- `src/components/secondbrain/artifacts/DevotionalTodayArtifact.tsx`
+- `src/components/secondbrain/artifacts/ExegeseArtifact.tsx`
+- `src/components/secondbrain/artifacts/AnswerArtifact.tsx`
+- `src/components/secondbrain/artifacts/ReadingArtifact.tsx` (botão "Ouvir leitura focada")
+- `src/lib/focusIntent.ts` — comandos de voz.
 
 ---
 
-## Fora de escopo
+### Memória a salvar
+`mem://features/second-brain/focus-tts` — descrição do sistema TTS singleton, ducking de música, padrão de IDs por artifact.
 
-- Reordenar seções por drag
-- Anotações por seção (já existe Notebook)
-- IA inventar quiz quando PDF não tem (você foi explícito: não inventar)
-- Apresentação cinematográfica do Estudo Guiado (Mapa já tem)
-
----
-
-## Próximo passo
-
-Vou começar pela **Fase 1**. Quando terminar, paro e te aviso para testar o Wesley. Só depois sigo para Fase 2 e 3.
