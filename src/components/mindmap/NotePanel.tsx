@@ -1,9 +1,11 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import { X, ChevronLeft, ChevronRight, BookOpen, ChevronDown } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, BookOpen, ChevronDown, Sparkles, Loader2, FileText, Flame, Megaphone, Check } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
-import type { KeyConcept, VerseRef } from "./types";
+import type { KeyConcept, VerseRef, ConceptConnection, KeyPointDeep } from "./types";
 import { getCategoryColor, getCategoryName, verseRefString } from "./types";
 import VersePopover from "./VersePopover";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 // Regex to detect Bible references inline
 const VERSE_REGEX = /\b((?:Gn|Gên|Êx|Lv|Nm|Dt|Js|Jz|Rt|1Sm|2Sm|1Rs|2Rs|1Cr|2Cr|Ed|Ne|Et|Jó|Sl|Pv|Ec|Ct|Is|Jr|Lm|Ez|Dn|Os|Jl|Am|Ob|Jn|Mq|Na|Hc|Sf|Ag|Zc|Ml|Mt|Mc|Lc|Jo|At|Rm|1Co|2Co|Gl|Ef|Fp|Cl|1Ts|2Ts|1Tm|2Tm|Tt|Fm|Hb|Tg|1Pe|2Pe|1Jo|2Jo|3Jo|Jd|Ap|Gênesis|Êxodo|Levítico|Números|Deuteronômio|Josué|Juízes|Rute|Samuel|Reis|Crônicas|Esdras|Neemias|Ester|Salmos?|Provérbios|Eclesiastes|Cantares|Isaías|Jeremias|Lamentações|Ezequiel|Daniel|Oséias|Joel|Amós|Obadias|Jonas|Miquéias|Naum|Habacuque|Sofonias|Ageu|Zacarias|Malaquias|Mateus|Marcos|Lucas|João|Atos|Romanos|Coríntios|Gálatas|Efésios|Filipenses|Colossenses|Tessalonicenses|Timóteo|Tito|Filemom|Hebreus|Tiago|Pedro|Judas|Apocalipse)\.?\s*\d+[:.]\d+(?:\s*[-–]\s*\d+)?)\b/gi;
