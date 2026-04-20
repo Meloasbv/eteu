@@ -230,8 +230,6 @@ export default function MindMapCanvas({ analysis, mapId, onEnsureSavedForShare, 
     return () => { cancelled = true; };
   }, [mapId]);
   const [focusBranch, setFocusBranch] = useState<string | null>(null);
-  const [images, setImages] = useState<Record<string, string>>({});
-  const [loadingImages, setLoadingImages] = useState<Record<string, boolean>>({});
 
   const topicConcepts = useMemo(
     () => {
@@ -248,8 +246,8 @@ export default function MindMapCanvas({ analysis, mapId, onEnsureSavedForShare, 
   const selectedNodeId = openNoteIndex !== null ? `topic-${topicConcepts[openNoteIndex]?.id || openNoteIndex}` : null;
 
   const { nodes: initialNodes, edges: initialEdges } = useMemo(
-    () => buildFromAnalysis(analysis, selectedNodeId, images, loadingImages),
-    [analysis, selectedNodeId, images, loadingImages]
+    () => buildFromAnalysis(analysis, selectedNodeId),
+    [analysis, selectedNodeId]
   );
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -262,10 +260,12 @@ export default function MindMapCanvas({ analysis, mapId, onEnsureSavedForShare, 
   }, [nodes, edges, setNodes, setEdges]);
 
   useEffect(() => {
-    const { nodes: ln, edges: le } = buildFromAnalysis(analysis, selectedNodeId, images, loadingImages);
+    const { nodes: ln, edges: le } = buildFromAnalysis(analysis, selectedNodeId);
     setNodes(ln);
     setEdges(le);
-  }, [analysis, selectedNodeId, images, loadingImages]);
+  }, [analysis, selectedNodeId]);
+
+  // Image generation removed — the map shows only topic bubbles for fast scanning.
 
   // Generate AI images for the root + key topics in the background (non-blocking)
   useEffect(() => {
