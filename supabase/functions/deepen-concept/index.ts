@@ -39,28 +39,34 @@ async function ai(messages: any[], maxTokens = 4000) {
   return data.choices?.[0]?.message?.content || "";
 }
 
-const DEEP_PROMPT = (title: string, summary: string, peers: string[]) => `
-Você é um teólogo reformado. Vou te dar um conceito de um mapa mental e você vai gerar a CAMADA DE ESTUDO PROFUNDO.
+const DEEP_PROMPT = (title: string, summary: string, peers: string[], body: string) => `
+Você é um EXTRATOR/organizador de conteúdo. Vou te dar um conceito de um mapa mental e o conteúdo-base extraído do material original.
 
 CONCEITO: "${title}"
-${summary ? `Resumo atual: ${summary}\n` : ""}
-${peers.length ? `Outros conceitos no mesmo mapa: ${peers.join(", ")}\n` : ""}
+${summary ? `Resumo: ${summary}\n` : ""}
+${body ? `\nConteúdo-base do material original:\n${body}\n` : ""}
+${peers.length ? `\nOutros conceitos no mesmo mapa: ${peers.join(", ")}\n` : ""}
 
-TAREFA: Gere TRÊS blocos densos para estudo aprofundado.
+═══ REGRA SUPREMA — FIDELIDADE ═══
+- Trabalhe APENAS com o que está no conteúdo-base. Não invente doutrinas, autores ou citações que não aparecem.
+- Se o material é não-teológico (história, ciência, etc.), NÃO force vocabulário teológico.
+- Se o conteúdo-base é insuficiente para algum bloco, retorne string vazia / array vazio em vez de inventar.
 
-1. theological_analysis: 5 a 8 frases de análise teológica/doutrinária. Cite escolas (calvinismo, arminianismo, dispensacionalismo etc.), autores (Calvino, Edwards, Bavinck, Lutero etc.) ou correntes quando relevante. Aborde tensões, controvérsias e implicações doutrinárias. NÃO seja superficial.
+TAREFA: Gere TRÊS blocos de aprofundamento ESTRUTURAL (sem criar conteúdo novo):
 
-2. connections: 3 a 5 conexões com OUTROS conceitos do mapa (use apenas títulos da lista de peers acima). Para cada conexão, indique a relação ("complementa", "fundamenta", "contrasta com", "antecede", "ilumina"). Se não houver peers úteis, gere conexões com conceitos teológicos clássicos.
+1. theological_analysis: 4-7 frases que ORGANIZAM e RECONSTITUEM o argumento do material com mais detalhe — citando apenas autores/escolas/termos que JÁ APARECEM no conteúdo-base. Se nada aparece, escreva uma análise neutra extraída do próprio texto.
 
-3. reflection_questions: 4 a 6 perguntas reflexivas profundas, que provoquem meditação pessoal e exegética. Evite perguntas "sim/não".
+2. connections: 2-5 conexões com OUTROS conceitos do mapa (use apenas títulos da lista de peers). Para cada conexão, indique a relação observada NO MATERIAL ("complementa", "fundamenta", "contrasta com", "antecede", "ilumina"). Se não houver relação real, retorne array vazio. NÃO invente conexões com conceitos clássicos fora da lista.
+
+3. reflection_questions: 3-5 perguntas reflexivas DERIVADAS dos pontos do material (não perguntas genéricas). Cada pergunta deve referenciar uma ideia que aparece no conteúdo-base.
 
 RETORNE APENAS JSON válido:
 {
-  "theological_analysis": "string longa",
+  "theological_analysis": "string fiel ao material",
   "connections": [
     { "concept_title": "Título do peer", "relation": "complementa" }
   ],
-  "reflection_questions": ["pergunta?", "..."]
+  "reflection_questions": ["pergunta ancorada no material?"]
 }
 `;
 
@@ -131,8 +137,8 @@ serve(async (req) => {
     if (!mode || mode === "deep") {
       const peerList = Array.isArray(peers) ? peers.slice(0, 12) : [];
       const content = await ai([
-        { role: "system", content: DEEP_PROMPT(title, summary || "", peerList) },
-        { role: "user", content: "Gere o estudo profundo." },
+        { role: "system", content: DEEP_PROMPT(title, summary || "", peerList, body || "") },
+        { role: "user", content: "Gere o aprofundamento estrutural fiel ao material." },
       ], 4500);
       const parsed = safeJson(content) || {};
       return new Response(JSON.stringify({
