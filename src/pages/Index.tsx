@@ -203,7 +203,15 @@ export default function BiblePlan() {
 }
 
 function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string; accessCode: string | null; onLogout: () => void }) {
-  const [tab, setTab] = useState<"leitura" | "devocional" | "agenda" | "anotacoes" | "biblioteca" | "cerebro">("leitura");
+  const [tab, setTab] = useState<"leitura" | "devocional" | "anotacoes" | "biblioteca" | "cerebro">(() => {
+    try {
+      const saved = localStorage.getItem("fascinacao-active-tab");
+      // legacy redirect: agenda → cerebro
+      if (saved === "agenda") return "cerebro";
+      if (saved === "leitura" || saved === "devocional" || saved === "anotacoes" || saved === "biblioteca" || saved === "cerebro") return saved;
+    } catch {}
+    return "leitura";
+  });
   const [activeWeek, setActiveWeek] = useState(0);
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [saved, setSaved] = useState(false);
@@ -230,9 +238,9 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
   useEffect(() => {
     const newTitle = tab === "leitura" ? "Plano de Leitura"
       : tab === "devocional" ? "Devocionais"
-      : tab === "agenda" ? "Agenda"
       : tab === "cerebro" ? "Segundo Cérebro"
       : "Estudo";
+    try { localStorage.setItem("fascinacao-active-tab", tab); } catch {}
     if (newTitle !== displayTitle) {
       setTitleFading(true);
       setTimeout(() => {
@@ -342,7 +350,6 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
   const TABS: { key: typeof tab; icon: React.ReactNode; label: string }[] = [
     { key: "leitura", icon: <BookOpen size={22} />, label: "Leitura" },
     { key: "devocional", icon: <Flame size={22} />, label: "Devocional" },
-    { key: "agenda", icon: <Calendar size={22} />, label: "Agenda" },
     { key: "anotacoes", icon: <PenLine size={22} />, label: "Estudo" },
     { key: "cerebro", icon: <Brain size={22} />, label: "Cérebro" },
   ];
@@ -582,9 +589,6 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
             }}
           />
         )}
-
-        {/* ── AGENDA TAB ── */}
-        {tab === "agenda" && <WeekSchedule userCodeId={userCodeId} />}
 
         {/* ── ESTUDO TAB ── */}
         {tab === "anotacoes" && <StudyTab userCodeId={userCodeId} />}
