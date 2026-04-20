@@ -56,6 +56,9 @@ const MODES: { key: FocusPanelKey; label: string; icon: any }[] = [
 export default function FocusWorkspace({ open, onClose, tab, setTab, userCodeId, weeks, devotionals }: Props) {
   const [sidebarOpen, setSidebarOpen] = useState(false); // mobile drawer
 
+  // Tool overlay (mind map / notebook etc.)
+  const [activeTool, setActiveTool] = useState<FocusOpenToolDetail | null>(null);
+
   // Pomodoro
   const [phase, setPhase] = useState<"focus" | "break">("focus");
   const [secondsLeft, setSecondsLeft] = useState(POMODORO_MIN.focus * 60);
@@ -148,14 +151,30 @@ export default function FocusWorkspace({ open, onClose, tab, setTab, userCodeId,
     };
   }, []);
 
+  // Listen for "focus-open-tool" events dispatched from artifacts/sidebar
+  useEffect(() => {
+    if (!open) return;
+    const onOpenTool = (e: Event) => {
+      const detail = (e as CustomEvent<FocusOpenToolDetail>).detail;
+      if (!detail) return;
+      setActiveTool(detail);
+      haptic("medium");
+    };
+    window.addEventListener("focus-open-tool", onOpenTool as EventListener);
+    return () => window.removeEventListener("focus-open-tool", onOpenTool as EventListener);
+  }, [open]);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !document.fullscreenElement) onClose();
+      if (e.key === "Escape") {
+        if (activeTool) { setActiveTool(null); return; }
+        if (!document.fullscreenElement) onClose();
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  }, [open, onClose, activeTool]);
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
