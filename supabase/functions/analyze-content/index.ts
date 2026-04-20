@@ -122,6 +122,23 @@ RETORNE APENAS JSON válido:
   "child_highlights": ["1 a 3 frases citáveis e memoráveis"]
 }`;
 
+const SLIDES_SUMMARY_PROMPT = `Você recebe os slides de um PDF de aula bíblica, marcados [[SLIDE N]].
+TAREFA: Para CADA slide, gere um resumo curto e fiel ao conteúdo daquele slide.
+
+REGRAS:
+1. UM objeto por slide, sem exceção. Se o slide é só capa/transição, ainda assim gere algo (ex: "Capa da aula").
+2. summary: máx 22 palavras, descrevendo o ponto principal do slide.
+3. title: 2-5 palavras (rótulo do slide). Se não houver título visível, infira.
+4. Mantenha a ORDEM dos slides.
+
+RETORNE APENAS JSON válido:
+{
+  "slides": [
+    { "slide": 1, "title": "Capa", "summary": "Apresentação da aula sobre Oséias por Alessandro Caetano." },
+    { "slide": 2, "title": "Contexto histórico", "summary": "Israel no século VIII a.C., reinado de Jeroboão II, idolatria generalizada." }
+  ]
+}`;
+
 const SIMPLE_PROMPT = `Você é um especialista em análise bíblica. Organize o texto em mapa mental com poucos topics densos.
 
 CATEGORIAS: teologia, cristologia, pneumatologia, exegese, contexto, aplicacao, escatologia, soteriologia
