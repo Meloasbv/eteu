@@ -214,7 +214,11 @@ function PresentationCanvas({ analysis, onExit }: PresentationModeProps) {
     const s = sizeMap[node.type || "topicCard"];
     const cx = node.position.x + s.w / 2;
     const cy = node.position.y + s.h / 2;
-    const zoom = stop.kind === "root" ? 0.85 : stop.kind === "topic-intro" ? 1.05 : 1.25;
+    const zoom =
+      stop.kind === "root" ? 0.85 :
+      stop.kind === "slides-overview" ? 0.75 :
+      stop.kind === "topic-intro" ? 1.05 :
+      1.25;
     setCenter(cx, cy, { zoom, duration: instant ? 0 : 800 });
 
     setNodes(ns => ns.map(n => ({
