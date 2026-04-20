@@ -1,13 +1,14 @@
 import { useState, useRef, useEffect, useCallback, ReactNode } from "react";
-import { ArrowUp, BookOpen, Flame, PenLine, Brain, Sparkles, X } from "lucide-react";
+import { ArrowUp, BookOpen, Flame, PenLine, Brain, Sparkles, X, Maximize2, Minimize2 } from "lucide-react";
 import { haptic } from "@/hooks/useHaptic";
 import { toast } from "@/hooks/use-toast";
 
-type Role = "user" | "assistant" | "panel";
+type Role = "user" | "assistant" | "tool";
 interface Msg {
   role: Role;
   content?: string;
   panelKey?: FocusPanelKey;
+  expanded?: boolean;
 }
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/study-chat`;
@@ -21,15 +22,15 @@ const QUICK_ACTIONS: { id: FocusPanelKey; label: string; icon: any; hint: string
   { id: "cerebro", label: "Capturar", icon: Brain, hint: "Pensamento" },
 ];
 
-const PANEL_META: Record<FocusPanelKey, { label: string; icon: any }> = {
-  leitura: { label: "Leitura do dia", icon: BookOpen },
-  devocional: { label: "Devocional", icon: Flame },
-  anotacoes: { label: "Caderno & Mapa", icon: PenLine },
-  cerebro: { label: "Segundo Cérebro", icon: Brain },
+const PANEL_META: Record<FocusPanelKey, { label: string; icon: any; subtitle: string }> = {
+  leitura: { label: "Leitura do dia", icon: BookOpen, subtitle: "Plano bíblico ativo" },
+  devocional: { label: "Devocional", icon: Flame, subtitle: "Meditação guiada" },
+  anotacoes: { label: "Caderno & Mapa", icon: PenLine, subtitle: "Workspace de estudo" },
+  cerebro: { label: "Segundo Cérebro", icon: Brain, subtitle: "Captura de pensamentos" },
 };
 
 interface Props {
-  /** Render the actual platform tab inline inside a chat balloon */
+  /** Render the actual platform tab inline inside the conversation flow */
   renderPanel: (key: FocusPanelKey) => ReactNode;
   /** Notify parent which panel is currently focused so it can switch the underlying tab */
   onPanelFocus: (key: FocusPanelKey) => void;
@@ -38,16 +39,20 @@ interface Props {
 const PALETTE = {
   bg: "#0B0F14",
   surface: "#11161D",
+  surfaceLight: "#1A2129",
   border: "#1F2730",
+  borderSoft: "#161C24",
   primary: "#00FF94",
   primarySoft: "#1DB954",
   text: "#E6EDF3",
   textDim: "#7A8A99",
+  textFaint: "#4A5868",
 };
 
 /**
- * GPT-style command center: chat thread where panels (Leitura/Devocional/etc.)
- * appear inline as bubble cards (no overlay). Mobile-responsive.
+ * Chat-native spiritual workspace.
+ * Tools open as inline artifact blocks in the conversation stream — never as
+ * detached cards or modals. Two states per tool: compact / expanded.
  */
 export default function FocusCommandChat({ renderPanel, onPanelFocus }: Props) {
   const [messages, setMessages] = useState<Msg[]>([]);
@@ -67,19 +72,23 @@ export default function FocusCommandChat({ renderPanel, onPanelFocus }: Props) {
     return null;
   };
 
-  const openPanelInChat = useCallback((key: FocusPanelKey) => {
+  const openToolInChat = useCallback((key: FocusPanelKey) => {
     haptic("medium");
     onPanelFocus(key);
     setMessages(prev => {
-      // Avoid duplicating the same panel back-to-back
       const last = prev[prev.length - 1];
-      if (last?.role === "panel" && last.panelKey === key) return prev;
-      return [...prev, { role: "panel", panelKey: key }];
+      if (last?.role === "tool" && last.panelKey === key) return prev;
+      return [...prev, { role: "tool", panelKey: key, expanded: false }];
     });
   }, [onPanelFocus]);
 
-  const removePanel = (idx: number) => {
+  const removeTool = (idx: number) => {
     setMessages(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const toggleExpand = (idx: number) => {
+    haptic("light");
+    setMessages(prev => prev.map((m, i) => i === idx ? { ...m, expanded: !m.expanded } : m));
   };
 
   const send = useCallback(async (text: string) => {
@@ -88,7 +97,7 @@ export default function FocusCommandChat({ renderPanel, onPanelFocus }: Props) {
 
     const intent = detectIntent(trimmed);
     if (intent && trimmed.split(/\s+/).length <= 4) {
-      openPanelInChat(intent);
+      openToolInChat(intent);
       setInput("");
       if (taRef.current) taRef.current.style.height = "44px";
       return;
@@ -112,7 +121,7 @@ export default function FocusCommandChat({ renderPanel, onPanelFocus }: Props) {
     };
 
     try {
-      const onlyChat = next.filter(m => m.role !== "panel").map(m => ({ role: m.role, content: m.content || "" }));
+      const onlyChat = next.filter(m => m.role !== "tool").map(m => ({ role: m.role, content: m.content || "" }));
       const resp = await fetch(CHAT_URL, {
         method: "POST",
         headers: {
@@ -151,7 +160,7 @@ export default function FocusCommandChat({ renderPanel, onPanelFocus }: Props) {
     } finally {
       setIsLoading(false);
     }
-  }, [messages, isLoading, openPanelInChat]);
+  }, [messages, isLoading, openToolInChat]);
 
   const onTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);
@@ -163,27 +172,27 @@ export default function FocusCommandChat({ renderPanel, onPanelFocus }: Props) {
 
   return (
     <div className="h-full w-full flex flex-col" style={{ background: PALETTE.bg, color: PALETTE.text }}>
-      {/* Thread (scrollable) */}
+      {/* Conversation stream (scrollable) */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden focus-thread">
-        <div className="mx-auto w-full max-w-[680px] px-4 sm:px-6 py-6 pb-4">
+        <div className="mx-auto w-full max-w-[760px] px-4 sm:px-8 py-8 pb-6">
           {empty ? (
             <div className="min-h-[60vh] flex flex-col items-center justify-center text-center">
               <div
-                className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5"
+                className="w-12 h-12 rounded-2xl flex items-center justify-center mb-6"
                 style={{
                   background: PALETTE.surface,
-                  border: `1px solid ${PALETTE.primary}55`,
-                  boxShadow: `0 0 30px -8px ${PALETTE.primary}55`,
+                  border: `1px solid ${PALETTE.primary}33`,
+                  boxShadow: `0 0 24px -10px ${PALETTE.primary}66`,
                 }}
               >
-                <Sparkles size={22} style={{ color: PALETTE.primary }} strokeWidth={2} />
+                <Sparkles size={20} style={{ color: PALETTE.primary }} strokeWidth={2} />
               </div>
-              <h2 className="text-[24px] sm:text-[30px] font-bold tracking-tight leading-tight mb-2"
-                style={{ color: PALETTE.text }}>
+              <h2 className="text-[26px] sm:text-[32px] font-bold tracking-tight leading-tight mb-2"
+                style={{ color: PALETTE.text, fontFamily: "'Crimson Text', Georgia, serif" }}>
                 O que quer fazer agora?
               </h2>
-              <p className="text-[13px] mb-7 max-w-md" style={{ color: PALETTE.textDim }}>
-                Pergunte, peça uma exegese, ou abra qualquer modo. Tudo flui no mesmo chat.
+              <p className="text-[13px] mb-8 max-w-md leading-relaxed" style={{ color: PALETTE.textDim }}>
+                Pergunte, peça uma exegese, ou abra qualquer ferramenta — tudo flui inline neste mesmo espaço.
               </p>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full">
@@ -192,18 +201,18 @@ export default function FocusCommandChat({ renderPanel, onPanelFocus }: Props) {
                   return (
                     <button
                       key={qa.id}
-                      onClick={() => openPanelInChat(qa.id)}
-                      className="group flex flex-col items-start gap-2 p-3 rounded-xl text-left transition-all hover:scale-[1.03] active:scale-95"
+                      onClick={() => openToolInChat(qa.id)}
+                      className="group flex flex-col items-start gap-2 p-3 rounded-xl text-left transition-all hover:translate-y-[-2px] active:scale-95"
                       style={{
                         background: PALETTE.surface,
-                        border: `1px solid ${PALETTE.border}`,
+                        border: `1px solid ${PALETTE.borderSoft}`,
                       }}
                     >
                       <div
                         className="w-7 h-7 rounded-lg flex items-center justify-center transition-all group-hover:shadow-lg"
                         style={{
-                          background: `${PALETTE.primary}14`,
-                          border: `1px solid ${PALETTE.primary}33`,
+                          background: `${PALETTE.primary}10`,
+                          border: `1px solid ${PALETTE.primary}22`,
                           color: PALETTE.primary,
                         }}
                       >
@@ -219,47 +228,60 @@ export default function FocusCommandChat({ renderPanel, onPanelFocus }: Props) {
               </div>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-6">
               {messages.map((m, i) => {
-                if (m.role === "panel" && m.panelKey) {
+                /* ── INLINE TOOL ARTIFACT ─────────────────────────────────
+                   Renders flush with the conversation stream. No bubble
+                   chrome, no centered card, no detached panel.            */
+                if (m.role === "tool" && m.panelKey) {
                   const meta = PANEL_META[m.panelKey];
                   const Icon = meta.icon;
+                  const expanded = !!m.expanded;
                   return (
-                    <div
-                      key={i}
-                      className="rounded-2xl overflow-hidden focus-panel-bubble"
-                      style={{
-                        background: PALETTE.surface,
-                        border: `1px solid ${PALETTE.primary}55`,
-                        boxShadow: `0 0 0 1px ${PALETTE.primary}11, 0 12px 40px -12px ${PALETTE.primary}33`,
-                      }}
-                    >
-                      <div
-                        className="flex items-center gap-2 px-3 py-2 border-b"
-                        style={{ borderColor: PALETTE.border, background: `linear-gradient(180deg, ${PALETTE.primary}0a, transparent)` }}
-                      >
+                    <div key={i} className="focus-tool-enter" onMouseEnter={() => onPanelFocus(m.panelKey!)}>
+                      {/* Slim header strip — no card, just a label row */}
+                      <div className="flex items-center gap-2.5 mb-2 px-1">
                         <div
-                          className="w-6 h-6 rounded-md flex items-center justify-center shrink-0"
-                          style={{ background: `${PALETTE.primary}14`, color: PALETTE.primary, border: `1px solid ${PALETTE.primary}33` }}
+                          className="w-5 h-5 rounded-md flex items-center justify-center shrink-0"
+                          style={{ background: `${PALETTE.primary}10`, color: PALETTE.primary }}
                         >
-                          <Icon size={12} />
+                          <Icon size={11} strokeWidth={2.2} />
                         </div>
-                        <span className="text-[11px] font-bold uppercase tracking-[1.5px] flex-1 truncate" style={{ color: PALETTE.primary }}>
-                          {meta.label}
-                        </span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[11px] font-bold uppercase tracking-[1.5px] leading-none" style={{ color: PALETTE.primary }}>
+                            {meta.label}
+                          </p>
+                          <p className="text-[10px] mt-0.5 leading-none" style={{ color: PALETTE.textFaint }}>
+                            {meta.subtitle}
+                          </p>
+                        </div>
                         <button
-                          onClick={() => removePanel(i)}
-                          className="w-6 h-6 rounded-md flex items-center justify-center transition-colors"
+                          onClick={() => toggleExpand(i)}
+                          className="w-7 h-7 rounded-md flex items-center justify-center transition-colors hover:bg-white/5"
                           style={{ color: PALETTE.textDim }}
-                          aria-label="Fechar painel"
+                          aria-label={expanded ? "Recolher" : "Expandir"}
+                          title={expanded ? "Modo compacto" : "Expandir workspace"}
+                        >
+                          {expanded ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
+                        </button>
+                        <button
+                          onClick={() => removeTool(i)}
+                          className="w-7 h-7 rounded-md flex items-center justify-center transition-colors hover:bg-white/5"
+                          style={{ color: PALETTE.textDim }}
+                          aria-label="Fechar ferramenta"
                         >
                           <X size={12} />
                         </button>
                       </div>
+
+                      {/* Tool body — flush, native, no border, smooth height transition */}
                       <div
-                        className="bg-background"
-                        style={{ height: "min(70vh, 560px)" }}
-                        onMouseEnter={() => onPanelFocus(m.panelKey!)}
+                        className="rounded-xl overflow-hidden bg-background focus-tool-body"
+                        style={{
+                          height: expanded ? "min(82vh, 720px)" : "min(48vh, 420px)",
+                          border: `1px solid ${PALETTE.borderSoft}`,
+                          transition: "height 0.42s cubic-bezier(0.22, 1, 0.36, 1)",
+                        }}
                       >
                         <div className="h-full w-full overflow-auto">
                           {renderPanel(m.panelKey)}
@@ -269,17 +291,36 @@ export default function FocusCommandChat({ renderPanel, onPanelFocus }: Props) {
                   );
                 }
 
+                /* ── CHAT MESSAGE ──────────────────────────────────────── */
                 const isUser = m.role === "user";
+                if (isUser) {
+                  return (
+                    <div key={i} className="flex justify-end focus-msg-enter">
+                      <div
+                        className="max-w-[85%] px-4 py-2.5 rounded-2xl text-[14px] leading-relaxed whitespace-pre-wrap"
+                        style={{
+                          background: `${PALETTE.primary}10`,
+                          border: `1px solid ${PALETTE.primary}26`,
+                          color: PALETTE.text,
+                        }}
+                      >
+                        {m.content}
+                      </div>
+                    </div>
+                  );
+                }
+                /* Assistant — flush text, no bubble chrome, native to the stream */
                 return (
-                  <div key={i} className={`flex ${isUser ? "justify-end" : "justify-start"} focus-msg-enter`}>
+                  <div key={i} className="focus-msg-enter">
+                    <div className="flex items-center gap-2 mb-1.5 px-0.5">
+                      <div className="w-4 h-4 rounded-md flex items-center justify-center" style={{ background: `${PALETTE.primary}14`, color: PALETTE.primary }}>
+                        <Sparkles size={9} strokeWidth={2.4} />
+                      </div>
+                      <p className="text-[10px] font-bold uppercase tracking-[1.4px]" style={{ color: PALETTE.textDim }}>Assistente</p>
+                    </div>
                     <div
-                      className="max-w-[85%] px-4 py-3 rounded-2xl text-[14px] leading-relaxed whitespace-pre-wrap"
-                      style={{
-                        background: isUser ? `${PALETTE.primary}14` : PALETTE.surface,
-                        border: isUser ? `1px solid ${PALETTE.primary}44` : `1px solid ${PALETTE.border}`,
-                        color: PALETTE.text,
-                        fontFamily: !isUser ? "'Crimson Text', Georgia, serif" : undefined,
-                      }}
+                      className="text-[15px] leading-[1.75] whitespace-pre-wrap pl-6"
+                      style={{ color: PALETTE.text, fontFamily: "'Crimson Text', Georgia, serif" }}
                     >
                       {m.content}
                     </div>
@@ -287,10 +328,10 @@ export default function FocusCommandChat({ renderPanel, onPanelFocus }: Props) {
                 );
               })}
               {isLoading && messages[messages.length - 1]?.role !== "assistant" && (
-                <div className="flex gap-1.5 px-4 py-3 rounded-2xl w-fit" style={{ background: PALETTE.surface, border: `1px solid ${PALETTE.border}` }}>
-                  <span className="w-2 h-2 rounded-full animate-bounce" style={{ background: PALETTE.primary, animationDelay: "0ms" }} />
-                  <span className="w-2 h-2 rounded-full animate-bounce" style={{ background: PALETTE.primary, animationDelay: "150ms" }} />
-                  <span className="w-2 h-2 rounded-full animate-bounce" style={{ background: PALETTE.primary, animationDelay: "300ms" }} />
+                <div className="flex gap-1.5 pl-6 focus-msg-enter">
+                  <span className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: PALETTE.primary, animationDelay: "0ms" }} />
+                  <span className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: PALETTE.primary, animationDelay: "150ms" }} />
+                  <span className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: PALETTE.primary, animationDelay: "300ms" }} />
                 </div>
               )}
               <div ref={endRef} />
@@ -301,12 +342,12 @@ export default function FocusCommandChat({ renderPanel, onPanelFocus }: Props) {
 
       {/* Composer (sticky bottom) */}
       <div
-        className="shrink-0 px-3 sm:px-4 pt-2 pb-[max(env(safe-area-inset-bottom),12px)] border-t"
-        style={{ background: PALETTE.bg, borderColor: PALETTE.border }}
+        className="shrink-0 px-3 sm:px-6 pt-2 pb-[max(env(safe-area-inset-bottom),12px)]"
+        style={{ background: PALETTE.bg }}
       >
-        <div className="mx-auto w-full max-w-[680px]">
+        <div className="mx-auto w-full max-w-[760px]">
           <div
-            className="flex items-end gap-2 p-1.5 rounded-2xl transition-all"
+            className="flex items-end gap-2 p-1.5 rounded-2xl transition-all focus-composer"
             style={{
               background: PALETTE.surface,
               border: `1px solid ${PALETTE.border}`,
@@ -340,8 +381,8 @@ export default function FocusCommandChat({ renderPanel, onPanelFocus }: Props) {
               <ArrowUp size={17} strokeWidth={2.6} />
             </button>
           </div>
-          <p className="text-[10px] text-center mt-1.5" style={{ color: PALETTE.textDim }}>
-            Enter envia · Shift+Enter quebra linha
+          <p className="text-[10px] text-center mt-1.5" style={{ color: PALETTE.textFaint }}>
+            Enter envia · Shift+Enter quebra linha · Tudo abre inline
           </p>
         </div>
       </div>
@@ -352,17 +393,22 @@ export default function FocusCommandChat({ renderPanel, onPanelFocus }: Props) {
         .focus-thread::-webkit-scrollbar-thumb { background: ${PALETTE.border}; border-radius: 3px; }
         .focus-thread { scroll-behavior: smooth; }
 
+        .focus-composer:focus-within {
+          border-color: ${PALETTE.primary}55 !important;
+          box-shadow: 0 0 0 3px ${PALETTE.primary}11;
+        }
+
         @keyframes focus-msg-in {
-          from { opacity: 0; transform: translateY(8px); }
+          from { opacity: 0; transform: translateY(6px); }
           to { opacity: 1; transform: translateY(0); }
         }
-        .focus-msg-enter { animation: focus-msg-in 0.28s ease-out; }
+        .focus-msg-enter { animation: focus-msg-in 0.32s cubic-bezier(0.22, 1, 0.36, 1); }
 
-        @keyframes focus-panel-in {
-          from { opacity: 0; transform: translateY(20px) scale(0.97); }
-          to { opacity: 1; transform: translateY(0) scale(1); }
+        @keyframes focus-tool-in {
+          from { opacity: 0; transform: translateY(14px); }
+          to { opacity: 1; transform: translateY(0); }
         }
-        .focus-panel-bubble { animation: focus-panel-in 0.42s cubic-bezier(0.22, 1, 0.36, 1); transform-origin: top center; }
+        .focus-tool-enter { animation: focus-tool-in 0.48s cubic-bezier(0.22, 1, 0.36, 1); }
       `}</style>
     </div>
   );

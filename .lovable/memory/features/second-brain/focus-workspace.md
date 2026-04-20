@@ -19,12 +19,16 @@ type: feature
 
 Gradientes só em: glow leve do anel/botão Pomodoro, borda dos painéis-balão, sombra do botão enviar. **Sem ciclo de paletas.**
 
-## Comportamento dos painéis (balão no chat)
-1. Estado vazio: hero "O que quer fazer agora?" + 4 quick chips.
-2. Clicar num chip OU digitar "leitura/devocional/caderno/capturar" (≤4 palavras) injeta uma mensagem `{ role: "panel", panelKey }` no thread.
-3. O balão tem header com ícone+título+X (fechar = remover do thread), e altura `min(70vh, 560px)` com scroll interno.
-4. `renderTab(key)` no Index.tsx é `(key) => { if (tab !== key) setTab(key); return renderContent(); }` — quando o usuário foca um painel, troca a tab subjacente e renderiza o conteúdo real.
-5. Não há overlay, não há drag — apenas balão que aparece com animação `focus-panel-in` (slide+scale, cubic-bezier 0.22, 1, 0.36, 1).
+## Comportamento dos blocos-ferramenta (artifacts inline no chat)
+1. Estado vazio: hero "O que quer fazer agora?" + 4 quick chips em grid.
+2. Clicar num chip OU digitar "leitura/devocional/caderno/capturar" (≤4 palavras) injeta `{ role: "tool", panelKey, expanded: false }` no stream.
+3. **Sem chrome de balão**. Header é uma faixa fina (ícone + label uppercase + subtitle + botões expand/close) acima do corpo da ferramenta. Estilo Claude artifacts — flush com o stream, não card flutuante.
+4. **Dois estados por bloco**: compact (`min(48vh, 420px)`) e expanded (`min(82vh, 720px)`), alternados pelo botão Maximize/Minimize com transição de altura 0.42s cubic-bezier(0.22, 1, 0.36, 1).
+5. Mensagens do assistente também são flush (sem balão), com label "ASSISTENTE" + texto serif Crimson e indent de 24px — parece resposta nativa do workspace.
+6. Mensagens do user mantêm bolha sutil verde-translúcida à direita.
+7. `renderTab(key)` no Index.tsx é `(key) => { if (tab !== key) setTab(key); return renderContent(); }`.
+8. Animação de entrada: `focus-tool-in` (fade + translateY 14px, 0.48s).
+9. Composer com focus ring verde-neon translúcido ao focar.
 
 ## Mobile
 - Sidebar vira drawer com overlay escuro (botão Menu no top-bar).
