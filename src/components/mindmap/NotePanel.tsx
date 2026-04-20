@@ -167,9 +167,17 @@ export default function NotePanel({
     setDeepLoading(true);
     setDeepOpen(true);
     try {
-      const body = [coreIdea, detailedExplanation, ...keyPoints].filter(Boolean).join("\n");
+      const sourceBody = [
+        coreIdea,
+        detailedExplanation,
+        historicalContext,
+        application,
+        ...keyPoints,
+        ...examples,
+        ...verses.map(v => v.ref + (v.context ? `: ${v.context}` : "")),
+      ].filter(Boolean).join("\n");
       const { data, error } = await supabase.functions.invoke("deepen-concept", {
-        body: { mode: "deep", title: concept.title, summary: body, peers: peerTitles },
+        body: { mode: "deep", title: concept.title, summary: coreIdea, body: sourceBody, peers: peerTitles },
       });
       if (error) throw error;
       setDeepData(data);
