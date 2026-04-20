@@ -59,21 +59,22 @@ export default function MindMapListArtifact({ data, userCodeId, sendAsUser }: Pr
   return (
     <ArtifactShell
       icon={<Brain size={13} />}
-      label="Seus mapas mentais"
+      label="Seus estudos"
       badge={maps ? `${maps.length}` : undefined}
     >
       {!maps ? (
         <div className="flex items-center gap-2 py-3 text-[13px]" style={{ color: P.textDim }}>
-          <Loader2 size={13} className="animate-spin" /> Carregando seus mapas…
+          <Loader2 size={13} className="animate-spin" /> Carregando seus estudos…
         </div>
       ) : maps.length === 0 ? (
         <p className="text-[13px] mb-4" style={{ color: P.textDim }}>
-          Você ainda não tem mapas. Crie o primeiro para organizar visualmente um tema bíblico.
+          Nenhum estudo ainda. Suba um PDF ou crie um mapa para começar.
         </p>
       ) : (
         <div className="space-y-2 mb-4">
           {maps.map((m) => {
             const nodeCount = Array.isArray(m.nodes) ? m.nodes.length : 0;
+            const isAi = m.source_type === "ai";
             return (
               <button
                 key={m.id}
@@ -89,7 +90,7 @@ export default function MindMapListArtifact({ data, userCodeId, sendAsUser }: Pr
                     {m.title}
                   </p>
                   <p className="text-[10.5px] mt-0.5" style={{ color: P.textDim }}>
-                    {nodeCount} nodes · {m.source_type === "pdf" ? "PDF" : "Manual"} · {fmtAgo(m.updated_at)}
+                    {isAi ? "Estudo guiado" : `${nodeCount} nodes · Manual`} · {fmtAgo(m.updated_at)}
                   </p>
                 </div>
                 <ExternalLink size={13} style={{ color: P.primary }} />
@@ -100,10 +101,10 @@ export default function MindMapListArtifact({ data, userCodeId, sendAsUser }: Pr
       )}
       <div className="flex flex-wrap gap-2">
         <ArtifactAction onClick={() => openFocusTool({ tool: "mindmap" })} variant="primary">
-          <Plus size={11} /> Novo / Upload PDF
+          <Plus size={11} /> Novo · Upload PDF
         </ArtifactAction>
         <ArtifactAction onClick={() => openFocusTool({ tool: "mindmap" })}>
-          <FileUp size={11} /> Abrir editor completo
+          <FileUp size={11} /> Abrir biblioteca
         </ArtifactAction>
       </div>
     </ArtifactShell>

@@ -88,12 +88,12 @@ export function detectIntentLocal(raw: string): IntentResult | null {
     };
   }
 
-  // Mind map shortcuts
-  if (wordCount <= 5 && /\b(mapa(?:s)? mental|mapa(?:s)? mentais|meus mapas)\b/i.test(lower)) {
+  // Study / mind map shortcuts
+  if (wordCount <= 5 && /\b(estudo(?:s)?|mapa(?:s)? mental|mapa(?:s)? mentais|meus mapas|meus estudos|estudo guiado)\b/i.test(lower)) {
     return {
       intent: "mapa_mental",
       params: { action: "list" },
-      response_text: "Seus mapas mentais:",
+      response_text: "Seus estudos:",
     };
   }
 
@@ -164,7 +164,7 @@ export async function routeIntent(text: string): Promise<IntentResult> {
 export const LOADING_MESSAGES: Record<FocusIntent, string> = {
   leitura: "Buscando sua leitura...",
   devocional: "Preparando sua meditação...",
-  mapa_mental: "Carregando mapas...",
+  mapa_mental: "Carregando seus estudos...",
   nota: "Salvando sua nota...",
   cerebro: "Analisando seu pensamento...",
   exegese: "Consultando o texto original...",
