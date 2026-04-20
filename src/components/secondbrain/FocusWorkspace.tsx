@@ -7,8 +7,9 @@ import {
 import { haptic } from "@/hooks/useHaptic";
 import { toast } from "@/hooks/use-toast";
 import { useFocusMusic, FOCUS_TRACKS, type FocusTrackKey } from "@/hooks/useFocusMusic";
+import FocusCommandChat, { type FocusPanelKey } from "./FocusCommandChat";
+import FloatingPanel from "./FloatingPanel";
 
-// Palettes cycle through the session (dopaminergic color shifts)
 const PALETTES = [
   { key: "deep", label: "Profundo", from: "#1a0f2e", via: "#3a1c5c", to: "#0f0a1f", accent: "#a78bfa" },
   { key: "ocean", label: "Oceano", from: "#0a1d2e", via: "#0f4a6e", to: "#06132a", accent: "#5cbdb9" },
@@ -27,10 +28,10 @@ interface Props {
   onClose: () => void;
   tab: FocusTab;
   setTab: (t: FocusTab) => void;
-  children: ReactNode; // the actual tab content from Index.tsx
+  children: ReactNode; // the actual tab content from Index.tsx — rendered inside a floating panel when its mode is open
 }
 
-const MODES: { key: FocusTab; label: string; icon: any; description: string }[] = [
+const MODES: { key: FocusPanelKey; label: string; icon: any; description: string }[] = [
   { key: "leitura", label: "Leitura", icon: BookOpen, description: "Plano bíblico do dia" },
   { key: "devocional", label: "Devocional", icon: Flame, description: "Meditação diária" },
   { key: "anotacoes", label: "Estudo", icon: PenLine, description: "Caderno & Mapa mental" },
@@ -41,6 +42,10 @@ export default function FocusWorkspace({ open, onClose, tab, setTab, children }:
   const [paletteIdx, setPaletteIdx] = useState(0);
   const palette = PALETTES[paletteIdx];
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  // Floating panels state — which modes have open panels (and stack order)
+  const [openPanels, setOpenPanels] = useState<FocusPanelKey[]>([]);
+  const [panelOrder, setPanelOrder] = useState<FocusPanelKey[]>([]);
 
   // Pomodoro
   const [phase, setPhase] = useState<"focus" | "break">("focus");
@@ -122,15 +127,22 @@ export default function FocusWorkspace({ open, onClose, tab, setTab, children }:
     return () => document.removeEventListener("fullscreenchange", onFs);
   }, []);
 
-  // ESC closes (only if not in fullscreen — ESC exits fullscreen first)
+  // ESC closes top panel, then workspace
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !document.fullscreenElement) onClose();
+      if (e.key === "Escape" && !document.fullscreenElement) {
+        if (openPanels.length > 0) {
+          const top = panelOrder[panelOrder.length - 1] || openPanels[openPanels.length - 1];
+          closePanel(top);
+        } else {
+          onClose();
+        }
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  }, [open, onClose, openPanels, panelOrder]);
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -150,6 +162,22 @@ export default function FocusWorkspace({ open, onClose, tab, setTab, children }:
     }
   };
 
+  const openPanel = (key: FocusPanelKey) => {
+    setTab(key as FocusTab);
+    setOpenPanels(prev => prev.includes(key) ? prev : [...prev, key]);
+    setPanelOrder(prev => [...prev.filter(k => k !== key), key]);
+  };
+
+  const closePanel = (key: FocusPanelKey) => {
+    setOpenPanels(prev => prev.filter(k => k !== key));
+    setPanelOrder(prev => prev.filter(k => k !== key));
+  };
+
+  const focusPanel = (key: FocusPanelKey) => {
+    setPanelOrder(prev => [...prev.filter(k => k !== key), key]);
+    setTab(key as FocusTab);
+  };
+
   if (!open) return null;
 
   const totalSeconds = POMODORO_MIN[phase] * 60;
@@ -158,6 +186,19 @@ export default function FocusWorkspace({ open, onClose, tab, setTab, children }:
   const ss = (secondsLeft % 60).toString().padStart(2, "0");
   const ringRadius = 42;
   const ringCirc = 2 * Math.PI * ringRadius;
+
+  const PANEL_LABEL: Record<FocusPanelKey, string> = {
+    leitura: "Leitura do dia",
+    devocional: "Devocional",
+    anotacoes: "Estudo · Caderno & Mapa",
+    cerebro: "Segundo Cérebro",
+  };
+  const PANEL_ICON: Record<FocusPanelKey, ReactNode> = {
+    leitura: <BookOpen size={13} />,
+    devocional: <Flame size={13} />,
+    anotacoes: <PenLine size={13} />,
+    cerebro: <Brain size={13} />,
+  };
 
   return (
     <div
@@ -199,9 +240,9 @@ export default function FocusWorkspace({ open, onClose, tab, setTab, children }:
         title="Focus music"
       />
 
-      {/* MAIN LAYOUT: sidebar + main */}
+      {/* MAIN LAYOUT */}
       <div className="relative z-10 flex h-full w-full">
-        {/* ─── SIDEBAR: modes picker ─── */}
+        {/* ─── SIDEBAR: launcher ─── */}
         <aside
           className="h-full flex flex-col border-r backdrop-blur-xl transition-all duration-300 shrink-0"
           style={{
@@ -210,7 +251,6 @@ export default function FocusWorkspace({ open, onClose, tab, setTab, children }:
             borderColor: `${palette.accent}22`,
           }}
         >
-          {/* Sidebar header */}
           <div className="p-4 flex items-center justify-between border-b" style={{ borderColor: `${palette.accent}1a` }}>
             {!sidebarCollapsed && (
               <div className="flex items-center gap-2">
@@ -235,18 +275,20 @@ export default function FocusWorkspace({ open, onClose, tab, setTab, children }:
             </button>
           </div>
 
-          {/* Mode list */}
           <div className="flex-1 p-2 space-y-1 overflow-y-auto no-scrollbar">
             {!sidebarCollapsed && (
-              <p className="text-[9px] uppercase tracking-[2.5px] opacity-40 px-2 pt-2 pb-1">Seções imersivas</p>
+              <p className="text-[9px] uppercase tracking-[2.5px] opacity-40 px-2 pt-2 pb-1">Abrir painel</p>
             )}
             {MODES.map(m => {
-              const active = tab === m.key;
+              const active = openPanels.includes(m.key);
               const Icon = m.icon;
               return (
                 <button
                   key={m.key}
-                  onClick={() => { setTab(m.key); haptic("light"); }}
+                  onClick={() => {
+                    haptic("light");
+                    if (active) closePanel(m.key); else openPanel(m.key);
+                  }}
                   className="w-full flex items-center gap-3 p-3 rounded-xl transition-all text-left hover:scale-[1.02] active:scale-95"
                   style={{
                     background: active ? `${palette.accent}22` : "transparent",
@@ -262,12 +304,14 @@ export default function FocusWorkspace({ open, onClose, tab, setTab, children }:
                       <p className="text-[10px] opacity-70 truncate leading-tight mt-0.5">{m.description}</p>
                     </div>
                   )}
+                  {active && !sidebarCollapsed && (
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: palette.accent, boxShadow: `0 0 8px ${palette.accent}` }} />
+                  )}
                 </button>
               );
             })}
           </div>
 
-          {/* Today stats footer */}
           {!sidebarCollapsed && (
             <div className="p-4 border-t" style={{ borderColor: `${palette.accent}1a` }}>
               <div className="flex items-center gap-2 text-xs">
@@ -285,12 +329,11 @@ export default function FocusWorkspace({ open, onClose, tab, setTab, children }:
           )}
         </aside>
 
-        {/* ─── MAIN AREA: Pomodoro topbar + live tab content ─── */}
-        <main className="flex-1 flex flex-col overflow-hidden min-w-0">
-          {/* Top bar: Pomodoro (BIG) + music + controls */}
+        {/* ─── MAIN AREA: Pomodoro topbar + chat hub ─── */}
+        <main className="flex-1 flex flex-col overflow-hidden min-w-0 relative">
+          {/* Top bar */}
           <div className="flex items-center gap-3 px-4 py-3 border-b backdrop-blur-xl shrink-0"
             style={{ background: "rgba(8,6,14,0.55)", borderColor: `${palette.accent}1a` }}>
-            {/* HUGE Pomodoro ring */}
             <div className="flex items-center gap-3 shrink-0">
               <div className="relative w-20 h-20 shrink-0">
                 <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
@@ -337,7 +380,7 @@ export default function FocusWorkspace({ open, onClose, tab, setTab, children }:
             <div className="flex-1" />
 
             {/* Music mini-player */}
-            <div className="flex items-center gap-2 px-3 py-2 rounded-xl backdrop-blur-md"
+            <div className="hidden md:flex items-center gap-2 px-3 py-2 rounded-xl backdrop-blur-md"
               style={{ background: "rgba(0,0,0,0.35)", border: `1px solid ${palette.accent}33` }}>
               <button onClick={toggle} className="text-white/80 hover:text-white transition-colors">
                 {playing ? <Pause size={13} /> : <Play size={13} />}
@@ -382,7 +425,6 @@ export default function FocusWorkspace({ open, onClose, tab, setTab, children }:
               </button>
             </div>
 
-            {/* Fullscreen + close */}
             <button
               onClick={toggleFullscreen}
               className="w-9 h-9 rounded-full flex items-center justify-center bg-white/10 hover:bg-white/20 transition-colors shrink-0"
@@ -425,34 +467,57 @@ export default function FocusWorkspace({ open, onClose, tab, setTab, children }:
             </div>
           )}
 
-          {/* ─── LIVE PLATFORM CONTENT (the actual Bible reading / devotional / study / brain) ─── */}
-          <div
-            key={tab}
-            className="flex-1 overflow-hidden animate-fade-in relative focus-content-surface"
-            style={{
-              background: "hsl(var(--background))",
-              borderTop: `1px solid ${palette.accent}22`,
-            }}
-          >
-            {/* subtle accent glow at top edge */}
-            <div
-              className="absolute top-0 left-0 right-0 h-[2px] pointer-events-none"
-              style={{
-                background: `linear-gradient(90deg, transparent, ${palette.accent}, transparent)`,
-                filter: `blur(0.5px)`,
-                opacity: 0.6,
-              }}
-            />
-            <div className="h-full w-full overflow-hidden">
-              {children}
-            </div>
+          {/* ─── COMMAND CHAT (always visible — the hub) ─── */}
+          <div className="flex-1 overflow-hidden relative min-h-0">
+            <FocusCommandChat accent={palette.accent} onOpenPanel={openPanel} />
           </div>
+
+          {/* ─── FLOATING PANELS for each open mode ─── */}
+          {openPanels.map((key) => {
+            const z = 220 + panelOrder.indexOf(key);
+            // Stagger initial positions so panels don't overlap perfectly
+            const offset = openPanels.indexOf(key) * 32;
+            const isCurrentTab = tab === key;
+            return (
+              <FloatingPanel
+                key={key}
+                open
+                onClose={() => closePanel(key)}
+                onFocus={() => focusPanel(key)}
+                title={PANEL_LABEL[key]}
+                icon={PANEL_ICON[key]}
+                accent={palette.accent}
+                zIndex={z}
+                initialX={Math.max(120, (typeof window !== "undefined" ? window.innerWidth : 1400) / 2 - 440 + offset)}
+                initialY={120 + offset}
+                initialWidth={Math.min(900, typeof window !== "undefined" ? window.innerWidth - 280 : 900)}
+                initialHeight={Math.min(640, typeof window !== "undefined" ? window.innerHeight - 180 : 640)}
+              >
+                {/* Only render the live `children` for the currently-active tab; show placeholder for stacked panels */}
+                {isCurrentTab ? (
+                  <div className="h-full w-full overflow-auto bg-background">
+                    {children}
+                  </div>
+                ) : (
+                  <div className="h-full w-full flex items-center justify-center bg-background">
+                    <button
+                      onClick={() => focusPanel(key)}
+                      className="px-5 py-2.5 rounded-xl text-sm font-bold transition-all hover:scale-105"
+                      style={{ background: `${palette.accent}22`, color: palette.accent, border: `1px solid ${palette.accent}55` }}
+                    >
+                      Trazer {PANEL_LABEL[key]} para frente
+                    </button>
+                  </div>
+                )}
+              </FloatingPanel>
+            );
+          })}
         </main>
       </div>
 
       {/* Celebration */}
       {showCelebration && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[250] animate-fade-in">
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[400] animate-fade-in">
           <div className="text-center">
             <div className="text-7xl mb-3">🧠✨</div>
             <p className="text-xl font-bold" style={{ color: palette.accent }}>
@@ -470,8 +535,6 @@ export default function FocusWorkspace({ open, onClose, tab, setTab, children }:
         }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        /* Ensure inner platform content scrolls properly inside the focus container */
-        .focus-content-surface > div { height: 100%; }
       `}</style>
     </div>
   );
