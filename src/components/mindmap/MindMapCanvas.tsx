@@ -164,25 +164,8 @@ function buildFromAnalysis(
     // Highlights/verses are NOT shown as nodes — they live inside the note's expanded view.
   });
 
-  // Standalone highlight concepts (rare, kept for legacy)
-  const highlights = (analysis.key_concepts || []).filter(c => c.type === "highlight");
-  highlights.slice(0, 4).forEach((hl, i) => {
-    const hlId = `hl-standalone-${i}`;
-    nodes.push({
-      id: hlId,
-      type: "highlightCard",
-      position: { x: 0, y: 0 },
-      data: { label: hl.title || hl.description },
-    });
-    edges.push({
-      id: `edge-root-${hlId}`,
-      source: rootId,
-      target: hlId,
-      style: { stroke: "rgba(196,164,106,0.12)", strokeWidth: 1 },
-    });
-  });
-
-  // NOTE: type="verse" concepts are intentionally ignored — verses live in notes only.
+  // NOTE: highlights and verses are intentionally NOT rendered as nodes —
+  // the map only shows topic bubbles linked to the root for fast scanning.
 
   return getLayoutedElements(nodes, edges);
 }
