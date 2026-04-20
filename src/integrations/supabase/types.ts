@@ -98,6 +98,39 @@ export type Database = {
         }
         Relationships: []
       }
+      focus_sessions: {
+        Row: {
+          artifacts_used: string[]
+          ended_at: string | null
+          focus_minutes: number
+          id: string
+          messages: Json
+          started_at: string
+          updated_at: string
+          user_code_id: string
+        }
+        Insert: {
+          artifacts_used?: string[]
+          ended_at?: string | null
+          focus_minutes?: number
+          id?: string
+          messages?: Json
+          started_at?: string
+          updated_at?: string
+          user_code_id: string
+        }
+        Update: {
+          artifacts_used?: string[]
+          ended_at?: string | null
+          focus_minutes?: number
+          id?: string
+          messages?: Json
+          started_at?: string
+          updated_at?: string
+          user_code_id?: string
+        }
+        Relationships: []
+      }
       mind_maps: {
         Row: {
           created_at: string
