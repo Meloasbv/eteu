@@ -9,12 +9,13 @@ import { runMindMapPipeline, type PipelineProgress } from "@/lib/mindMapPipeline
 
 const MindMapCanvas = lazy(() => import("./MindMapCanvas"));
 const ManualMindMapCanvas = lazy(() => import("./ManualMindMapCanvas"));
+const StudyGuide = lazy(() => import("@/components/study-guide/StudyGuide"));
 // Warm canvas chunk in the background so first open is instant
 if (typeof window !== "undefined") {
-  setTimeout(() => { import("./ManualMindMapCanvas"); import("./MindMapCanvas"); }, 800);
+  setTimeout(() => { import("./ManualMindMapCanvas"); import("./MindMapCanvas"); import("@/components/study-guide/StudyGuide"); }, 800);
 }
 
-type Mode = "select" | "ai-input" | "ai-canvas" | "manual" | "pdf-processing";
+type Mode = "select" | "ai-input" | "ai-canvas" | "ai-guide" | "manual" | "pdf-processing";
 
 interface SavedMap {
   id: string;
@@ -44,6 +45,7 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
   const [aiMapId, setAiMapId] = useState<string | null>(null);
   const [pdfState, setPdfState] = useState<PdfState | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
 
   const saveAiMap = useCallback(async (result: AnalysisResult, existingMapId: string | null = null) => {
     let currentStudyNotes: Record<string, unknown> = {};
@@ -140,7 +142,7 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
       if (isAi && storedAnalysis) {
         setAnalysis(storedAnalysis);
         setAiMapId(row.id);
-        setMode("ai-canvas");
+        setMode("ai-guide");
       } else {
         setEditMapId(id);
         setMode("manual");
@@ -188,7 +190,7 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
         setAnalysis(data.result);
         setAiMapId(savedMapId);
         await fetchMaps();
-        setMode("ai-canvas");
+        setMode("ai-guide");
       }
       else { setError("Resposta inesperada da IA."); }
     } catch (error) {
@@ -268,7 +270,7 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
       setAnalysis(result);
       setAiMapId(savedMapId);
       await fetchMaps();
-      setMode("ai-canvas");
+      setMode("ai-guide");
     } catch (error) {
       console.error("PDF mind map generation failed:", error);
       setError(error instanceof Error ? error.message : "Erro de conexão. Verifique sua internet.");
@@ -324,6 +326,22 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
     );
   }
 
+  if (mode === "ai-guide" && analysis) {
+    return (
+      <div className="h-full w-full">
+        <Suspense fallback={fallback}>
+          <StudyGuide
+            analysis={analysis}
+            activeSectionId={activeSectionId}
+            onActiveSectionChange={setActiveSectionId}
+            onBack={() => { setAnalysis(null); setAiMapId(null); setActiveSectionId(null); setMode("select"); }}
+            onSwitchToMap={() => setMode("ai-canvas")}
+          />
+        </Suspense>
+      </div>
+    );
+  }
+
   if (mode === "ai-canvas" && analysis) {
     return (
       <div className="h-full w-full">
@@ -332,7 +350,7 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
             analysis={analysis}
             mapId={aiMapId}
             onEnsureSavedForShare={() => saveAiMap(analysis, aiMapId)}
-            onClose={() => { setAnalysis(null); setAiMapId(null); setMode("select"); }}
+            onClose={() => setMode("ai-guide")}
           />
         </Suspense>
       </div>
