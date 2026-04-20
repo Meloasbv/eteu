@@ -64,18 +64,7 @@ export default function StudyGuide({
   const concepts = analysis.key_concepts || [];
   const sectionId = (id: string) => `study-section-${id}`;
 
-  // Auto-expand primary sections on first load (so the user sees the important content immediately)
-  useEffect(() => {
-    setExpanded(prev => {
-      if (prev.size > 0) return prev;
-      const next = new Set<string>();
-      concepts.forEach(c => {
-        if (!c.importance || c.importance === "primary") next.add(c.id);
-      });
-      return next;
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [concepts.length]);
+  // Sections start collapsed — user clicks to open each one (better for note-taking + scanning)
 
   // Open the active section by default
   useEffect(() => {
