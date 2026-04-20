@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { X, ChevronLeft, ChevronRight, BookOpen, ChevronDown, Sparkles, Loader2, FileText, Flame, Megaphone, Check } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
-import type { KeyConcept, VerseRef, ConceptConnection, KeyPointDeep } from "./types";
+import type { KeyConcept, VerseRef, ConceptConnection, KeyPointDeep, StoryNarrative } from "./types";
 import { getCategoryColor, getCategoryName, verseRefString } from "./types";
 import VersePopover from "./VersePopover";
 import { supabase } from "@/integrations/supabase/client";
@@ -788,6 +788,76 @@ function SubsectionBlock({
           </li>
         )}
       </ul>
+    </div>
+  );
+}
+
+// ── Story / narrative card (collapsed by default, expand to read full narrative) ──
+function StoryCard({
+  story,
+  onVerseClick,
+}: {
+  story: StoryNarrative;
+  onVerseClick: (ref: string, el: HTMLElement) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div
+      className="rounded-lg overflow-hidden transition-all"
+      style={{
+        background: open ? "rgba(212,133,74,0.06)" : "rgba(212,133,74,0.03)",
+        border: "1px solid rgba(212,133,74,0.2)",
+      }}
+    >
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left group"
+      >
+        <span className="flex items-center gap-2.5 min-w-0">
+          <span
+            className="text-[14px] shrink-0"
+            style={{ color: "#d4854a" }}
+          >📖</span>
+          <span
+            className="font-display text-[14px] font-semibold truncate"
+            style={{ color: open ? "#ede4d3" : "#d4c8b0" }}
+          >
+            {story.title}
+          </span>
+        </span>
+        <span className="flex items-center gap-2 shrink-0">
+          {story.source_slide && (
+            <span className="text-[10px] font-sans tracking-wider" style={{ color: "#5c5347" }}>
+              Sl. {story.source_slide}
+            </span>
+          )}
+          <ChevronDown
+            size={14}
+            style={{
+              color: "#d4854a",
+              transform: open ? "rotate(0deg)" : "rotate(-90deg)",
+              transition: "transform 0.2s",
+            }}
+          />
+        </span>
+      </button>
+      {open && (
+        <div
+          className="px-4 pb-4 pt-1"
+          style={{ borderTop: "1px solid rgba(212,133,74,0.12)" }}
+        >
+          {story.narrative.split("\n\n").map((para, i) => (
+            <p
+              key={i}
+              className="font-body text-[14px] mt-2.5"
+              style={{ color: "#d4c8b0", lineHeight: 1.7 }}
+            >
+              <InlineVerseText text={para} onVerseClick={onVerseClick} />
+            </p>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
