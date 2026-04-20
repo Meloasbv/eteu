@@ -165,21 +165,53 @@ export default function FocusCommandChat({ userCodeId, weeks, devotionals }: Pro
             break;
           }
           case "versiculo": {
-            // Treat as exegese-lite for now
             const ref = result.params?.reference || raw;
-            finalArtifact = {
-              type: "exegese",
-              data: { reference: ref, loading: true },
-            };
+            finalArtifact = { type: "verse", data: { reference: ref } };
             if (!assistantText) assistantText = `Aqui está ${ref}.`;
             break;
           }
-          case "saudacao": {
+          case "devocional": {
+            const today = computeTodayReading(weeks);
+            const dev = findDevotionalForToday(devotionals, today.day);
             finalArtifact = {
-              type: "loading",
-              data: { message: "Olá" },
+              type: "devotional_today",
+              data: dev
+                ? {
+                    ref: dev.ref,
+                    verseText: dev.verseText,
+                    summary: dev.summary,
+                    day: dev.day,
+                    period: dev.period,
+                  }
+                : { day: today.day },
             };
-            // Replace with a static greeting card
+            if (!assistantText) assistantText = "Sua reflexão de hoje:";
+            break;
+          }
+          case "nota": {
+            const content = result.params?.content || raw;
+            finalArtifact = { type: "note_saved", data: { content } };
+            if (!assistantText) assistantText = "Salvei sua nota.";
+            break;
+          }
+          case "mapa_mental": {
+            const action = result.params?.action;
+            const topic = result.params?.topic;
+            if (action === "open" || (action === "preview" && topic)) {
+              finalArtifact = { type: "mindmap_preview", data: { title: topic } };
+              if (!assistantText) assistantText = `Mapa: ${topic ?? "selecionado"}.`;
+            } else {
+              finalArtifact = { type: "mindmap_list", data: { topic } };
+              if (!assistantText) assistantText = "Seus mapas mentais:";
+            }
+            break;
+          }
+          case "timer": {
+            finalArtifact = { type: "timer", data: { action: result.params?.action ?? "show" } };
+            if (!assistantText) assistantText = result.response_text || "Controles do Pomodoro:";
+            break;
+          }
+          case "saudacao": {
             finalArtifact = {
               type: "answer",
               data: {
@@ -191,21 +223,10 @@ export default function FocusCommandChat({ userCodeId, weeks, devotionals }: Pro
             assistantText = "";
             break;
           }
-          case "timer":
-            // Timer is handled at FocusWorkspace level — show a hint card
-            assistantText = result.response_text || "Use os controles do timer no topo.";
-            finalArtifact = null;
-            break;
           case "pergunta":
-          case "mapa_mental":
-          case "devocional":
-          case "nota":
           default: {
             const question = result.params?.question || result.params?.content || raw;
-            finalArtifact = {
-              type: "answer",
-              data: { question },
-            };
+            finalArtifact = { type: "answer", data: { question } };
             if (!assistantText) assistantText = "Refletindo...";
             break;
           }
