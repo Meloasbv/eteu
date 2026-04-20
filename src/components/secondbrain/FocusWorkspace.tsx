@@ -474,6 +474,42 @@ export default function FocusWorkspace({ open, onClose, tab, setTab, userCodeId,
         </main>
       </div>
 
+      {/* Tool overlay (mind map / notebook) — opens above the chat without leaving Focus */}
+      {activeTool && (
+        <div
+          className="absolute inset-0 z-[300] flex flex-col animate-fade-in"
+          style={{ background: PALETTE.bg }}
+        >
+          <div
+            className="flex items-center gap-3 px-4 py-2.5 border-b shrink-0"
+            style={{ background: PALETTE.surface, borderColor: PALETTE.border }}
+          >
+            <button
+              onClick={() => { setActiveTool(null); haptic("light"); }}
+              className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors"
+              style={{ background: PALETTE.surfaceLight, color: PALETTE.text, border: `1px solid ${PALETTE.border}` }}
+              aria-label="Voltar para o chat"
+            >
+              <X size={15} />
+            </button>
+            <p className="text-[11px] font-bold uppercase tracking-[2px]" style={{ color: PALETTE.primary }}>
+              {activeTool.tool === "notebook" || activeTool.tool === "notebook-open" ? "Caderno" : "Mapa Mental"}
+            </p>
+            <span className="text-[10px]" style={{ color: PALETTE.textDim }}>· ESC para fechar</span>
+          </div>
+          <div className="flex-1 overflow-auto min-h-0">
+            <Suspense fallback={<div className="flex items-center justify-center h-full text-sm" style={{ color: PALETTE.textDim }}>Carregando…</div>}>
+              {(activeTool.tool === "mindmap" || activeTool.tool === "mindmap-open") && (
+                <MindMapTab userCodeId={userCodeId} />
+              )}
+              {(activeTool.tool === "notebook" || activeTool.tool === "notebook-open") && (
+                <NotebookList userCodeId={userCodeId} />
+              )}
+            </Suspense>
+          </div>
+        </div>
+      )}
+
       {/* Celebration */}
       {showCelebration && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[400] animate-fade-in">
