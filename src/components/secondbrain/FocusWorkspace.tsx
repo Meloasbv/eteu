@@ -37,6 +37,7 @@ interface Props {
   setTab: (t: FocusTab) => void;
   userCodeId: string;
   weeks: any[];
+  devotionals?: any[];
   /** Legacy, unused */
   renderTab?: (key: FocusPanelKey) => ReactNode;
 }
