@@ -28,6 +28,17 @@ export interface NoteSubsection {
   source_slides?: number[];
 }
 
+export interface KeyPointDeep {
+  point: string;
+  detail?: string;
+}
+
+export interface ConceptConnection {
+  concept_id?: string;
+  concept_title: string;
+  relation: string; // e.g. "complementa", "contrasta com", "fundamenta"
+}
+
 export interface ExpandedNote {
   core_idea: string;
   explanation?: string;
@@ -36,10 +47,20 @@ export interface ExpandedNote {
   verses: (string | VerseRef)[];
   application: string;
   impact_phrase: string;
-  // New rich fields
+  // Rich fields
   key_points?: string[];
   subsections?: NoteSubsection[];
   author_quotes?: AuthorQuote[];
+  // ── Level 2 (expanded view) ──
+  detailed_explanation?: string;     // full paragraph (3-6 sentences)
+  historical_context?: string;       // historical / cultural background
+  examples?: string[];               // concrete examples or illustrations
+  key_points_deep?: KeyPointDeep[];  // each bullet with extra context
+  // ── Level 3 (deep study, lazy loaded) ──
+  theological_analysis?: string;     // doctrinal / conceptual analysis
+  connections?: ConceptConnection[]; // links to other concepts
+  reflection_questions?: string[];   // 3-5 reflective questions
+  deep_loaded?: boolean;             // marker so UI knows L3 was fetched
 }
 
 export interface KeyConcept {

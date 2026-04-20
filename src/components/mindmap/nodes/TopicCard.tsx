@@ -1,5 +1,5 @@
 import { Handle, Position } from "@xyflow/react";
-import { BookOpen, Loader2 } from "lucide-react";
+import { BookOpen, Loader2, Sparkles } from "lucide-react";
 import { getCategoryColor } from "../types";
 
 interface TopicCardData {
@@ -102,6 +102,18 @@ export default function TopicCard({ data }: { data: TopicCardData }) {
                 {data.verseCount} vers
               </span>
             </>
+          )}
+          {data.hasNote && (
+            <span
+              className="ml-auto inline-flex items-center gap-1 text-[10px] font-sans font-semibold tracking-[0.5px] px-1.5 py-0.5 rounded"
+              style={{
+                background: "rgba(196,164,106,0.08)",
+                color: "#c4a46a",
+                border: "1px solid rgba(196,164,106,0.18)",
+              }}
+            >
+              <Sparkles size={9} /> Aprofundar
+            </span>
           )}
         </div>
       </div>
