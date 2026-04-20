@@ -313,6 +313,7 @@ export default function SecondBrainTab({
           </button>
         ))}
         <div className="flex-1" />
+      </div>
 
       {viewMode === "today" && (
         <div className="flex-1 overflow-y-auto">
