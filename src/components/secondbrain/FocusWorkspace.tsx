@@ -254,22 +254,33 @@ export default function FocusWorkspace({ open, onClose, tab, setTab, userCodeId,
 
           <div className="flex-1 p-2 space-y-1 overflow-y-auto no-scrollbar">
             <p className="text-[9px] uppercase tracking-[2.5px] px-2 pt-2 pb-1" style={{ color: PALETTE.textDim }}>Atalhos</p>
-            {MODES.map(m => {
-              const Icon = m.icon;
-              const active = tab === m.key;
+            {SHORTCUTS.map(s => {
+              const Icon = s.icon;
               return (
                 <button
-                  key={m.key}
-                  onClick={() => { setTab(m.key as FocusTab); setSidebarOpen(false); haptic("light"); }}
+                  key={s.key}
+                  onClick={() => {
+                    setSidebarOpen(false);
+                    haptic("light");
+                    if (s.action.kind === "tool") {
+                      setActiveTool(s.action.detail);
+                    } else {
+                      window.dispatchEvent(new CustomEvent("focus-chat-send", { detail: { text: s.action.cmd } }));
+                    }
+                  }}
                   className="w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all hover:scale-[1.02] active:scale-95"
                   style={{
-                    background: active ? `${PALETTE.primary}14` : "transparent",
-                    border: active ? `1px solid ${PALETTE.primary}55` : "1px solid transparent",
-                    color: active ? PALETTE.primary : PALETTE.text,
+                    background: "transparent",
+                    border: "1px solid transparent",
+                    color: PALETTE.text,
                   }}
                 >
-                  <Icon size={16} className="shrink-0" strokeWidth={active ? 2.2 : 1.7} />
-                  <span className="text-[13px] font-bold leading-tight">{m.label}</span>
+                  <Icon size={16} className="shrink-0" strokeWidth={1.8} />
+                  <span className="text-[13px] font-bold leading-tight">{s.label}</span>
+                </button>
+              );
+            })}
+          </div>
                 </button>
               );
             })}
