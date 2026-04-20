@@ -41,8 +41,21 @@ function readingKey(weekIdx: number, dayIdx: number, ridx: number) {
   return `${weekIdx}-${dayIdx}-${ridx}`;
 }
 
+async function fetchVerseText(ref: string): Promise<string> {
+  try {
+    const r = await fetch(`https://bible-api.com/${encodeURIComponent(ref)}?translation=almeida`);
+    if (r.ok) {
+      const d = await r.json();
+      if (d?.text) return String(d.text).trim();
+    }
+  } catch {}
+  return "";
+}
+
 export default function ReadingArtifact({ data, sendAsUser }: Props) {
   const [progress, setProgress] = useState<Progress>(() => loadProgress());
+  const [loadingIdx, setLoadingIdx] = useState<number | null>(null);
+  const tts = useFocusTTS();
 
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
@@ -74,6 +87,27 @@ export default function ReadingArtifact({ data, sendAsUser }: Props) {
     });
   };
 
+  const ttsId = (ridx: number) => `reading-${data.weekIdx}-${data.dayIdx}-${ridx}`;
+
+  const handleListen = async (ridx: number, ref: string) => {
+    haptic("light");
+    const id = ttsId(ridx);
+    const isThis = tts.playingId === id;
+    if (isThis) {
+      if (tts.isPaused) focusTTS.resume();
+      else focusTTS.pause();
+      return;
+    }
+    setLoadingIdx(ridx);
+    const text = await fetchVerseText(ref);
+    setLoadingIdx(null);
+    if (!text) {
+      sendAsUser(`ler ${ref}`);
+      return;
+    }
+    focusTTS.speak(id, `${ref}. ${text}`, { label: ref });
+  };
+
   const allDone = data.readings.every((_, i) => progress[readingKey(data.weekIdx, data.dayIdx, i)]);
   const doneCount = data.readings.filter((_, i) => progress[readingKey(data.weekIdx, data.dayIdx, i)]).length;
 
@@ -92,37 +126,76 @@ export default function ReadingArtifact({ data, sendAsUser }: Props) {
           <div className="space-y-2 mb-4">
             {data.readings.map((r, i) => {
               const done = !!progress[readingKey(data.weekIdx, data.dayIdx, i)];
+              const id = ttsId(i);
+              const isThis = tts.playingId === id;
+              const isPlaying = isThis && !tts.isPaused;
+              const isPaused = isThis && tts.isPaused;
+              const isLoading = loadingIdx === i;
               return (
-                <button
+                <div
                   key={i}
-                  onClick={() => toggle(i)}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all hover:translate-x-0.5"
+                  className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl transition-all"
                   style={{
-                    background: done ? `${P.primary}10` : `${P.surfaceLight}66`,
-                    border: `1px solid ${done ? P.primary + "33" : P.border}`,
+                    background: isThis
+                      ? `${P.primary}1a`
+                      : done
+                      ? `${P.primary}10`
+                      : `${P.surfaceLight}66`,
+                    border: `1px solid ${isThis ? P.primary + "55" : done ? P.primary + "33" : P.border}`,
                   }}
                 >
-                  <div
-                    className="w-5 h-5 rounded-md flex items-center justify-center shrink-0 transition-all"
+                  <button
+                    onClick={() => toggle(i)}
+                    aria-label={done ? "Desmarcar leitura" : "Marcar como lida"}
+                    className="w-5 h-5 rounded-md flex items-center justify-center shrink-0 transition-all hover:scale-110"
                     style={{
                       background: done ? P.primary : "transparent",
                       border: `1.5px solid ${done ? P.primary : P.textFaint}`,
                     }}
                   >
                     {done && <Check size={11} strokeWidth={3} style={{ color: P.bg }} />}
-                  </div>
-                  <span
-                    className="flex-1 text-[13.5px] font-semibold"
+                  </button>
+
+                  <button
+                    onClick={() => toggle(i)}
+                    className="flex-1 text-left text-[13.5px] font-semibold transition-all hover:translate-x-0.5"
                     style={{
-                      color: done ? P.primary : P.text,
-                      textDecoration: done ? "line-through" : "none",
+                      color: isThis ? P.primary : done ? P.primary : P.text,
+                      textDecoration: done && !isThis ? "line-through" : "none",
                       textDecorationColor: `${P.primary}66`,
                     }}
                   >
                     {r}
-                  </span>
+                  </button>
+
+                  {isPlaying && <SoundWave />}
+
+                  <button
+                    onClick={() => handleListen(i, r)}
+                    aria-label={
+                      isPlaying ? "Pausar leitura" : isPaused ? "Continuar leitura" : "Ouvir leitura"
+                    }
+                    disabled={isLoading}
+                    className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-all hover:scale-110 active:scale-95 disabled:opacity-50"
+                    style={{
+                      background: isThis ? `${P.primary}33` : "transparent",
+                      border: `1px solid ${isThis ? P.primary + "66" : P.border}`,
+                      color: isThis ? P.primary : P.textDim,
+                    }}
+                  >
+                    {isLoading ? (
+                      <Loader2 size={12} className="animate-spin" />
+                    ) : isPlaying ? (
+                      <Pause size={12} strokeWidth={2.6} />
+                    ) : isPaused ? (
+                      <Play size={12} strokeWidth={2.6} />
+                    ) : (
+                      <Headphones size={12} strokeWidth={2.4} />
+                    )}
+                  </button>
+
                   <ChevronRight size={14} style={{ color: P.textFaint }} />
-                </button>
+                </div>
               );
             })}
           </div>
@@ -148,5 +221,28 @@ export default function ReadingArtifact({ data, sendAsUser }: Props) {
         </>
       )}
     </ArtifactShell>
+  );
+}
+
+function SoundWave() {
+  return (
+    <span className="inline-flex items-end gap-[2px] h-3 shrink-0" aria-hidden>
+      <span className="rd-bar rd-bar-1" />
+      <span className="rd-bar rd-bar-2" />
+      <span className="rd-bar rd-bar-3" />
+      <style>{`
+        .rd-bar { display:inline-block; width:2px; background:${P.primary}; border-radius:1px; }
+        .rd-bar-1 { animation: rdWave 0.9s ease-in-out infinite; height:6px; }
+        .rd-bar-2 { animation: rdWave 0.9s ease-in-out infinite; animation-delay:.15s; height:10px; }
+        .rd-bar-3 { animation: rdWave 0.9s ease-in-out infinite; animation-delay:.3s; height:7px; }
+        @keyframes rdWave {
+          0%,100% { transform: scaleY(0.55); }
+          50% { transform: scaleY(1); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .rd-bar { animation: none !important; }
+        }
+      `}</style>
+    </span>
   );
 }
