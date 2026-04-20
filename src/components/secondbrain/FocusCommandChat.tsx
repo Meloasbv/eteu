@@ -11,12 +11,12 @@ import ListenButton from "./artifacts/ListenButton";
 
 export type FocusPanelKey = "leitura" | "devocional" | "anotacoes" | "cerebro";
 
-const QUICK_ACTIONS: { id: string; label: string; icon: any; hint: string; cmd: string; capture?: boolean; tool?: "mindmap" | "notebook" }[] = [
+const QUICK_ACTIONS: { id: string; label: string; icon: any; hint: string; cmd: string; capture?: boolean; brain?: boolean; tool?: "mindmap" | "notebook" }[] = [
   { id: "leitura", label: "Leitura", icon: BookOpen, hint: "Plano bíblico", cmd: "leitura de hoje" },
   { id: "devocional", label: "Devocional", icon: Flame, hint: "Meditação", cmd: "devocional do dia" },
   { id: "estudo", label: "Estudo", icon: Brain, hint: "PDF · guia · mapa", cmd: "meus estudos" },
   { id: "caderno", label: "Caderno", icon: PenLine, hint: "Notas", cmd: "", tool: "notebook" },
-  { id: "cerebro", label: "Capturar", icon: Sparkles, hint: "Pensamento", cmd: "", capture: true },
+  { id: "cerebro", label: "Cérebro", icon: Sparkles, hint: "Capturar ideias", cmd: "", brain: true },
 ];
 
 const PALETTE = {
