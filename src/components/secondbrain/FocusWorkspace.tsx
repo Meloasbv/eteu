@@ -46,11 +46,18 @@ interface Props {
   renderTab?: (key: FocusPanelKey) => ReactNode;
 }
 
-const MODES: { key: FocusPanelKey; label: string; icon: any }[] = [
-  { key: "leitura", label: "Leitura", icon: BookOpen },
-  { key: "devocional", label: "Devocional", icon: Flame },
-  { key: "anotacoes", label: "Estudo", icon: PenLine },
-  { key: "cerebro", label: "Cérebro", icon: Brain },
+type SidebarShortcut = {
+  key: string;
+  label: string;
+  icon: any;
+  action: { kind: "tool"; detail: FocusOpenToolDetail } | { kind: "chat"; cmd: string };
+};
+
+const SHORTCUTS: SidebarShortcut[] = [
+  { key: "leitura", label: "Leitura", icon: BookOpen, action: { kind: "chat", cmd: "leitura de hoje" } },
+  { key: "devocional", label: "Devocional", icon: Flame, action: { kind: "chat", cmd: "devocional do dia" } },
+  { key: "mapa", label: "Mapa Mental", icon: Brain, action: { kind: "tool", detail: { tool: "mindmap" } } },
+  { key: "caderno", label: "Caderno", icon: PenLine, action: { kind: "tool", detail: { tool: "notebook" } } },
 ];
 
 export default function FocusWorkspace({ open, onClose, tab, setTab, userCodeId, weeks, devotionals }: Props) {
