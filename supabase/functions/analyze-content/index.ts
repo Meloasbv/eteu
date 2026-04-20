@@ -121,7 +121,7 @@ PROIBIDO:
 
 1. core_idea: a tese OU frase-resumo do bloco (≤22 palavras), idealmente CITANDO/condensando uma frase do material. Se o autor não dá tese explícita, escreva neutramente o tema.
 
-2. key_points: TODOS os pontos relevantes do bloco em bullets (≤25 palavras cada). Prefira 6-12 bullets fiéis a 4 bullets resumidos. Cada bullet = uma ideia distinta do material. Mantenha termos originais.
+2. key_points: pontos ESSENCIAIS do bloco em bullets CURTOS e ANOTÁVEIS (≤15 palavras cada). Use 3-5 bullets — resumo enxuto, não exaustivo. Cada bullet = uma ideia clara, fiel ao material, fácil de copiar no caderno.
 
 3. key_points_deep: para CADA key_point, traga um 'detail' com 1-2 frases EXTRAÍDAS do slide que sustentam o ponto (parafraseando minimamente). Se o material não dá mais detalhe, repita "Veja slide N" em vez de inventar.
 
@@ -202,7 +202,7 @@ CATEGORIAS (escolha a mais próxima ou "contexto"): teologia, cristologia, pneum
 REGRAS:
 - 4 a 10 topics conforme a estrutura natural do texto (não force quantidade).
 - Cada topic = um bloco/seção real do material. title = título real (ou condensado fielmente).
-- expanded_note.key_points: 5-12 bullets EXTRAÍDOS do texto, preservando termos originais. Prefira mais bullets fiéis a poucos resumidos.
+- expanded_note.key_points: 3-5 bullets CURTOS (≤15 palavras), enxutos e fáceis de anotar. Resumo, não exaustivo.
 - core_idea: tese ou frase-resumo do bloco (≤22 palavras), idealmente citando o material.
 - verses: APENAS os que APARECEM no texto.
 - application: APENAS se o material traz; senão "".
