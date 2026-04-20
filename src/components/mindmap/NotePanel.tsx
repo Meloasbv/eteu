@@ -771,3 +771,275 @@ function SubsectionBlock({
     </div>
   );
 }
+
+// ── Key point with optional progressive depth (Level 2) ──
+function DeepKeyPoint({
+  point,
+  detail,
+  onVerseClick,
+}: {
+  point: string;
+  detail?: string;
+  onVerseClick: (ref: string, el: HTMLElement) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const hasDetail = !!detail && detail.trim().length > 0;
+  return (
+    <li className="flex flex-col gap-1.5">
+      <button
+        type="button"
+        disabled={!hasDetail}
+        onClick={() => hasDetail && setOpen(o => !o)}
+        className="flex gap-2.5 items-start text-left w-full group"
+        style={{ cursor: hasDetail ? "pointer" : "default" }}
+      >
+        <span
+          className="mt-2 w-1 h-1 rounded-full shrink-0"
+          style={{ background: hasDetail && open ? "#d4b87a" : "#c4a46a" }}
+        />
+        <p className="font-body text-[14.5px] flex-1" style={{ color: "#d4c8b0", lineHeight: 1.55 }}>
+          <InlineVerseText text={point} onVerseClick={onVerseClick} />
+          {hasDetail && (
+            <ChevronDown
+              size={12}
+              className="inline-block ml-1.5 align-middle transition-transform"
+              style={{
+                color: "#8a7d6a",
+                transform: open ? "rotate(0deg)" : "rotate(-90deg)",
+              }}
+            />
+          )}
+        </p>
+      </button>
+      {hasDetail && open && (
+        <p
+          className="font-body text-[13.5px] ml-4 pl-3"
+          style={{
+            color: "#a89880",
+            lineHeight: 1.65,
+            borderLeft: "1px solid rgba(196,164,106,0.2)",
+          }}
+        >
+          <InlineVerseText text={detail!} onVerseClick={onVerseClick} />
+        </p>
+      )}
+    </li>
+  );
+}
+
+// ── Deep Study (Level 3) ──
+function DeepStudyBlock({
+  isOpen,
+  isLoading,
+  onToggle,
+  data,
+  onVerseClick,
+}: {
+  isOpen: boolean;
+  isLoading: boolean;
+  onToggle: () => void;
+  data: { theological_analysis?: string; connections?: ConceptConnection[]; reflection_questions?: string[] } | null;
+  onVerseClick: (ref: string, el: HTMLElement) => void;
+}) {
+  return (
+    <div className="mb-4 mt-2">
+      <button
+        onClick={onToggle}
+        disabled={isLoading}
+        className="w-full flex items-center justify-between rounded-xl px-4 py-3 transition-all"
+        style={{
+          background: isOpen
+            ? "linear-gradient(135deg, rgba(196,164,106,0.12), rgba(196,164,106,0.04))"
+            : "rgba(196,164,106,0.06)",
+          border: "1px solid rgba(196,164,106,0.2)",
+        }}
+      >
+        <span className="flex items-center gap-2">
+          {isLoading ? (
+            <Loader2 size={14} className="animate-spin" style={{ color: "#c4a46a" }} />
+          ) : (
+            <Sparkles size={14} style={{ color: "#c4a46a" }} />
+          )}
+          <span className="font-display text-[13.5px] font-bold tracking-wide uppercase" style={{ color: "#d4b87a" }}>
+            Estudo Profundo
+          </span>
+          {!data && !isLoading && (
+            <span className="text-[10.5px] font-sans tracking-wide" style={{ color: "#8a7d6a" }}>
+              · Aprofundar com IA
+            </span>
+          )}
+        </span>
+        <ChevronDown
+          size={14}
+          style={{
+            color: "#c4a46a",
+            transform: isOpen ? "rotate(0deg)" : "rotate(-90deg)",
+            transition: "transform 0.2s",
+          }}
+        />
+      </button>
+
+      {isOpen && (
+        <div className="mt-4 space-y-5 px-1">
+          {isLoading && (
+            <p className="text-[13px] font-body italic text-center py-6" style={{ color: "#8a7d6a" }}>
+              Gerando análise teológica…
+            </p>
+          )}
+
+          {data?.theological_analysis && (
+            <div>
+              <p className="text-[10px] font-sans font-bold tracking-[2px] uppercase mb-2" style={{ color: "#5c5347" }}>
+                Análise Teológica
+              </p>
+              {data.theological_analysis.split("\n\n").map((para, i) => (
+                <p key={i} className="font-body text-[14.5px] mb-2.5" style={{ color: "#d4c8b0", lineHeight: 1.7 }}>
+                  <InlineVerseText text={para} onVerseClick={onVerseClick} />
+                </p>
+              ))}
+            </div>
+          )}
+
+          {data?.connections && data.connections.length > 0 && (
+            <div>
+              <p className="text-[10px] font-sans font-bold tracking-[2px] uppercase mb-2" style={{ color: "#5c5347" }}>
+                Conexões
+              </p>
+              <div className="space-y-1.5">
+                {data.connections.map((c, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center gap-2 rounded-lg px-3 py-2"
+                    style={{ background: "rgba(176,141,181,0.06)", border: "1px solid rgba(176,141,181,0.2)" }}
+                  >
+                    <span className="text-[11px] font-sans tracking-wide" style={{ color: "#b08db5" }}>
+                      {c.relation}
+                    </span>
+                    <span className="text-[10px]" style={{ color: "#5c5347" }}>→</span>
+                    <span className="font-body text-[13.5px]" style={{ color: "#d4c8b0" }}>
+                      {c.concept_title}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {data?.reflection_questions && data.reflection_questions.length > 0 && (
+            <div>
+              <p className="text-[10px] font-sans font-bold tracking-[2px] uppercase mb-2" style={{ color: "#5c5347" }}>
+                Perguntas Reflexivas
+              </p>
+              <ul className="space-y-2">
+                {data.reflection_questions.map((q, i) => (
+                  <li
+                    key={i}
+                    className="flex gap-2 items-start rounded-md px-3 py-2"
+                    style={{ background: "rgba(106,156,138,0.05)", borderLeft: "2px solid rgba(106,156,138,0.4)" }}
+                  >
+                    <span className="font-display text-[12px] font-bold mt-0.5" style={{ color: "#6a9c8a" }}>
+                      ?
+                    </span>
+                    <p className="font-body italic text-[14px]" style={{ color: "#c4b89e", lineHeight: 1.55 }}>
+                      {q}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Transform into … ──
+function TransformBlock({
+  open,
+  onToggle,
+  loading,
+  onTransform,
+}: {
+  open: boolean;
+  onToggle: () => void;
+  loading: string | null;
+  onTransform: (mode: "study_card" | "devotional" | "sermon_outline") => void;
+}) {
+  const opts = [
+    { mode: "study_card" as const, icon: FileText, label: "Cartão de Estudo", desc: "Resumo denso para revisão" },
+    { mode: "devotional" as const, icon: Flame, label: "Devocional", desc: "Reflexão + oração + compromisso" },
+    { mode: "sermon_outline" as const, icon: Megaphone, label: "Esboço de Sermão", desc: "3 pontos com aplicação" },
+  ];
+  return (
+    <div className="mb-4">
+      <button
+        onClick={onToggle}
+        className="w-full flex items-center justify-between rounded-xl px-4 py-3 transition-all"
+        style={{
+          background: open ? "rgba(123,163,201,0.12)" : "rgba(123,163,201,0.06)",
+          border: "1px solid rgba(123,163,201,0.2)",
+        }}
+      >
+        <span className="flex items-center gap-2">
+          <Sparkles size={14} style={{ color: "#7ba3c9" }} />
+          <span className="font-display text-[13.5px] font-bold tracking-wide uppercase" style={{ color: "#7ba3c9" }}>
+            Transformar em…
+          </span>
+        </span>
+        <ChevronDown
+          size={14}
+          style={{
+            color: "#7ba3c9",
+            transform: open ? "rotate(0deg)" : "rotate(-90deg)",
+            transition: "transform 0.2s",
+          }}
+        />
+      </button>
+
+      {open && (
+        <div className="mt-3 grid gap-2">
+          {opts.map(o => {
+            const Icon = o.icon;
+            const isLoading = loading === o.mode;
+            return (
+              <button
+                key={o.mode}
+                onClick={() => !loading && onTransform(o.mode)}
+                disabled={!!loading}
+                className="flex items-start gap-3 text-left rounded-lg px-3 py-3 transition-all disabled:opacity-40"
+                style={{
+                  background: "rgba(123,163,201,0.04)",
+                  border: "1px solid rgba(123,163,201,0.15)",
+                }}
+              >
+                <div
+                  className="w-8 h-8 rounded-md flex items-center justify-center shrink-0 mt-0.5"
+                  style={{ background: "rgba(123,163,201,0.15)" }}
+                >
+                  {isLoading ? (
+                    <Loader2 size={14} className="animate-spin" style={{ color: "#7ba3c9" }} />
+                  ) : (
+                    <Icon size={14} style={{ color: "#7ba3c9" }} />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-display text-[13.5px] font-semibold" style={{ color: "#d4c8b0" }}>
+                    {o.label}
+                  </p>
+                  <p className="font-body text-[11.5px] mt-0.5" style={{ color: "#8a7d6a", lineHeight: 1.4 }}>
+                    {o.desc}
+                  </p>
+                </div>
+                <Check size={12} style={{ color: "rgba(123,163,201,0.3)", marginTop: 6 }} />
+              </button>
+            );
+          })}
+          <p className="text-[11px] font-sans italic px-1 mt-1" style={{ color: "#5c5347" }}>
+            Salvo automaticamente no Caderno após a geração.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
