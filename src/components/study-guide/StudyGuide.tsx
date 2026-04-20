@@ -277,6 +277,18 @@ export default function StudyGuide({
           </div>
         )}
       </div>
+
+      {shareOpen && (
+        <ShareDialog
+          mapId={mapId ?? null}
+          title={analysis.main_theme || "Estudo"}
+          isPublic={shareState.isPublic}
+          publicSlug={shareState.slug}
+          onClose={() => setShareOpen(false)}
+          onUpdate={(isPublic, slug) => setShareState({ isPublic, slug })}
+          onEnsureSaved={onEnsureSavedForShare}
+        />
+      )}
     </div>
   );
 }
