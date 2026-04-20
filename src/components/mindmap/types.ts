@@ -33,6 +33,12 @@ export interface KeyPointDeep {
   detail?: string;
 }
 
+export interface StoryNarrative {
+  title: string;          // título curto da história (ex: "Resgate do incêndio")
+  narrative: string;      // narrativa completa, fiel ao material (2-6 frases)
+  source_slide?: number;
+}
+
 export interface ConceptConnection {
   concept_id?: string;
   concept_title: string;
@@ -51,6 +57,7 @@ export interface ExpandedNote {
   key_points?: string[];
   subsections?: NoteSubsection[];
   author_quotes?: AuthorQuote[];
+  stories?: StoryNarrative[];        // histórias/narrativas importantes do material
   // ── Level 2 (expanded view) ──
   detailed_explanation?: string;     // full paragraph (3-6 sentences)
   historical_context?: string;       // historical / cultural background
