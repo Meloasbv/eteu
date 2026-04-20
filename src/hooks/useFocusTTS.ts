@@ -31,7 +31,7 @@ function loadRate(): FocusTTSRate {
   return 1;
 }
 
-const state: State = {
+let state: State = {
   playingId: null,
   label: null,
   isPaused: false,
@@ -44,6 +44,13 @@ const state: State = {
 const listeners = new Set<() => void>();
 
 function emit() {
+  // Create a new reference so useSyncExternalStore detects the change
+  state = { ...state };
+  listeners.forEach((l) => l());
+}
+
+function setState(patch: Partial<State>) {
+  state = { ...state, ...patch };
   listeners.forEach((l) => l());
 }
 
@@ -53,7 +60,7 @@ function subscribe(cb: () => void) {
 }
 
 function getSnapshot(): State {
-  return { ...state };
+  return state;
 }
 
 function getServerSnapshot(): State {
