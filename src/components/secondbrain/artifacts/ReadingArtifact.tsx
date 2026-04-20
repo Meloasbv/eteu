@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
-import { BookOpen, Check, ChevronRight, Headphones, Loader2, Pause, Play } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { BookOpen, Calendar as CalendarIcon, Check, ChevronRight, Headphones, Loader2, Pause, Play } from "lucide-react";
 import { ArtifactShell, ArtifactAction } from "./ArtifactShell";
 import { FOCUS_PALETTE as P } from "./types";
 import { haptic } from "@/hooks/useHaptic";
 import { useFocusTTS, focusTTS } from "@/hooks/useFocusTTS";
+import { computeReadingForDate } from "@/lib/readingPlan";
 
 const READING_KEY = "bible-plan-progress";
 
@@ -14,6 +15,7 @@ interface ReadingData {
   dayIdx: number;
   day: string;
   readings: string[];
+  weeks?: any[];
 }
 
 interface Props {
@@ -52,9 +54,20 @@ async function fetchVerseText(ref: string): Promise<string> {
   return "";
 }
 
+function dateFromOffset(offset: number): Date {
+  const d = new Date();
+  d.setDate(d.getDate() + offset);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+const SHORT_DAYS = ["D", "S", "T", "Q", "Q", "S", "S"];
+
 export default function ReadingArtifact({ data, sendAsUser }: Props) {
   const [progress, setProgress] = useState<Progress>(() => loadProgress());
   const [loadingIdx, setLoadingIdx] = useState<number | null>(null);
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [dayOffset, setDayOffset] = useState(0); // 0 = today, -6..0
   const tts = useFocusTTS();
 
   useEffect(() => {
@@ -65,9 +78,27 @@ export default function ReadingArtifact({ data, sendAsUser }: Props) {
     return () => window.removeEventListener("storage", onStorage);
   }, []);
 
+  // Compute the 7-day window (last 7 days ending today)
+  const week = useMemo(() => {
+    if (!data.weeks) return [];
+    return Array.from({ length: 7 }, (_, i) => {
+      const offset = i - 6; // -6..0
+      const date = dateFromOffset(offset);
+      const reading = computeReadingForDate(data.weeks!, date);
+      return { offset, date, reading };
+    });
+  }, [data.weeks]);
+
+  // Active reading: from offset, falls back to data
+  const active = useMemo(() => {
+    if (dayOffset === 0) return data;
+    const found = week.find((w) => w.offset === dayOffset)?.reading;
+    return found ?? data;
+  }, [dayOffset, week, data]);
+
   const toggle = (ridx: number) => {
     haptic("light");
-    const k = readingKey(data.weekIdx, data.dayIdx, ridx);
+    const k = readingKey(active.weekIdx, active.dayIdx, ridx);
     setProgress((prev) => {
       const next = { ...prev, [k]: !prev[k] };
       saveProgress(next);
@@ -79,15 +110,15 @@ export default function ReadingArtifact({ data, sendAsUser }: Props) {
     haptic("medium");
     setProgress((prev) => {
       const next = { ...prev };
-      data.readings.forEach((_, ridx) => {
-        next[readingKey(data.weekIdx, data.dayIdx, ridx)] = true;
+      active.readings.forEach((_, ridx) => {
+        next[readingKey(active.weekIdx, active.dayIdx, ridx)] = true;
       });
       saveProgress(next);
       return next;
     });
   };
 
-  const ttsId = (ridx: number) => `reading-${data.weekIdx}-${data.dayIdx}-${ridx}`;
+  const ttsId = (ridx: number) => `reading-${active.weekIdx}-${active.dayIdx}-${ridx}`;
 
   const handleListen = async (ridx: number, ref: string) => {
     haptic("light");
@@ -108,24 +139,110 @@ export default function ReadingArtifact({ data, sendAsUser }: Props) {
     focusTTS.speak(id, `${ref}. ${text}`, { label: ref });
   };
 
-  const allDone = data.readings.every((_, i) => progress[readingKey(data.weekIdx, data.dayIdx, i)]);
-  const doneCount = data.readings.filter((_, i) => progress[readingKey(data.weekIdx, data.dayIdx, i)]).length;
+  const dayProgress = (weekIdx: number, dayIdx: number, total: number) => {
+    if (total === 0) return 0;
+    let done = 0;
+    for (let i = 0; i < total; i++) {
+      if (progress[readingKey(weekIdx, dayIdx, i)]) done++;
+    }
+    return done / total;
+  };
+
+  const allDone = active.readings.length > 0 && active.readings.every((_, i) => progress[readingKey(active.weekIdx, active.dayIdx, i)]);
+  const doneCount = active.readings.filter((_, i) => progress[readingKey(active.weekIdx, active.dayIdx, i)]).length;
+
+  const isToday = dayOffset === 0;
+  const headerLabel = isToday ? "Leitura do dia" : "Leitura anterior";
 
   return (
     <ArtifactShell
       icon={<BookOpen size={12} strokeWidth={2.4} />}
-      label="Leitura do dia"
-      badge={`${data.day} · Sem ${data.weekNum}`}
+      label={headerLabel}
+      badge={`${active.day} · Sem ${active.weekNum}`}
     >
-      {data.readings.length === 0 ? (
+      {/* Week calendar strip */}
+      {data.weeks && week.length > 0 && (
+        <div className="mb-3">
+          <button
+            onClick={() => {
+              haptic("light");
+              setShowCalendar((s) => !s);
+            }}
+            className="flex items-center gap-1.5 mb-2 text-[10.5px] font-bold uppercase tracking-wider transition-opacity hover:opacity-80"
+            style={{ color: P.textDim }}
+          >
+            <CalendarIcon size={11} strokeWidth={2.6} />
+            {showCalendar ? "Ocultar últimos 7 dias" : "Ver últimos 7 dias"}
+          </button>
+
+          {showCalendar && (
+            <div
+              className="grid grid-cols-7 gap-1 p-2 rounded-xl mb-2"
+              style={{ background: `${P.surfaceLight}66`, border: `1px solid ${P.border}` }}
+            >
+              {week.map(({ offset, date, reading }) => {
+                const isSel = offset === dayOffset;
+                const isCurrentDay = offset === 0;
+                const total = reading?.readings.length ?? 0;
+                const ratio = reading ? dayProgress(reading.weekIdx, reading.dayIdx, total) : 0;
+                const dayLetter = SHORT_DAYS[date.getDay()];
+                const disabled = !reading;
+                return (
+                  <button
+                    key={offset}
+                    disabled={disabled}
+                    onClick={() => {
+                      haptic("light");
+                      setDayOffset(offset);
+                    }}
+                    className="flex flex-col items-center gap-1 py-2 px-1 rounded-lg transition-all hover:scale-[1.04] disabled:opacity-30 disabled:hover:scale-100"
+                    style={{
+                      background: isSel ? `${P.primary}26` : "transparent",
+                      border: `1px solid ${isSel ? P.primary + "66" : "transparent"}`,
+                    }}
+                    aria-label={`${dayLetter} ${date.getDate()}`}
+                  >
+                    <span
+                      className="text-[9px] font-bold uppercase tracking-wider"
+                      style={{ color: isSel ? P.primary : P.textFaint }}
+                    >
+                      {dayLetter}
+                    </span>
+                    <span
+                      className="text-[13px] font-bold leading-none"
+                      style={{ color: isSel ? P.primary : isCurrentDay ? P.text : P.textDim }}
+                    >
+                      {date.getDate()}
+                    </span>
+                    <span
+                      className="block w-5 h-[3px] rounded-full overflow-hidden"
+                      style={{ background: `${P.border}` }}
+                    >
+                      <span
+                        className="block h-full transition-all"
+                        style={{
+                          width: `${Math.round(ratio * 100)}%`,
+                          background: ratio >= 1 ? P.primary : ratio > 0 ? P.primarySoft : "transparent",
+                        }}
+                      />
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {active.readings.length === 0 ? (
         <p className="text-[13px]" style={{ color: P.textDim }}>
-          Hoje é dia de descanso na leitura — aproveite para revisar.
+          {isToday ? "Hoje é dia de descanso na leitura — aproveite para revisar." : "Sem leitura nesse dia."}
         </p>
       ) : (
         <>
           <div className="space-y-2 mb-4">
-            {data.readings.map((r, i) => {
-              const done = !!progress[readingKey(data.weekIdx, data.dayIdx, i)];
+            {active.readings.map((r, i) => {
+              const done = !!progress[readingKey(active.weekIdx, active.dayIdx, i)];
               const id = ttsId(i);
               const isThis = tts.playingId === id;
               const isPlaying = isThis && !tts.isPaused;
@@ -215,7 +332,7 @@ export default function ReadingArtifact({ data, sendAsUser }: Props) {
               className="ml-auto text-[10.5px] font-bold uppercase tracking-wider"
               style={{ color: allDone ? P.primary : P.textFaint }}
             >
-              {doneCount}/{data.readings.length}
+              {doneCount}/{active.readings.length}
             </span>
           </div>
         </>
