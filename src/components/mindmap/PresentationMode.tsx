@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { X, ChevronLeft, ChevronRight, Play, Pause, BookOpen, Quote as QuoteIcon } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Play, Pause, BookOpen, Quote as QuoteIcon, BookMarked } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   ReactFlow,
   Background,
@@ -13,7 +14,7 @@ import {
   MarkerType,
 } from "@xyflow/react";
 import dagre from "dagre";
-import type { AnalysisResult, KeyConcept, NoteSubsection, AuthorQuote, VerseRef, SlideSummary } from "./types";
+import type { AnalysisResult, KeyConcept, NoteSubsection, AuthorQuote, VerseRef, SlideSummary, StoryNarrative } from "./types";
 import { getCategoryColor, getCategoryName, verseRefString } from "./types";
 import RootNodeComp from "./nodes/RootNode";
 import TopicCardComp from "./nodes/TopicCard";
@@ -45,11 +46,21 @@ function buildPresentationGraph(analysis: AnalysisResult) {
     data: { label: analysis.main_theme || analysis.hierarchy?.root?.label },
   });
 
-  const topicConcepts = (analysis.key_concepts || []).filter(c => !c.type || c.type === "topic");
+  // Sort topics by source slide so the visual reading order matches the PDF
+  const allTopics = (analysis.key_concepts || []).filter(c => !c.type || c.type === "topic");
+  const topicConcepts = [...allTopics].sort((a, b) => {
+    const aSlide = a.source_slides?.[0] ?? a.page_ref ?? 999;
+    const bSlide = b.source_slides?.[0] ?? b.page_ref ?? 999;
+    return aSlide - bSlide;
+  });
 
   topicConcepts.forEach((concept, i) => {
     const id = `topic-${concept.id || i}`;
     const catColor = getCategoryColor(concept.category);
+    const stories = (concept.expanded_note?.stories || []).map(s => ({
+      title: s.title,
+      source_slide: s.source_slide,
+    }));
     nodes.push({
       id,
       type: "topicCard",
@@ -64,10 +75,17 @@ function buildPresentationGraph(analysis: AnalysisResult) {
         nodeId: id,
         isKey: concept.is_key === true,
         pageRef: concept.page_ref,
+        orderIndex: i + 1,
+        stories,
       },
     });
     edges.push({
       id: `e-root-${id}`, source: rootId, target: id,
+      label: `${i + 1}`,
+      labelStyle: { fill: catColor, fontSize: 11, fontWeight: 700, fontFamily: "Inter, sans-serif" },
+      labelBgStyle: { fill: "#1e1a14", fillOpacity: 1 },
+      labelBgPadding: [4, 6],
+      labelBgBorderRadius: 8,
       style: { stroke: `${catColor}66`, strokeWidth: 1.5 },
       markerEnd: { type: MarkerType.ArrowClosed, color: `${catColor}99` },
     });
