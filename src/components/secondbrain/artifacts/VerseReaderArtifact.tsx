@@ -70,51 +70,73 @@ export default function VerseReaderArtifact({ data, sendAsUser }: Props) {
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
 
-  // Fetch chapter text
+  // Fetch chapter text using the SAME backend as ReadingFocusView (fetch-reading-text)
+  // with bible-api.com as fallback.
   useEffect(() => {
     let alive = true;
     setLoading(true);
     setError(null);
     setIdx(0);
 
-    const ref = encodeURIComponent(data.reference);
-    fetch(`https://bible-api.com/${ref}?translation=almeida`)
-      .then((r) => r.json())
-      .then((j) => {
+    const refs = data.readings && data.readings.length > 0 ? data.readings : [data.reference];
+
+    const tryEdgeFunction = async (): Promise<ParsedVerse[]> => {
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fetch-reading-text`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({ readings: refs }),
+      });
+      const j = await res.json();
+      if (!res.ok || j?.error) throw new Error(j?.error || `Erro ${res.status}`);
+      return parseBibleText(j?.result || "");
+    };
+
+    const tryBibleApi = async (): Promise<ParsedVerse[]> => {
+      const ref = encodeURIComponent(refs[0]);
+      const r = await fetch(`https://bible-api.com/${ref}?translation=almeida`);
+      const j = await r.json();
+      const list: ParsedVerse[] = Array.isArray(j?.verses)
+        ? j.verses.map((v: any) => ({
+            number: String(v.verse ?? ""),
+            text: String(v.text ?? "").trim(),
+          }))
+        : [];
+      return list;
+    };
+
+    (async () => {
+      try {
+        let list = await tryEdgeFunction();
+        if (list.length === 0) list = await tryBibleApi();
         if (!alive) return;
-        const list: ParsedVerse[] = Array.isArray(j?.verses)
-          ? j.verses.map((v: any) => ({
-              number: String(v.verse ?? ""),
-              text: String(v.text ?? "").trim(),
-            }))
-          : [];
-        if (list.length === 0 && j?.text) {
-          // Fallback: split by verse markers
-          const raw = String(j.text).trim();
-          const parts = raw.split(/(?=\b\d+\s)/g);
-          parts.forEach((part, i) => {
-            const m = part.match(/^(\d+)\s+(.+)/s);
-            if (m) list.push({ number: m[1], text: m[2].trim() });
-            else if (part.trim()) list.push({ number: String(i + 1), text: part.trim() });
-          });
+        if (list.length === 0) setError("Não foi possível carregar este texto.");
+        else setVerses(list);
+      } catch {
+        try {
+          const list = await tryBibleApi();
+          if (!alive) return;
+          if (list.length === 0) setError("Não foi possível carregar este texto.");
+          else setVerses(list);
+        } catch {
+          if (alive) setError("Erro de conexão. Tente novamente.");
         }
-        if (list.length === 0) {
-          setError("Não foi possível carregar este texto.");
-        } else {
-          setVerses(list);
-        }
-      })
-      .catch(() => alive && setError("Erro de conexão. Tente novamente."))
-      .finally(() => alive && setLoading(false));
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
 
     return () => {
       alive = false;
-      // Stop any reader TTS when unmounting / changing reference
       if (focusTTS.getState().playingId?.startsWith(`versereader-${data.reference}`)) {
         focusTTS.stop();
       }
     };
-  }, [data.reference]);
+  }, [data.reference, data.readings]);
 
   const current = verses[idx];
   const total = verses.length;
