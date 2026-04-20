@@ -83,8 +83,6 @@ function getLayoutedElements(nodes: Node[], edges: Edge[], direction = "TB") {
 function buildFromAnalysis(
   analysis: AnalysisResult,
   selectedNodeId: string | null,
-  images: Record<string, string> = {},
-  loadingImages: Record<string, boolean> = {},
 ) {
   const nodes: Node[] = [];
   const edges: Edge[] = [];
@@ -96,8 +94,6 @@ function buildFromAnalysis(
     position: { x: 0, y: 0 },
     data: {
       label: analysis.main_theme || analysis.hierarchy.root.label,
-      imageUrl: images["__root__"],
-      imageLoading: loadingImages["__root__"],
     },
   });
 
@@ -114,16 +110,10 @@ function buildFromAnalysis(
   topicConcepts.forEach((concept, i) => {
     const id = `topic-${concept.id || i}`;
     const catColor = getCategoryColor(concept.category);
-    // Limit highlights to 2 max per topic to keep map clean
-    const childHighlights = (concept.child_highlights || []).slice(0, 2);
     const noteVerses = concept.expanded_note?.verses || [];
     const verseCount = noteVerses.length || (concept.bible_refs || []).length;
     const keyPointsCount = (concept.expanded_note?.key_points || concept.expanded_note?.affirmations || []).length;
     const slides = concept.source_slides || (concept.page_ref ? [concept.page_ref] : []);
-    const stories = (concept.expanded_note?.stories || []).map(s => ({
-      title: s.title,
-      source_slide: s.source_slide,
-    }));
 
     nodes.push({
       id,
@@ -141,10 +131,8 @@ function buildFromAnalysis(
         isKey: concept.is_key === true,
         pageRef: concept.page_ref,
         sourceSlides: slides,
-        imageUrl: images[id],
-        imageLoading: loadingImages[id],
         orderIndex: i + 1,
-        stories,
+        stories: [],
       },
     });
 
@@ -169,45 +157,11 @@ function buildFromAnalysis(
       style: { stroke: `${catColor}66`, strokeWidth: 1.5 },
     });
 
-    // HighlightCard children — only the most quotable (max 2)
-    childHighlights.forEach((hl, j) => {
-      const hlId = `hl-${i}-${j}`;
-      nodes.push({
-        id: hlId,
-        type: "highlightCard",
-        position: { x: 0, y: 0 },
-        data: { label: hl, pageRef: concept.page_ref },
-      });
-      edges.push({
-        id: `edge-${id}-${hlId}`,
-        source: id,
-        target: hlId,
-        style: { stroke: "rgba(196,164,106,0.12)", strokeWidth: 1, strokeDasharray: "6 3" },
-      });
-    });
-
-    // Verses are NEVER nodes — they live inside the note's expanded view as chips
+    // Highlights/verses are NOT shown as nodes — they live inside the note's expanded view.
   });
 
-  // Standalone highlight concepts (rare, kept for legacy)
-  const highlights = (analysis.key_concepts || []).filter(c => c.type === "highlight");
-  highlights.slice(0, 4).forEach((hl, i) => {
-    const hlId = `hl-standalone-${i}`;
-    nodes.push({
-      id: hlId,
-      type: "highlightCard",
-      position: { x: 0, y: 0 },
-      data: { label: hl.title || hl.description },
-    });
-    edges.push({
-      id: `edge-root-${hlId}`,
-      source: rootId,
-      target: hlId,
-      style: { stroke: "rgba(196,164,106,0.12)", strokeWidth: 1 },
-    });
-  });
-
-  // NOTE: type="verse" concepts are intentionally ignored — verses live in notes only.
+  // NOTE: highlights and verses are intentionally NOT rendered as nodes —
+  // the map only shows topic bubbles linked to the root for fast scanning.
 
   return getLayoutedElements(nodes, edges);
 }
@@ -272,8 +226,6 @@ export default function MindMapCanvas({ analysis, mapId, onEnsureSavedForShare, 
     return () => { cancelled = true; };
   }, [mapId]);
   const [focusBranch, setFocusBranch] = useState<string | null>(null);
-  const [images, setImages] = useState<Record<string, string>>({});
-  const [loadingImages, setLoadingImages] = useState<Record<string, boolean>>({});
 
   const topicConcepts = useMemo(
     () => {
@@ -290,8 +242,8 @@ export default function MindMapCanvas({ analysis, mapId, onEnsureSavedForShare, 
   const selectedNodeId = openNoteIndex !== null ? `topic-${topicConcepts[openNoteIndex]?.id || openNoteIndex}` : null;
 
   const { nodes: initialNodes, edges: initialEdges } = useMemo(
-    () => buildFromAnalysis(analysis, selectedNodeId, images, loadingImages),
-    [analysis, selectedNodeId, images, loadingImages]
+    () => buildFromAnalysis(analysis, selectedNodeId),
+    [analysis, selectedNodeId]
   );
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -304,60 +256,13 @@ export default function MindMapCanvas({ analysis, mapId, onEnsureSavedForShare, 
   }, [nodes, edges, setNodes, setEdges]);
 
   useEffect(() => {
-    const { nodes: ln, edges: le } = buildFromAnalysis(analysis, selectedNodeId, images, loadingImages);
+    const { nodes: ln, edges: le } = buildFromAnalysis(analysis, selectedNodeId);
     setNodes(ln);
     setEdges(le);
-  }, [analysis, selectedNodeId, images, loadingImages]);
+  }, [analysis, selectedNodeId]);
 
-  // Generate AI images for the root + key topics in the background (non-blocking)
-  useEffect(() => {
-    let cancelled = false;
-    const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-card-image`;
-    const headers = {
-      "Content-Type": "application/json",
-      apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-      Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-    };
+  // Image generation removed — the map shows only topic bubbles for fast scanning.
 
-    const targets: { key: string; body: Record<string, unknown> }[] = [
-      { key: "__root__", body: { title: analysis.main_theme || "Tema", summary: analysis.summary, role: "root" } },
-      ...topicConcepts
-        .filter(c => c.is_key)
-        .map((c, i) => ({
-          key: `topic-${c.id || i}`,
-          body: { title: c.title, summary: c.summary || c.expanded_note?.core_idea, category: c.category, role: "topic" },
-        })),
-    ];
-
-    const todo = targets.filter(t => !images[t.key] && !loadingImages[t.key]);
-    if (todo.length === 0) return;
-
-    setLoadingImages(prev => {
-      const next = { ...prev };
-      todo.forEach(t => { next[t.key] = true; });
-      return next;
-    });
-
-    todo.forEach(async (t) => {
-      try {
-        const res = await fetch(url, { method: "POST", headers, body: JSON.stringify(t.body) });
-        const data = await res.json();
-        if (cancelled) return;
-        if (data?.image) {
-          setImages(prev => ({ ...prev, [t.key]: data.image }));
-        }
-      } catch (e) {
-        console.warn("card image failed", t.key, e);
-      } finally {
-        if (!cancelled) {
-          setLoadingImages(prev => { const n = { ...prev }; delete n[t.key]; return n; });
-        }
-      }
-    });
-
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [analysis]);
 
   const onNodeClick = useCallback((_: any, node: Node) => {
     if (node.type === "topicCard") {
