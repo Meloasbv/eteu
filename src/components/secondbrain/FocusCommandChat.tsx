@@ -132,6 +132,18 @@ export default function FocusCommandChat({ userCodeId, weeks, devotionals }: Pro
     return () => clearTimeout(t);
   }, [sessionId, messages]);
 
+  // Listen for sidebar shortcut "chat send" events
+  useEffect(() => {
+    const onSend = (e: Event) => {
+      const text = (e as CustomEvent<{ text: string }>).detail?.text;
+      if (text) handleIntentRef.current?.(text);
+    };
+    window.addEventListener("focus-chat-send", onSend as EventListener);
+    return () => window.removeEventListener("focus-chat-send", onSend as EventListener);
+  }, []);
+
+  const handleIntentRef = useRef<((text: string, force?: boolean) => void) | null>(null);
+
   const replaceArtifact = useCallback((id: string, artifact: ArtifactPayload, text?: string) => {
     setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, artifact, text: text ?? m.text } : m)));
   }, []);
