@@ -20,8 +20,30 @@ interface ParsedVerse {
 }
 
 interface Props {
-  data: { reference: string };
+  data: { reference: string; readings?: string[] };
   sendAsUser: (text: string) => void;
+}
+
+function parseBibleText(raw: string): ParsedVerse[] {
+  const verses: ParsedVerse[] = [];
+  const lines = raw.split("\n");
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed === "---") continue;
+    // Skip headers like "**Gênesis 1**" or "## Gênesis 1"
+    const headerMatch = trimmed.match(/^(?:\*\*|#{1,3}\s*)(.+?)(?:\*\*|)$/);
+    if (headerMatch && !/^\d/.test(headerMatch[1].trim())) continue;
+    const verseMatch = trimmed.match(/^(?:\*\*)?(\d+(?::\d+)?)\s*(?:\*\*)?\s*[-–—.]?\s*(.+)/);
+    if (verseMatch) {
+      verses.push({
+        number: verseMatch[1],
+        text: verseMatch[2].replace(/\*\*/g, "").trim(),
+      });
+    } else if (verses.length > 0 && trimmed.length > 10) {
+      verses[verses.length - 1].text += " " + trimmed.replace(/\*\*/g, "").trim();
+    }
+  }
+  return verses;
 }
 
 /**
