@@ -9,7 +9,7 @@ const ThoughtGraph = lazy(() => import("./ThoughtGraph"));
 const PatternsView = lazy(() => import("./PatternsView"));
 const TodayDashboard = lazy(() => import("./TodayDashboard"));
 const ParaBoard = lazy(() => import("./ParaBoard"));
-const FocusWorkspace = lazy(() => import("./FocusWorkspace"));
+
 
 // ── Types ──
 type ThoughtType = "problema" | "insight" | "estudo" | "reflexão" | "oração" | "decisão" | "emocional" | "ideia" | "pergunta";
@@ -88,7 +88,7 @@ export default function SecondBrainTab({
   onRequestMindMap?: () => void;
 }) {
   const [viewMode, setViewMode] = useState<ViewMode>("today");
-  const [focusOpen, setFocusOpen] = useState(false);
+  // Focus Mode removed from here — managed at Index.tsx level
   const [content, setContent] = useState("");
   const [selectedType, setSelectedType] = useState<ThoughtType | "auto">("auto");
   const [thoughts, setThoughts] = useState<Thought[]>([]);
@@ -313,18 +313,6 @@ export default function SecondBrainTab({
           </button>
         ))}
         <div className="flex-1" />
-        <button
-          onClick={() => { setFocusOpen(true); haptic("medium"); }}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold font-ui transition-all hover:scale-[1.02] active:scale-95"
-          style={{
-            background: "linear-gradient(135deg, hsl(var(--primary) / 0.2), hsl(var(--primary) / 0.08))",
-            color: "hsl(var(--primary))",
-            border: "1px solid hsl(var(--primary) / 0.4)",
-            boxShadow: "0 0 20px -8px hsl(var(--primary) / 0.5)",
-          }}
-        >
-          <Zap size={13} /> Modo Foco
-        </button>
       </div>
 
       {viewMode === "today" && (
@@ -343,19 +331,7 @@ export default function SecondBrainTab({
         </div>
       )}
 
-      <Suspense fallback={null}>
-        {focusOpen && (
-          <FocusWorkspace
-            userCodeId={userCodeId}
-            open={focusOpen}
-            onClose={() => setFocusOpen(false)}
-            onRequestReading={() => { setFocusOpen(false); onRequestReading?.(); }}
-            onRequestDevotional={() => { setFocusOpen(false); onRequestDevotional?.(); }}
-            onRequestNotes={() => { setFocusOpen(false); onRequestNotes?.(); }}
-            onRequestMindMap={() => { setFocusOpen(false); onRequestMindMap?.(); }}
-          />
-        )}
-      </Suspense>
+      {/* Focus Mode is now controlled at Index.tsx level (app-wide overlay) */}
 
       {/* Content */}
       {viewMode === "capture" && (

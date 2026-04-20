@@ -14,8 +14,10 @@ import DesktopRightPanel from "@/components/desktop/DesktopRightPanel";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useScrollDirection } from "@/hooks/useScrollDirection";
 import { haptic } from "@/hooks/useHaptic";
-import { BookOpen, Flame, PenLine, Check, Sun, Moon, LogOut, Sparkles, CheckCheck, Brain } from "lucide-react";
+import { BookOpen, Flame, PenLine, Check, Sun, Moon, LogOut, Sparkles, CheckCheck, Brain, Zap } from "lucide-react";
 import SecondBrainTab from "@/components/secondbrain/SecondBrainTab";
+import { lazy, Suspense } from "react";
+const FocusWorkspace = lazy(() => import("@/components/secondbrain/FocusWorkspace"));
 
 // ── DATA ──────────────────────────────────────────────────────────────────────
 
@@ -226,6 +228,7 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
   const [musicPlaying, setMusicPlaying] = useState(false);
   const playerRef = useRef<HTMLIFrameElement>(null);
   const isMobile = useIsMobile();
+  const [focusOpen, setFocusOpen] = useState(false);
 
   // Reading focus mode
   const [focusReading, setFocusReading] = useState<{ weekIdx: number; dayIdx: number; dayName: string; readings: string[] } | null>(null);
