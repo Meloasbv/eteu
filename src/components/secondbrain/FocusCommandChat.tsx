@@ -114,7 +114,7 @@ export default function FocusCommandChat({ userCodeId, weeks, devotionals }: Pro
           id: newId(),
           role: "assistant",
           text: `${greeting}. Sua leitura de hoje é ${reads}. Semana ${today.weekNum}.`,
-          artifact: { type: "reading", data: today },
+          artifact: { type: "reading", data: { ...today, weeks } },
           timestamp: Date.now(),
         },
       ];
