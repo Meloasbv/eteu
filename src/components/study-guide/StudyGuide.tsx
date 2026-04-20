@@ -160,6 +160,21 @@ export default function StudyGuide({
               <Map size={13} /> Mapa
             </button>
           )}
+          {(mapId !== undefined) && (
+            <button
+              onClick={() => setShareOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-ui transition-all hover:scale-105"
+              style={{
+                background: "hsl(var(--muted))",
+                border: "1px solid hsl(var(--border))",
+                color: "hsl(var(--foreground))",
+              }}
+              title="Compartilhar estudo"
+            >
+              <Share2 size={13} />
+              <span className="hidden sm:inline">Compartilhar</span>
+            </button>
+          )}
           <button
             onClick={() => exportStudyGuidePDF(analysis)}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-ui transition-all hover:scale-105"
