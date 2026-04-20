@@ -69,6 +69,7 @@ export default function VerseReaderArtifact({ data, sendAsUser }: Props) {
 
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
+  const wasPlayingRef = useRef(false);
 
   // Fetch chapter text using the SAME backend as ReadingFocusView (fetch-reading-text)
   // with bible-api.com as fallback.
@@ -146,13 +147,30 @@ export default function VerseReaderArtifact({ data, sendAsUser }: Props) {
     (i: number) => {
       if (i < 0 || i >= verses.length) return;
       haptic("light");
-      // Stop reading when jumping verses (avoids overlap)
-      if (focusTTS.getState().playingId?.startsWith(`versereader-${data.reference}`)) {
+      const wasPlaying =
+        focusTTS.getState().playingId?.startsWith(`versereader-${data.reference}`) ?? false;
+      // Always stop current utterance before switching
+      if (wasPlaying) {
+        wasPlayingRef.current = false; // prevent auto-advance handler from firing
         focusTTS.stop();
       }
       setIdx(i);
+      // If user was listening, continue reading the new verse automatically
+      if (wasPlaying) {
+        const v = verses[i];
+        if (v) {
+          // Defer to next tick so state.playingId reset propagates
+          setTimeout(() => {
+            focusTTS.speak(
+              `versereader-${data.reference}-${i}`,
+              v.text,
+              { label: `${data.reference}:${v.number}` },
+            );
+          }, 0);
+        }
+      }
     },
-    [verses.length, data.reference],
+    [verses, data.reference],
   );
 
   const togglePlay = () => {
@@ -163,11 +181,9 @@ export default function VerseReaderArtifact({ data, sendAsUser }: Props) {
       else focusTTS.pause();
       return;
     }
-    focusTTS.speak(
-      ttsId,
-      `Versículo ${current.number}. ${current.text}`,
-      { label: `${data.reference}:${current.number}` },
-    );
+    focusTTS.speak(ttsId, current.text, {
+      label: `${data.reference}:${current.number}`,
+    });
   };
 
   // Auto-advance when TTS finishes the current verse
@@ -178,7 +194,6 @@ export default function VerseReaderArtifact({ data, sendAsUser }: Props) {
   }, [isThis]);
 
   // Listen for end-of-utterance: when our id stops being active, advance to next
-  const wasPlayingRef = useRef(false);
   useEffect(() => {
     if (isPlaying) {
       wasPlayingRef.current = true;
@@ -193,7 +208,7 @@ export default function VerseReaderArtifact({ data, sendAsUser }: Props) {
       if (v) {
         focusTTS.speak(
           `versereader-${data.reference}-${next}`,
-          `Versículo ${v.number}. ${v.text}`,
+          v.text,
           { label: `${data.reference}:${v.number}` },
         );
       }
