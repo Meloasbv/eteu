@@ -210,7 +210,7 @@ export default function ReadingArtifact({ data, sendAsUser }: Props) {
                     </span>
                     <span
                       className="text-[13px] font-bold leading-none"
-                      style={{ color: isSel ? P.primary : isToday ? P.text : P.textDim }}
+                      style={{ color: isSel ? P.primary : isCurrentDay ? P.text : P.textDim }}
                     >
                       {date.getDate()}
                     </span>
