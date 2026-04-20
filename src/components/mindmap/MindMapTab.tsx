@@ -210,7 +210,7 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
 
     setError(null);
     setMode("pdf-processing");
-    setPdfProgress({ step: "uploading", fileName: file.name, percent: 10 });
+    setPdfState({ stage: "uploading", fileName: file.name, pipeline: null });
 
     try {
       const arrayBuffer = await file.arrayBuffer();
@@ -221,7 +221,7 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
       }
       const base64 = btoa(binary);
 
-      setPdfProgress({ step: "extracting", fileName: file.name, percent: 30 });
+      setPdfState({ stage: "extracting", fileName: file.name, pipeline: null });
 
       const extractUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-pdf`;
       const extractRes = await fetch(extractUrl, {
@@ -237,52 +237,44 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
       if (!extractRes.ok || extractData?.error) {
         setError(extractData?.error || "Erro ao extrair texto do PDF.");
         setMode("select");
-        setPdfProgress(null);
+        setPdfState(null);
         return;
       }
 
-      setPdfProgress({ step: "analyzing", fileName: file.name, pages: extractData.pages, percent: 55 });
+      const pages = (extractData.pagesText as { page: number; text: string }[]) || [];
+      if (pages.length === 0) {
+        setError("Não foi possível extrair texto deste PDF.");
+        setMode("select");
+        setPdfState(null);
+        return;
+      }
 
-      const analyzeUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-content`;
-      const analyzeRes = await fetch(analyzeUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+      // Run new pipeline (one AI call per group, in parallel)
+      const pdfTitle = file.name.replace(/\.pdf$/i, "").trim() || "Estudo";
+      const result = await runMindMapPipeline({
+        pagesText: pages,
+        pdfTitle,
+        onProgress: (progress) => {
+          setPdfState({
+            stage: "pipeline",
+            fileName: file.name,
+            pages: extractData.pages,
+            pipeline: progress,
+          });
         },
-        body: JSON.stringify({ text: extractData.text }),
       });
-      const analyzeData = await analyzeRes.json();
-      if (!analyzeRes.ok || analyzeData?.error) {
-        setError(analyzeData?.error || "Erro ao analisar conteúdo.");
-        setMode("select");
-        setPdfProgress(null);
-        return;
-      }
 
-      setPdfProgress({ step: "generating", fileName: file.name, pages: extractData.pages, percent: 85 });
-
-      await new Promise(r => setTimeout(r, 500));
-
-      if (analyzeData?.result) {
-        setPdfProgress({ step: "done", fileName: file.name, pages: extractData.pages, percent: 100 });
-        await new Promise(r => setTimeout(r, 600));
-        const savedMapId = await saveAiMap(analyzeData.result);
-        setAnalysis(analyzeData.result);
-        setAiMapId(savedMapId);
-        await fetchMaps();
-        setMode("ai-canvas");
-      } else {
-        setError("Resposta inesperada da IA.");
-        setMode("select");
-      }
+      const savedMapId = await saveAiMap(result);
+      setAnalysis(result);
+      setAiMapId(savedMapId);
+      await fetchMaps();
+      setMode("ai-canvas");
     } catch (error) {
       console.error("PDF mind map generation failed:", error);
       setError(error instanceof Error ? error.message : "Erro de conexão. Verifique sua internet.");
       setMode("select");
     } finally {
-      setPdfProgress(null);
+      setPdfState(null);
     }
   }, [fetchMaps, saveAiMap]);
 
