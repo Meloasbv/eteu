@@ -86,10 +86,10 @@ ${isLong ? "Em aulas longas, MARQUE como secondary/tertiary qualquer bloco que n
 3. category: [teologia, cristologia, pneumatologia, exegese, contexto, aplicacao, escatologia, soteriologia, personagem, lugar, evento]
 4. importance: "primary" | "secondary" | "tertiary"
 5. core_idea: tese ou frase-resumo (≤22 palavras), idealmente CITANDO frase do material
-6. key_points: bullets fiéis (≤25 palavras cada).
-   - primary: 5-15 bullets
-   - secondary: 4-7 bullets
-   - tertiary: 2-4 bullets
+6. key_points: bullets CURTOS e ANOTÁVEIS (≤15 palavras cada). Resumo enxuto, não exaustivo.
+   - primary: 3-5 bullets (os mais essenciais)
+   - secondary: 2-4 bullets
+   - tertiary: 1-2 bullets
 7. subsections: só se houver sub-divisões visíveis. Senão []
 8. verses: APENAS versículos LITERAIS dos slides
 9. quotes: APENAS citações de terceiros LITERAIS dos slides

@@ -57,7 +57,7 @@ type SidebarShortcut = {
 const SHORTCUTS: SidebarShortcut[] = [
   { key: "leitura", label: "Leitura", icon: BookOpen, action: { kind: "chat", cmd: "leitura de hoje" } },
   { key: "devocional", label: "Devocional", icon: Flame, action: { kind: "chat", cmd: "devocional do dia" } },
-  { key: "mapa", label: "Mapa Mental", icon: Brain, action: { kind: "tool", detail: { tool: "mindmap" } } },
+  { key: "mapa", label: "Estudo Guiado", icon: Brain, action: { kind: "tool", detail: { tool: "mindmap" } } },
   { key: "caderno", label: "Caderno", icon: PenLine, action: { kind: "tool", detail: { tool: "notebook" } } },
 ];
 
@@ -521,7 +521,7 @@ export default function FocusWorkspace({ open, onClose, tab, setTab, userCodeId,
               <X size={15} />
             </button>
             <p className="text-[11px] font-bold uppercase tracking-[2px]" style={{ color: PALETTE.primary }}>
-              {activeTool.tool === "notebook" || activeTool.tool === "notebook-open" ? "Caderno" : "Mapa Mental"}
+              {activeTool.tool === "notebook" || activeTool.tool === "notebook-open" ? "Caderno" : "Estudo Guiado"}
             </p>
             <span className="text-[10px]" style={{ color: PALETTE.textDim }}>· ESC para fechar</span>
           </div>
