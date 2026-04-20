@@ -142,7 +142,7 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
       if (isAi && storedAnalysis) {
         setAnalysis(storedAnalysis);
         setAiMapId(row.id);
-        setMode("ai-canvas");
+        setMode("ai-guide");
       } else {
         setEditMapId(id);
         setMode("manual");
@@ -190,7 +190,7 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
         setAnalysis(data.result);
         setAiMapId(savedMapId);
         await fetchMaps();
-        setMode("ai-canvas");
+        setMode("ai-guide");
       }
       else { setError("Resposta inesperada da IA."); }
     } catch (error) {
@@ -270,7 +270,7 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
       setAnalysis(result);
       setAiMapId(savedMapId);
       await fetchMaps();
-      setMode("ai-canvas");
+      setMode("ai-guide");
     } catch (error) {
       console.error("PDF mind map generation failed:", error);
       setError(error instanceof Error ? error.message : "Erro de conexão. Verifique sua internet.");
