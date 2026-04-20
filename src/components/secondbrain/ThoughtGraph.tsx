@@ -303,53 +303,76 @@ export default function ThoughtGraph({ userCodeId, theme = "gold", embedded = fa
     });
 
     // Draw nodes
+    const isNeon = theme === "neon";
+    const NEON = "#00FF94";
     nodes.forEach(node => {
       if (node.x == null || node.y == null) return;
       const r = getNodeRadius(node.connectionCount);
-      const color = TYPE_COLORS[node.type] || "#c4a46a";
+      const baseColor = TYPE_COLORS[node.type] || "#c4a46a";
+      const color = isNeon ? NEON : baseColor;
       const isHovered = hovered?.id === node.id;
       const isFocused = focusNodeId === node.id;
       const isFiltered = filterType && node.type !== filterType && !focusedIds;
       const isRecent = now - new Date(node.created_at).getTime() < RECENT_MS;
 
-      // Recent glow ring
+      // Recent glow ring (stronger in neon)
       if (isRecent && !isFiltered) {
         ctx.beginPath();
-        ctx.arc(node.x, node.y, r + 4 + pulseAlpha * 2, 0, Math.PI * 2);
-        ctx.strokeStyle = `${color}${Math.round(pulseAlpha * 100).toString(16).padStart(2, "0")}`;
-        ctx.lineWidth = 1.5;
+        ctx.arc(node.x, node.y, r + (isNeon ? 6 : 4) + pulseAlpha * (isNeon ? 4 : 2), 0, Math.PI * 2);
+        const alphaHex = Math.round(pulseAlpha * (isNeon ? 180 : 100)).toString(16).padStart(2, "0");
+        ctx.strokeStyle = `${color}${alphaHex}`;
+        ctx.lineWidth = isNeon ? 2 : 1.5;
+        if (isNeon) {
+          ctx.shadowColor = NEON;
+          ctx.shadowBlur = 8 + pulseAlpha * 8;
+        }
         ctx.stroke();
+        ctx.shadowBlur = 0;
       }
 
       // Focused node ring
       if (isFocused) {
         ctx.beginPath();
         ctx.arc(node.x, node.y, r + 6, 0, Math.PI * 2);
-        ctx.strokeStyle = "#fef3c7";
+        ctx.strokeStyle = isNeon ? NEON : "#fef3c7";
         ctx.lineWidth = 2;
+        if (isNeon) {
+          ctx.shadowColor = NEON;
+          ctx.shadowBlur = 14;
+        }
         ctx.stroke();
+        ctx.shadowBlur = 0;
       }
 
       ctx.beginPath();
       ctx.arc(node.x, node.y, isHovered ? r * 1.18 : r, 0, Math.PI * 2);
-      ctx.fillStyle = color;
-      ctx.globalAlpha = isFiltered ? 0.18 : isHovered || isFocused ? 1 : 0.82;
-      ctx.fill();
-
-      // Inner highlight
-      ctx.beginPath();
-      ctx.arc(node.x - r * 0.3, node.y - r * 0.3, r * 0.35, 0, Math.PI * 2);
-      ctx.fillStyle = "rgba(255,255,255,0.18)";
-      ctx.fill();
-
-      if (isHovered || isFocused) {
-        ctx.shadowColor = color;
-        ctx.shadowBlur = 22;
-        ctx.beginPath();
-        ctx.arc(node.x, node.y, r * 1.05, 0, Math.PI * 2);
-        ctx.fillStyle = color;
+      if (isNeon) {
+        ctx.fillStyle = `rgba(0,255,148,${isHovered || isFocused ? 0.22 : 0.10})`;
+        ctx.globalAlpha = isFiltered ? 0.25 : 1;
         ctx.fill();
-        ctx.shadowBlur = 0;
+        ctx.strokeStyle = NEON;
+        ctx.lineWidth = isHovered || isFocused ? 2 : 1.4;
+        ctx.stroke();
+      } else {
+        ctx.fillStyle = color;
+        ctx.globalAlpha = isFiltered ? 0.18 : isHovered || isFocused ? 1 : 0.82;
+        ctx.fill();
+
+        // Inner highlight (gold theme only)
+        ctx.beginPath();
+        ctx.arc(node.x - r * 0.3, node.y - r * 0.3, r * 0.35, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(255,255,255,0.18)";
+        ctx.fill();
+
+        if (isHovered || isFocused) {
+          ctx.shadowColor = color;
+          ctx.shadowBlur = 22;
+          ctx.beginPath();
+          ctx.arc(node.x, node.y, r * 1.05, 0, Math.PI * 2);
+          ctx.fillStyle = color;
+          ctx.fill();
+          ctx.shadowBlur = 0;
+        }
       }
       ctx.globalAlpha = 1;
 
@@ -359,20 +382,24 @@ export default function ThoughtGraph({ userCodeId, theme = "gold", embedded = fa
         ctx.font = "11px ui-sans-serif, system-ui, sans-serif";
         ctx.textAlign = "center";
 
-        // Background pill
         const metrics = ctx.measureText(label);
         const pad = 6;
         const bgW = metrics.width + pad * 2;
         const bgH = 18;
-        ctx.fillStyle = "rgba(15, 13, 10, 0.85)";
+        ctx.fillStyle = isNeon ? "rgba(17,22,29,0.92)" : "rgba(15, 13, 10, 0.85)";
         ctx.fillRect(node.x - bgW / 2, node.y + r + 8, bgW, bgH);
-        ctx.fillStyle = "#ede4d3";
+        if (isNeon) {
+          ctx.strokeStyle = `${NEON}55`;
+          ctx.lineWidth = 1;
+          ctx.strokeRect(node.x - bgW / 2, node.y + r + 8, bgW, bgH);
+        }
+        ctx.fillStyle = isNeon ? "#E6EDF3" : "#ede4d3";
         ctx.fillText(label, node.x, node.y + r + 21);
       }
     });
 
     ctx.restore();
-  }, [hoveredNode, filterType, focusNodeId, focusedIds]);
+  }, [hoveredNode, filterType, focusNodeId, focusedIds, theme]);
 
   // Resize canvas
   useEffect(() => {
@@ -440,7 +467,13 @@ export default function ThoughtGraph({ userCodeId, theme = "gold", embedded = fa
   const handlePointerUp = () => {
     const d = dragRef.current;
     if (d.dragging && d.node && !d.moved) {
-      setSelectedNode(d.node);
+      if (onSelectNode) {
+        // Embedded mode: notify parent and visually focus that node
+        onSelectNode(d.node.id);
+        setFocusNodeId(d.node.id);
+      } else {
+        setSelectedNode(d.node);
+      }
     }
     dragRef.current = { dragging: false, startX: 0, startY: 0, node: null, moved: false };
   };
