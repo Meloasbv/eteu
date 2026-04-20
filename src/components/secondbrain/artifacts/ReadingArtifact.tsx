@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
-import { BookOpen, Check, ChevronRight, Headphones, Loader2, Pause, Play } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { BookOpen, Calendar as CalendarIcon, Check, ChevronRight, Headphones, Loader2, Pause, Play } from "lucide-react";
 import { ArtifactShell, ArtifactAction } from "./ArtifactShell";
 import { FOCUS_PALETTE as P } from "./types";
 import { haptic } from "@/hooks/useHaptic";
 import { useFocusTTS, focusTTS } from "@/hooks/useFocusTTS";
+import { computeReadingForDate } from "@/lib/readingPlan";
 
 const READING_KEY = "bible-plan-progress";
 
@@ -14,6 +15,7 @@ interface ReadingData {
   dayIdx: number;
   day: string;
   readings: string[];
+  weeks?: any[];
 }
 
 interface Props {
