@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, ReactNode } from "react";
+import { useEffect, useRef, useState, ReactNode, lazy, Suspense } from "react";
 import {
   X, SkipForward, Pause, Play, Volume2, Youtube,
   BookOpen, Flame, PenLine, Brain, Timer, Maximize2, Minimize2,
@@ -8,6 +8,10 @@ import { haptic } from "@/hooks/useHaptic";
 import { toast } from "@/hooks/use-toast";
 import { useFocusMusic, FOCUS_TRACKS, type FocusTrackKey } from "@/hooks/useFocusMusic";
 import FocusCommandChat, { type FocusPanelKey } from "./FocusCommandChat";
+import type { FocusOpenToolDetail, FocusToolKey } from "@/lib/focusTools";
+
+const MindMapTab = lazy(() => import("@/components/mindmap/MindMapTab"));
+const NotebookList = lazy(() => import("@/components/study/NotebookList"));
 
 // WEEKS data needed by FocusCommandChat to compute today's reading
 const WEEKS_FALLBACK: any[] = [];
