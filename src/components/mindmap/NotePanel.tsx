@@ -90,6 +90,24 @@ export default function NotePanel({
     siblings: string[];
   } | null>(null);
 
+  // ── Deep study (Level 3) state ──
+  const [deepLoading, setDeepLoading] = useState(false);
+  const [deepData, setDeepData] = useState<{
+    theological_analysis?: string;
+    connections?: ConceptConnection[];
+    reflection_questions?: string[];
+  } | null>(null);
+  const [deepOpen, setDeepOpen] = useState(false);
+  const [transformLoading, setTransformLoading] = useState<string | null>(null);
+  const [transformOpen, setTransformOpen] = useState(false);
+
+  // Reset deep state when navigating to another concept
+  useEffect(() => {
+    setDeepData(null);
+    setDeepOpen(false);
+    setTransformOpen(false);
+  }, [concept?.id]);
+
   const allVerses: string[] = concept
     ? [
         ...((concept.expanded_note?.verses || []).map(verseRefString)),
@@ -115,7 +133,11 @@ export default function NotePanel({
 
   const coreIdea = note?.core_idea || concept.coreIdea || "";
   const explanation = note?.explanation || "";
+  const detailedExplanation = note?.detailed_explanation || "";
+  const historicalContext = note?.historical_context || "";
+  const examples = note?.examples || [];
   const keyPoints = note?.key_points || note?.affirmations || concept.keyPoints || [];
+  const keyPointsDeep: KeyPointDeep[] = note?.key_points_deep || [];
   const subsections = note?.subsections || [];
   const versesRich: VerseRef[] = (note?.verses || []).map(v =>
     typeof v === "string" ? { ref: v } : v
@@ -127,6 +149,85 @@ export default function NotePanel({
   const impactPhrase = note?.impact_phrase || concept.impactPhrase || "";
   const sourceSlides = concept.source_slides || (concept.page_ref ? [concept.page_ref] : []);
   const slideRange = formatSlideRange(sourceSlides);
+
+  // Use cached deep data from concept if available
+  const effectiveDeep = deepData || (note?.theological_analysis ? {
+    theological_analysis: note.theological_analysis,
+    connections: note.connections || [],
+    reflection_questions: note.reflection_questions || [],
+  } : null);
+
+  const peerTitles = topicConcepts.filter(c => c.id !== concept.id).map(c => c.title);
+
+  const loadDeep = async () => {
+    if (effectiveDeep || deepLoading) {
+      setDeepOpen(true);
+      return;
+    }
+    setDeepLoading(true);
+    setDeepOpen(true);
+    try {
+      const body = [coreIdea, detailedExplanation, ...keyPoints].filter(Boolean).join("\n");
+      const { data, error } = await supabase.functions.invoke("deepen-concept", {
+        body: { mode: "deep", title: concept.title, summary: body, peers: peerTitles },
+      });
+      if (error) throw error;
+      setDeepData(data);
+    } catch (e: any) {
+      toast.error(e?.message || "Falha ao carregar estudo profundo");
+      setDeepOpen(false);
+    } finally {
+      setDeepLoading(false);
+    }
+  };
+
+  const transformAndSave = async (mode: "study_card" | "devotional" | "sermon_outline") => {
+    setTransformLoading(mode);
+    try {
+      const body = [coreIdea, detailedExplanation, application, ...keyPoints,
+        ...verses.map(v => v.ref + (v.context ? `: ${v.context}` : ""))].filter(Boolean).join("\n");
+      const { data, error } = await supabase.functions.invoke("deepen-concept", {
+        body: { mode, title: concept.title, summary: coreIdea, body },
+      });
+      if (error) throw error;
+      const md: string = data?.markdown || "";
+      if (!md) throw new Error("Resposta vazia");
+
+      // Save into Caderno (localStorage shape used by NotebookList)
+      const STORAGE_KEY = "fascinacao_study_notes";
+      const labels: Record<string, string> = {
+        study_card: "Cartão de Estudo",
+        devotional: "Devocional",
+        sermon_outline: "Esboço de Sermão",
+      };
+      const categories: Record<string, string> = {
+        study_card: "Teologia",
+        devotional: "Devocionais",
+        sermon_outline: "Sermões",
+      };
+      const now = new Date().toISOString();
+      const newNote = {
+        id: Date.now().toString(),
+        title: `${labels[mode]} — ${concept.title}`,
+        content: md,
+        category: categories[mode],
+        wordCount: md.split(/\s+/).length,
+        createdAt: now,
+        updatedAt: now,
+      };
+      try {
+        const existing = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+        localStorage.setItem(STORAGE_KEY, JSON.stringify([newNote, ...existing]));
+      } catch {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify([newNote]));
+      }
+      toast.success(`${labels[mode]} salvo no Caderno`, { description: concept.title });
+    } catch (e: any) {
+      toast.error(e?.message || "Falha na transformação");
+    } finally {
+      setTransformLoading(null);
+    }
+  };
 
   const canPrev = currentIndex > 0;
   const canNext = currentIndex < concepts.length - 1;
