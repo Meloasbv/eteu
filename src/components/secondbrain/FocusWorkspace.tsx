@@ -35,8 +35,10 @@ interface Props {
   onClose: () => void;
   tab: FocusTab;
   setTab: (t: FocusTab) => void;
-  /** Render the actual platform tab content for a given focus key */
-  renderTab: (key: FocusPanelKey) => ReactNode;
+  userCodeId: string;
+  weeks: any[];
+  /** Legacy, unused */
+  renderTab?: (key: FocusPanelKey) => ReactNode;
 }
 
 const MODES: { key: FocusPanelKey; label: string; icon: any }[] = [
