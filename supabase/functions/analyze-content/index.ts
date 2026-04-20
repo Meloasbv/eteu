@@ -54,136 +54,172 @@ async function callGateway(messages: any[], maxTokens = 12000) {
 }
 
 // ---------- prompts ----------
-const STRUCTURE_PROMPT = `Você é um especialista em análise teológica. Recebe um PDF de aula bíblica com slides marcados [[PÁGINA N]].
+const STRUCTURE_PROMPT = `Você é um EXTRATOR de estrutura de documentos. Recebe um PDF com slides marcados [[PÁGINA N]].
 
-TAREFA: Identifique a estrutura DE ALTO NÍVEL — quais são os blocos temáticos.
+TAREFA: Identifique os blocos temáticos REAIS do material — usando os títulos e seções que JÁ EXISTEM no PDF.
 
-REGRAS CRÍTICAS:
-1. Slides consecutivos com o MESMO título/tema = MESMO topic. Agrupe agressivamente.
-2. Gere ENTRE 6 E 10 topics (um PDF de 60 slides deve ter ~8 topics). Nunca menos que 6, nunca mais que 10.
-3. Cada topic cobre um RANGE contíguo de slides (use slide_range: [inicio, fim]).
+═══ REGRA SUPREMA: FIDELIDADE AO ORIGINAL ═══
+- Use os TÍTULOS QUE APARECEM NO PDF. Se o slide diz "Contexto histórico", use "Contexto histórico" — NÃO invente "A época sombria de Israel".
+- Se o material não é teológico (ex: história, ciência, negócios), NÃO force vocabulário teológico.
+- NUNCA invente seções que não existem no original.
+
+REGRAS:
+1. Slides consecutivos com o MESMO tema/título = MESMO topic. Agrupe pela divisão real do PDF.
+2. Gere o NÚMERO NATURAL de topics conforme o PDF (entre 4 e 12). Não force 6-10 se o PDF tem 4 seções claras.
+3. Cada topic cobre um RANGE contíguo de slides (slide_range: [inicio, fim]).
 4. Ignore slide de capa (vai virar main_theme).
-5. Cada topic precisa ter título curto + categoria + range de slides.
+5. title: copiado/condensado do título real do bloco. summary: frase curta EXTRAÍDA do conteúdo (não interpretada).
 
-CATEGORIAS válidas: teologia, cristologia, pneumatologia, exegese, contexto, aplicacao, escatologia, soteriologia
+CATEGORIAS (escolha a mais próxima; use "contexto" se nada se aplica): teologia, cristologia, pneumatologia, exegese, contexto, aplicacao, escatologia, soteriologia
 
 RETORNE APENAS JSON válido, sem markdown:
 {
-  "main_theme": "Título da aula extraído da capa",
-  "summary": "1 frase sobre o tema (máx 100 chars)",
-  "author": "Nome do autor se aparecer",
+  "main_theme": "Título exato extraído da capa",
+  "summary": "1 frase EXTRAÍDA do material (máx 100 chars)",
+  "author": "Nome do autor se aparecer no PDF",
   "total_slides": 60,
   "topics": [
     {
       "id": "t1",
-      "title": "Título curto (2-5 palavras)",
+      "title": "Título real do bloco (do PDF)",
       "category": "contexto",
       "slide_range": [2, 5],
-      "summary": "gancho provocativo curto (máx 80 chars)",
+      "summary": "frase curta extraída (máx 80 chars)",
       "is_key": true
     }
   ],
-  "keywords": ["palavra1", "palavra2"]
+  "keywords": ["termos que APARECEM no texto"]
 }
 
-Marque is_key=true APENAS para os 3-4 topics MAIS centrais.`;
+Marque is_key=true APENAS para os 3-4 topics centrais (mais slides ou ênfase do autor).`;
 
 const EXPAND_PROMPT = (topicTitle: string, slideRange: [number, number], category: string) =>
-  `Você é um teólogo reformado preparando MATERIAL DE ESTUDO PROFUNDO sobre "${topicTitle}" (categoria: ${category}), baseado nos slides ${slideRange[0]}-${slideRange[1]}.
+  `Você é um EXTRATOR de conteúdo. Sua tarefa é REORGANIZAR o que está nos slides ${slideRange[0]}-${slideRange[1]} sobre "${topicTitle}" — NÃO criar conteúdo novo.
 
-TAREFA: Produza conteúdo em DOIS NÍVEIS de profundidade. NÃO seja superficial. Cada campo deve trazer densidade real, pronto para estudo sério.
+═══ REGRA SUPREMA — FIDELIDADE ABSOLUTA ═══
+VOCÊ NÃO É AUTOR. VOCÊ É EXTRATOR.
 
-═══ NÍVEL 1 — Visão sintética ═══
-1. core_idea: 1 frase essencial (≤22 palavras) — a tese central.
-2. key_points: 4 a 6 bullets escaneáveis (≤18 palavras cada).
-3. impact_phrase: 1 frase memorizável (≤14 palavras).
+PERMITIDO:
+✓ Copiar frases do original (encurtadas/condensadas)
+✓ Quebrar parágrafos em bullets fiéis
+✓ Preservar termos técnicos e expressões originais
+✓ Reorganizar a ordem para clareza
 
-═══ NÍVEL 2 — Exploração detalhada ═══
-4. detailed_explanation: parágrafo denso de 4 a 7 frases, explicando o conceito com profundidade teológica. NUNCA genérico — sempre específico ao tema.
-5. historical_context: 2 a 4 frases sobre contexto histórico, cultural ou bíblico relevante (autor, época, escola teológica, prática original).
-6. examples: 2 a 4 exemplos concretos OU ilustrações OU aplicações específicas (não frases abstratas).
-7. key_points_deep: para CADA bullet de key_points, repita o ponto e adicione 'detail' com 1-2 frases de aprofundamento.
-8. subsections: se houver sub-temas claros, divida em 2-5 subsections com 3-6 bullets cada.
+PROIBIDO:
+✗ Inventar pontos que não estão no slide
+✗ Substituir termos específicos por genéricos ("êxodo rural" → "mudanças sociais" é ERRADO)
+✗ Adicionar análise teológica/histórica que não aparece no PDF
+✗ Generalizar ou interpretar o que o autor quis dizer
+✗ Adicionar versículos, autores ou citações que NÃO aparecem literalmente nos slides
+✗ Inferir contexto histórico que o material não menciona
+✗ Reduzir agressivamente (perder pontos é pior que ter bullets demais)
 
-═══ Conteúdo bíblico ═══
-9. verses: TODOS os versículos mencionados, com referência exata + contexto curto + source_slide.
-10. author_quotes: TODAS as citações de autores (texto literal + nome + slide).
-11. application: 2-3 frases de aplicação prática real (não chavões).
+═══ COMO EXTRAIR ═══
 
-REGRAS DE QUALIDADE:
-- Evite frases genéricas tipo "Deus é bom" ou "isto é importante"
-- Sempre nomeie autores, datas, escolas, livros quando relevante
-- Linguagem teológica precisa, mas acessível
-- Cada campo deve agregar conteúdo NOVO — nunca repita literalmente outro campo
+1. core_idea: a tese OU frase-resumo do bloco (≤22 palavras), idealmente CITANDO/condensando uma frase do material. Se o autor não dá tese explícita, escreva neutramente o tema.
+
+2. key_points: TODOS os pontos relevantes do bloco em bullets (≤25 palavras cada). Prefira 6-12 bullets fiéis a 4 bullets resumidos. Cada bullet = uma ideia distinta do material. Mantenha termos originais.
+
+3. key_points_deep: para CADA key_point, traga um 'detail' com 1-2 frases EXTRAÍDAS do slide que sustentam o ponto (parafraseando minimamente). Se o material não dá mais detalhe, repita "Veja slide N" em vez de inventar.
+
+4. detailed_explanation: parágrafo de 3-6 frases que RECONSTITUI o argumento do bloco usando as palavras do autor. Se o material é esparso, seja mais curto — não preencha com invenção.
+
+5. historical_context: SOMENTE se o PDF mencionar contexto histórico/cultural. Se não mencionar, retorne string vazia "". NÃO INVENTE.
+
+6. examples: SOMENTE exemplos/ilustrações que APARECEM no material. Se nenhum aparece, retorne []. NÃO crie exemplos hipotéticos.
+
+7. subsections: se o bloco tem sub-divisões visíveis (sub-títulos no slide), use-as. Caso contrário, retorne [].
+
+8. verses: APENAS versículos que APARECEM literalmente nos slides. Use a referência exata como aparece. Se nenhum aparece, retorne [].
+
+9. author_quotes: APENAS citações de terceiros (autores, livros) que APARECEM nos slides. Texto LITERAL, nome do autor, slide. Se nenhuma, retorne [].
+
+10. application: SOMENTE se o material traz aplicação. Caso contrário, "".
+
+11. impact_phrase: uma frase memorizável (≤14 palavras) — preferencialmente CITAÇÃO direta do material. Se não houver, condense a tese.
+
+12. child_highlights: 1-3 frases CITÁVEIS LITERALMENTE do material (não paráfrases).
+
+═══ TESTE FINAL ═══
+Antes de retornar, pergunte-se em cada bullet:
+"Essa frase está no slide, ou eu inventei?" — se inventou, REMOVA.
 
 RETORNE APENAS JSON válido:
 {
-  "core_idea": "string",
-  "key_points": ["bullet ≤18 palavras"],
+  "core_idea": "string fiel ao material",
+  "key_points": ["bullet preservando termos originais"],
   "key_points_deep": [
-    { "point": "mesmo bullet", "detail": "1-2 frases que aprofundam o ponto" }
+    { "point": "mesmo bullet", "detail": "1-2 frases extraídas do slide" }
   ],
-  "detailed_explanation": "parágrafo denso 4-7 frases",
-  "historical_context": "2-4 frases de contexto",
-  "examples": ["exemplo concreto", "ilustração"],
+  "detailed_explanation": "parágrafo reconstituindo o argumento original",
+  "historical_context": "apenas se aparece no PDF, senão \"\"",
+  "examples": ["apenas exemplos do material"],
   "subsections": [
-    { "subtitle": "Sub-tema", "points": ["bullet"], "source_slides": [N] }
+    { "subtitle": "sub-título real do slide", "points": ["bullet fiel"], "source_slides": [N] }
   ],
-  "verses": [{ "ref": "Os 1:2-3", "context": "curto", "source_slide": N }],
+  "verses": [{ "ref": "exatamente como no slide", "context": "curto", "source_slide": N }],
   "author_quotes": [{ "text": "literal", "author": "Nome", "source_slide": N }],
-  "application": "2-3 frases práticas",
-  "impact_phrase": "≤14 palavras",
-  "child_highlights": ["1-3 frases citáveis"]
+  "application": "apenas se aparece no material",
+  "impact_phrase": "≤14 palavras, idealmente citação",
+  "child_highlights": ["frase LITERAL do material"]
 }`;
 
-const SLIDES_SUMMARY_PROMPT = `Você recebe os slides de um PDF de aula bíblica, marcados [[SLIDE N]].
-TAREFA: Para CADA slide, gere um resumo curto e fiel ao conteúdo daquele slide.
+const SLIDES_SUMMARY_PROMPT = `Você é um EXTRATOR. Recebe slides marcados [[SLIDE N]].
+TAREFA: Para CADA slide, descreva FIELMENTE o conteúdo daquele slide — sem interpretar.
 
 REGRAS:
-1. UM objeto por slide, sem exceção. Se o slide é só capa/transição, ainda assim gere algo (ex: "Capa da aula").
-2. summary: máx 22 palavras, descrevendo o ponto principal do slide.
-3. title: 2-5 palavras (rótulo do slide). Se não houver título visível, infira.
-4. Mantenha a ORDEM dos slides.
+1. UM objeto por slide, sem exceção. Slide de capa/transição → descreva o que está nele literalmente.
+2. summary: máx 22 palavras, EXTRAÍDAS do slide (não interprete o que o autor "quis dizer").
+3. title: copie o título do slide. Se não houver, use 2-3 palavras tiradas do conteúdo.
+4. Preserve termos técnicos e nomes próprios EXATAMENTE como aparecem.
+5. Mantenha a ORDEM dos slides.
 
 RETORNE APENAS JSON válido:
 {
   "slides": [
-    { "slide": 1, "title": "Capa", "summary": "Apresentação da aula sobre Oséias por Alessandro Caetano." },
-    { "slide": 2, "title": "Contexto histórico", "summary": "Israel no século VIII a.C., reinado de Jeroboão II, idolatria generalizada." }
+    { "slide": 1, "title": "Capa", "summary": "Título da aula, autor, instituição." },
+    { "slide": 2, "title": "Contexto histórico", "summary": "Texto extraído fielmente do slide." }
   ]
 }`;
 
-const SIMPLE_PROMPT = `Você é um especialista em análise bíblica. Organize o texto em mapa mental com poucos topics densos.
+const SIMPLE_PROMPT = `Você é um EXTRATOR de conteúdo — não um intérprete. Reorganize o texto em mapa mental PRESERVANDO o que está escrito.
 
-CATEGORIAS: teologia, cristologia, pneumatologia, exegese, contexto, aplicacao, escatologia, soteriologia
+═══ REGRA SUPREMA ═══
+NÃO invente conteúdo. NÃO substitua termos específicos por genéricos. NÃO adicione versículos/autores que não aparecem.
+
+CATEGORIAS (escolha a mais próxima ou "contexto"): teologia, cristologia, pneumatologia, exegese, contexto, aplicacao, escatologia, soteriologia
 
 REGRAS:
-- 5 a 8 topics densos.
-- Cada topic com expanded_note completo: core_idea, 6-10 key_points (≤18 palavras), verses, application, impact_phrase.
-- Versículos NUNCA como type="verse" — sempre dentro de expanded_note.verses.
-- child_highlights: 1-2 frases citáveis por topic.
+- 4 a 10 topics conforme a estrutura natural do texto (não force quantidade).
+- Cada topic = um bloco/seção real do material. title = título real (ou condensado fielmente).
+- expanded_note.key_points: 5-12 bullets EXTRAÍDOS do texto, preservando termos originais. Prefira mais bullets fiéis a poucos resumidos.
+- core_idea: tese ou frase-resumo do bloco (≤22 palavras), idealmente citando o material.
+- verses: APENAS os que APARECEM no texto.
+- application: APENAS se o material traz; senão "".
+- impact_phrase: idealmente CITAÇÃO direta do material (≤14 palavras).
+- child_highlights: 1-2 frases LITERAIS do texto.
 - is_key=true para 3-4 topics centrais.
 
 RETORNE APENAS JSON:
 {
-  "main_theme": "string",
-  "summary": "string",
+  "main_theme": "título extraído",
+  "summary": "frase do material",
   "key_concepts": [
     {
       "id": "concept_1",
       "type": "topic",
-      "title": "Título curto",
-      "summary": "gancho ≤80 chars",
-      "category": "teologia",
+      "title": "Título real do bloco",
+      "summary": "frase curta extraída ≤80 chars",
+      "category": "contexto",
       "is_key": true,
       "expanded_note": {
-        "core_idea": "string",
-        "key_points": ["bullet ≤18 palavras"],
-        "verses": [{ "ref": "Liv C:V", "context": "curto" }],
-        "application": "string",
-        "impact_phrase": "string"
+        "core_idea": "string fiel",
+        "key_points": ["bullet preservando termos originais"],
+        "verses": [{ "ref": "como aparece", "context": "curto" }],
+        "application": "apenas se aparece",
+        "impact_phrase": "citação ou condensação fiel"
       },
-      "child_highlights": ["frase citável"],
+      "child_highlights": ["frase LITERAL"],
       "child_verses": []
     }
   ],
