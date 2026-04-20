@@ -412,13 +412,23 @@ export default function MindMapCanvas({ analysis, mapId, onEnsureSavedForShare, 
   }
 
   return (
-    <div className="flex flex-col h-full w-full">
+    <div ref={containerRef} className="flex flex-col h-full w-full" style={{ background: isFullscreen ? "#16130f" : undefined }}>
       <div className="flex items-center justify-between px-4 py-2 shrink-0"
         style={{ borderBottom: "1px solid rgba(196,164,106,0.1)" }}>
         <StudyModeTabs />
-        <button onClick={onClose} className="p-2 rounded-lg transition-colors" style={{ color: "#8a7d6a" }}>
-          <X size={16} />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={toggleFullscreen}
+            title={isFullscreen ? "Sair de tela cheia" : "Tela cheia"}
+            className="p-2 rounded-lg transition-colors hover:bg-white/5"
+            style={{ color: "#8a7d6a" }}
+          >
+            {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+          </button>
+          <button onClick={onClose} className="p-2 rounded-lg transition-colors hover:bg-white/5" style={{ color: "#8a7d6a" }}>
+            <X size={16} />
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-1 min-h-0">
@@ -482,6 +492,11 @@ export default function MindMapCanvas({ analysis, mapId, onEnsureSavedForShare, 
                 <div className="w-px h-4 mx-1" style={{ background: "rgba(196,164,106,0.15)" }} />
                 <ToolbarBtn icon={Presentation} label="Apresentar" onClick={() => setShowPresentation(true)} />
                 <ToolbarBtn icon={Share2} label="Compartilhar" onClick={() => setShowShareDialog(true)} />
+                <ToolbarBtn
+                  icon={isFullscreen ? Minimize2 : Maximize2}
+                  label={isFullscreen ? "Sair tela cheia" : "Tela cheia"}
+                  onClick={toggleFullscreen}
+                />
               </div>
             </Panel>
           </ReactFlow>
