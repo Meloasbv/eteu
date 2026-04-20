@@ -125,6 +125,25 @@ export default function FocusWorkspace({ open, onClose, tab, setTab, userCodeId,
     return () => document.removeEventListener("fullscreenchange", onFs);
   }, []);
 
+  // Timer control events from artifacts
+  useEffect(() => {
+    const onPause = () => setRunning(false);
+    const onResume = () => setRunning(true);
+    const onReset = () => {
+      setPhase("focus");
+      setSecondsLeft(POMODORO_MIN.focus * 60);
+      setRunning(true);
+    };
+    window.addEventListener("focus-timer-pause", onPause);
+    window.addEventListener("focus-timer-resume", onResume);
+    window.addEventListener("focus-timer-reset", onReset);
+    return () => {
+      window.removeEventListener("focus-timer-pause", onPause);
+      window.removeEventListener("focus-timer-resume", onResume);
+      window.removeEventListener("focus-timer-reset", onReset);
+    };
+  }, []);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
