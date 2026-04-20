@@ -76,7 +76,17 @@ const PERIODS = [
 
 const RECENT_MS = 7 * 86400000; // 7 days
 
-export default function ThoughtGraph({ userCodeId }: { userCodeId: string }) {
+interface ThoughtGraphProps {
+  userCodeId: string;
+  /** "gold" (default, used outside Focus) or "neon" (Focus brain mode) */
+  theme?: "gold" | "neon";
+  /** Hide built-in filters/legend/sheets — host renders its own UI */
+  embedded?: boolean;
+  /** Notify parent when a node is clicked */
+  onSelectNode?: (id: string) => void;
+}
+
+export default function ThoughtGraph({ userCodeId, theme = "gold", embedded = false, onSelectNode }: ThoughtGraphProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [thoughts, setThoughts] = useState<Thought[]>([]);
