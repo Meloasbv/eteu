@@ -309,57 +309,20 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
     </div>
   );
 
-  if (mode === "pdf-processing" && pdfProgress) {
-    const steps = [
-      { key: "uploading", label: "Upload concluído", icon: Upload },
-      { key: "extracting", label: `Texto extraído${pdfProgress.pages ? ` (${pdfProgress.pages} páginas)` : ""}`, icon: FileText },
-      { key: "analyzing", label: "Analisando conteúdo com IA...", icon: Sparkles },
-      { key: "generating", label: "Gerando mapa mental", icon: PenTool },
-    ];
-    const currentIdx = steps.findIndex(s => s.key === pdfProgress.step);
-
+  if (mode === "pdf-processing" && pdfState) {
+    const preStep =
+      pdfState.stage === "uploading" ? "uploading" :
+      pdfState.stage === "extracting" ? "extracting" :
+      null;
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] px-4 py-8 animate-fade-in">
-        <div className="w-full max-w-sm rounded-2xl p-8"
-          style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}>
-          <div className="flex items-center gap-3 mb-6">
-            <FileText size={20} className="text-primary" />
-            <p className="text-sm font-display font-semibold text-foreground truncate">
-              {pdfProgress.fileName}
-            </p>
-          </div>
-
-          <div className="space-y-3 mb-6">
-            {steps.map((step, i) => {
-              const isDone = i < currentIdx || pdfProgress.step === "done";
-              const isActive = i === currentIdx && pdfProgress.step !== "done";
-              return (
-                <div key={step.key} className={`flex items-center gap-3 text-sm font-ui transition-opacity ${isDone || isActive ? "opacity-100" : "opacity-30"}`}>
-                  {isDone ? (
-                    <CheckCircle2 size={16} className="text-primary flex-shrink-0" />
-                  ) : isActive ? (
-                    <Loader2 size={16} className="animate-spin text-primary flex-shrink-0" />
-                  ) : (
-                    <div className="w-4 h-4 rounded-full flex-shrink-0" style={{ border: "2px solid hsl(var(--border))" }} />
-                  )}
-                  <span className={isDone ? "text-foreground" : isActive ? "text-foreground" : "text-muted-foreground"}>
-                    {step.label}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: "hsl(var(--muted))" }}>
-            <div
-              className="h-full rounded-full transition-all duration-500 ease-out"
-              style={{ width: `${pdfProgress.percent}%`, background: "hsl(var(--primary))" }}
-            />
-          </div>
-          <p className="text-[11px] text-muted-foreground font-ui text-right mt-1">{pdfProgress.percent}%</p>
-        </div>
-      </div>
+      <PipelineProgressView
+        fileName={pdfState.fileName}
+        progress={pdfState.pipeline}
+        preExtractStep={preStep as any}
+        pages={pdfState.pages}
+      />
     );
+  }
   }
 
   if (mode === "ai-canvas" && analysis) {
