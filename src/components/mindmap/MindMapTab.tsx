@@ -45,6 +45,7 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
   const [aiMapId, setAiMapId] = useState<string | null>(null);
   const [pdfState, setPdfState] = useState<PdfState | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
 
   const saveAiMap = useCallback(async (result: AnalysisResult, existingMapId: string | null = null) => {
     let currentStudyNotes: Record<string, unknown> = {};
