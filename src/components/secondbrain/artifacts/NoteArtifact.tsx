@@ -3,6 +3,7 @@ import { Check, Loader2, PenLine, ExternalLink } from "lucide-react";
 import { ArtifactShell, ArtifactAction } from "./ArtifactShell";
 import { FOCUS_PALETTE as P } from "./types";
 import { supabase } from "@/integrations/supabase/client";
+import { openFocusTool } from "@/lib/focusTools";
 
 interface Props {
   data: { content: string; saved?: boolean; noteId?: string };
@@ -77,10 +78,10 @@ export default function NoteArtifact({ data, userCodeId, sendAsUser }: Props) {
       </div>
       <div className="flex flex-wrap gap-2">
         <ArtifactAction
-          onClick={() => sendAsUser(`expandir esta nota: ${data.content.slice(0, 80)}`)}
+          onClick={() => openFocusTool(noteId ? { tool: "notebook-open", noteId } : { tool: "notebook" })}
           variant="primary"
         >
-          <ExternalLink size={11} /> Expandir
+          <ExternalLink size={11} /> Abrir no caderno
         </ArtifactAction>
       </div>
     </ArtifactShell>

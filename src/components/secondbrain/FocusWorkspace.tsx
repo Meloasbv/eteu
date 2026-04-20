@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, ReactNode } from "react";
+import { useEffect, useRef, useState, ReactNode, lazy, Suspense } from "react";
 import {
   X, SkipForward, Pause, Play, Volume2, Youtube,
   BookOpen, Flame, PenLine, Brain, Timer, Maximize2, Minimize2,
@@ -8,6 +8,10 @@ import { haptic } from "@/hooks/useHaptic";
 import { toast } from "@/hooks/use-toast";
 import { useFocusMusic, FOCUS_TRACKS, type FocusTrackKey } from "@/hooks/useFocusMusic";
 import FocusCommandChat, { type FocusPanelKey } from "./FocusCommandChat";
+import type { FocusOpenToolDetail, FocusToolKey } from "@/lib/focusTools";
+
+const MindMapTab = lazy(() => import("@/components/mindmap/MindMapTab"));
+const NotebookList = lazy(() => import("@/components/study/NotebookList"));
 
 // WEEKS data needed by FocusCommandChat to compute today's reading
 const WEEKS_FALLBACK: any[] = [];
@@ -42,15 +46,25 @@ interface Props {
   renderTab?: (key: FocusPanelKey) => ReactNode;
 }
 
-const MODES: { key: FocusPanelKey; label: string; icon: any }[] = [
-  { key: "leitura", label: "Leitura", icon: BookOpen },
-  { key: "devocional", label: "Devocional", icon: Flame },
-  { key: "anotacoes", label: "Estudo", icon: PenLine },
-  { key: "cerebro", label: "Cérebro", icon: Brain },
+type SidebarShortcut = {
+  key: string;
+  label: string;
+  icon: any;
+  action: { kind: "tool"; detail: FocusOpenToolDetail } | { kind: "chat"; cmd: string };
+};
+
+const SHORTCUTS: SidebarShortcut[] = [
+  { key: "leitura", label: "Leitura", icon: BookOpen, action: { kind: "chat", cmd: "leitura de hoje" } },
+  { key: "devocional", label: "Devocional", icon: Flame, action: { kind: "chat", cmd: "devocional do dia" } },
+  { key: "mapa", label: "Mapa Mental", icon: Brain, action: { kind: "tool", detail: { tool: "mindmap" } } },
+  { key: "caderno", label: "Caderno", icon: PenLine, action: { kind: "tool", detail: { tool: "notebook" } } },
 ];
 
 export default function FocusWorkspace({ open, onClose, tab, setTab, userCodeId, weeks, devotionals }: Props) {
   const [sidebarOpen, setSidebarOpen] = useState(false); // mobile drawer
+
+  // Tool overlay (mind map / notebook etc.)
+  const [activeTool, setActiveTool] = useState<FocusOpenToolDetail | null>(null);
 
   // Pomodoro
   const [phase, setPhase] = useState<"focus" | "break">("focus");
@@ -144,14 +158,30 @@ export default function FocusWorkspace({ open, onClose, tab, setTab, userCodeId,
     };
   }, []);
 
+  // Listen for "focus-open-tool" events dispatched from artifacts/sidebar
+  useEffect(() => {
+    if (!open) return;
+    const onOpenTool = (e: Event) => {
+      const detail = (e as CustomEvent<FocusOpenToolDetail>).detail;
+      if (!detail) return;
+      setActiveTool(detail);
+      haptic("medium");
+    };
+    window.addEventListener("focus-open-tool", onOpenTool as EventListener);
+    return () => window.removeEventListener("focus-open-tool", onOpenTool as EventListener);
+  }, [open]);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !document.fullscreenElement) onClose();
+      if (e.key === "Escape") {
+        if (activeTool) { setActiveTool(null); return; }
+        if (!document.fullscreenElement) onClose();
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  }, [open, onClose, activeTool]);
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -224,22 +254,29 @@ export default function FocusWorkspace({ open, onClose, tab, setTab, userCodeId,
 
           <div className="flex-1 p-2 space-y-1 overflow-y-auto no-scrollbar">
             <p className="text-[9px] uppercase tracking-[2.5px] px-2 pt-2 pb-1" style={{ color: PALETTE.textDim }}>Atalhos</p>
-            {MODES.map(m => {
-              const Icon = m.icon;
-              const active = tab === m.key;
+            {SHORTCUTS.map(s => {
+              const Icon = s.icon;
               return (
                 <button
-                  key={m.key}
-                  onClick={() => { setTab(m.key as FocusTab); setSidebarOpen(false); haptic("light"); }}
+                  key={s.key}
+                  onClick={() => {
+                    setSidebarOpen(false);
+                    haptic("light");
+                    if (s.action.kind === "tool") {
+                      setActiveTool(s.action.detail);
+                    } else {
+                      window.dispatchEvent(new CustomEvent("focus-chat-send", { detail: { text: s.action.cmd } }));
+                    }
+                  }}
                   className="w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all hover:scale-[1.02] active:scale-95"
                   style={{
-                    background: active ? `${PALETTE.primary}14` : "transparent",
-                    border: active ? `1px solid ${PALETTE.primary}55` : "1px solid transparent",
-                    color: active ? PALETTE.primary : PALETTE.text,
+                    background: "transparent",
+                    border: "1px solid transparent",
+                    color: PALETTE.text,
                   }}
                 >
-                  <Icon size={16} className="shrink-0" strokeWidth={active ? 2.2 : 1.7} />
-                  <span className="text-[13px] font-bold leading-tight">{m.label}</span>
+                  <Icon size={16} className="shrink-0" strokeWidth={1.8} />
+                  <span className="text-[13px] font-bold leading-tight">{s.label}</span>
                 </button>
               );
             })}
@@ -436,6 +473,42 @@ export default function FocusWorkspace({ open, onClose, tab, setTab, userCodeId,
           </div>
         </main>
       </div>
+
+      {/* Tool overlay (mind map / notebook) — opens above the chat without leaving Focus */}
+      {activeTool && (
+        <div
+          className="absolute inset-0 z-[300] flex flex-col animate-fade-in"
+          style={{ background: PALETTE.bg }}
+        >
+          <div
+            className="flex items-center gap-3 px-4 py-2.5 border-b shrink-0"
+            style={{ background: PALETTE.surface, borderColor: PALETTE.border }}
+          >
+            <button
+              onClick={() => { setActiveTool(null); haptic("light"); }}
+              className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors"
+              style={{ background: PALETTE.surfaceLight, color: PALETTE.text, border: `1px solid ${PALETTE.border}` }}
+              aria-label="Voltar para o chat"
+            >
+              <X size={15} />
+            </button>
+            <p className="text-[11px] font-bold uppercase tracking-[2px]" style={{ color: PALETTE.primary }}>
+              {activeTool.tool === "notebook" || activeTool.tool === "notebook-open" ? "Caderno" : "Mapa Mental"}
+            </p>
+            <span className="text-[10px]" style={{ color: PALETTE.textDim }}>· ESC para fechar</span>
+          </div>
+          <div className="flex-1 overflow-auto min-h-0">
+            <Suspense fallback={<div className="flex items-center justify-center h-full text-sm" style={{ color: PALETTE.textDim }}>Carregando…</div>}>
+              {(activeTool.tool === "mindmap" || activeTool.tool === "mindmap-open") && (
+                <MindMapTab userCodeId={userCodeId} />
+              )}
+              {(activeTool.tool === "notebook" || activeTool.tool === "notebook-open") && (
+                <NotebookList userCodeId={userCodeId} />
+              )}
+            </Suspense>
+          </div>
+        </div>
+      )}
 
       {/* Celebration */}
       {showCelebration && (

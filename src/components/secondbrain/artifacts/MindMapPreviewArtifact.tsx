@@ -3,6 +3,7 @@ import { Brain, Loader2, ExternalLink, Share2 } from "lucide-react";
 import { ArtifactShell, ArtifactAction } from "./ArtifactShell";
 import { FOCUS_PALETTE as P } from "./types";
 import { supabase } from "@/integrations/supabase/client";
+import { openFocusTool } from "@/lib/focusTools";
 
 interface Props {
   data: { mapId?: string; title?: string };
@@ -87,11 +88,11 @@ export default function MindMapPreviewArtifact({ data, userCodeId, sendAsUser }:
             )}
           </div>
           <div className="flex flex-wrap gap-2">
-            <ArtifactAction onClick={() => sendAsUser(`abrir mapa em tela cheia: ${map.title}`)} variant="primary">
-              <ExternalLink size={11} /> Tela cheia
+            <ArtifactAction onClick={() => openFocusTool({ tool: "mindmap-open", mapId: map.id })} variant="primary">
+              <ExternalLink size={11} /> Abrir editor
             </ArtifactAction>
-            <ArtifactAction onClick={() => sendAsUser(`compartilhar mapa: ${map.title}`)}>
-              <Share2 size={11} /> Compartilhar
+            <ArtifactAction onClick={() => openFocusTool({ tool: "mindmap" })}>
+              <Share2 size={11} /> Todos os mapas
             </ArtifactAction>
           </div>
         </>

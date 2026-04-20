@@ -3,6 +3,7 @@ import { Brain, Loader2, Plus, FileUp, ExternalLink } from "lucide-react";
 import { ArtifactShell, ArtifactAction } from "./ArtifactShell";
 import { FOCUS_PALETTE as P } from "./types";
 import { supabase } from "@/integrations/supabase/client";
+import { openFocusTool } from "@/lib/focusTools";
 
 interface MapRow {
   id: string;
@@ -53,7 +54,7 @@ export default function MindMapListArtifact({ data, userCodeId, sendAsUser }: Pr
     };
   }, [userCodeId]);
 
-  const openMap = (m: MapRow) => sendAsUser(`abrir mapa: ${m.title}`);
+  const openMap = (m: MapRow) => openFocusTool({ tool: "mindmap-open", mapId: m.id });
 
   return (
     <ArtifactShell
@@ -98,11 +99,11 @@ export default function MindMapListArtifact({ data, userCodeId, sendAsUser }: Pr
         </div>
       )}
       <div className="flex flex-wrap gap-2">
-        <ArtifactAction onClick={() => sendAsUser("criar novo mapa mental")} variant="primary">
-          <Plus size={11} /> Novo Mapa
+        <ArtifactAction onClick={() => openFocusTool({ tool: "mindmap" })} variant="primary">
+          <Plus size={11} /> Novo / Upload PDF
         </ArtifactAction>
-        <ArtifactAction onClick={() => sendAsUser("upload de pdf para mapa mental")}>
-          <FileUp size={11} /> Upload PDF
+        <ArtifactAction onClick={() => openFocusTool({ tool: "mindmap" })}>
+          <FileUp size={11} /> Abrir editor completo
         </ArtifactAction>
       </div>
     </ArtifactShell>

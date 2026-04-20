@@ -10,11 +10,12 @@ import { findRecentSession, createSession, updateSession } from "@/lib/focusSess
 
 export type FocusPanelKey = "leitura" | "devocional" | "anotacoes" | "cerebro";
 
-const QUICK_ACTIONS: { id: string; label: string; icon: any; hint: string; cmd: string; capture?: boolean }[] = [
+const QUICK_ACTIONS: { id: string; label: string; icon: any; hint: string; cmd: string; capture?: boolean; tool?: "mindmap" | "notebook" }[] = [
   { id: "leitura", label: "Leitura", icon: BookOpen, hint: "Plano bíblico", cmd: "leitura de hoje" },
   { id: "devocional", label: "Devocional", icon: Flame, hint: "Meditação", cmd: "devocional do dia" },
-  { id: "anotacoes", label: "Caderno", icon: PenLine, hint: "Notas & mapa", cmd: "meus mapas mentais" },
-  { id: "cerebro", label: "Capturar", icon: Brain, hint: "Pensamento", cmd: "", capture: true },
+  { id: "mapa", label: "Mapa", icon: Brain, hint: "Editor + PDF", cmd: "", tool: "mindmap" },
+  { id: "caderno", label: "Caderno", icon: PenLine, hint: "Notas", cmd: "", tool: "notebook" },
+  { id: "cerebro", label: "Capturar", icon: Sparkles, hint: "Pensamento", cmd: "", capture: true },
 ];
 
 const PALETTE = {
@@ -130,6 +131,18 @@ export default function FocusCommandChat({ userCodeId, weeks, devotionals }: Pro
     }, 1200);
     return () => clearTimeout(t);
   }, [sessionId, messages]);
+
+  // Listen for sidebar shortcut "chat send" events
+  useEffect(() => {
+    const onSend = (e: Event) => {
+      const text = (e as CustomEvent<{ text: string }>).detail?.text;
+      if (text) handleIntentRef.current?.(text);
+    };
+    window.addEventListener("focus-chat-send", onSend as EventListener);
+    return () => window.removeEventListener("focus-chat-send", onSend as EventListener);
+  }, []);
+
+  const handleIntentRef = useRef<((text: string, force?: boolean) => void) | null>(null);
 
   const replaceArtifact = useCallback((id: string, artifact: ArtifactPayload, text?: string) => {
     setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, artifact, text: text ?? m.text } : m)));
@@ -306,6 +319,11 @@ export default function FocusCommandChat({ userCodeId, weeks, devotionals }: Pro
     setCaptureMode(false);
   }, [input, captureMode, handleIntent]);
 
+  // Keep ref to latest handleIntent for window event listener
+  useEffect(() => {
+    handleIntentRef.current = handleIntent;
+  }, [handleIntent]);
+
   const onTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);
     e.target.style.height = "44px";
@@ -328,7 +346,13 @@ export default function FocusCommandChat({ userCodeId, weeks, devotionals }: Pro
                 return (
                   <button
                     key={qa.id}
-                    onClick={() => (qa.capture ? sendAsUser("") : sendAsUser(qa.cmd))}
+                    onClick={() => {
+                      if (qa.tool) {
+                        window.dispatchEvent(new CustomEvent("focus-open-tool", { detail: { tool: qa.tool } }));
+                        return;
+                      }
+                      qa.capture ? sendAsUser("") : sendAsUser(qa.cmd);
+                    }}
                     className="group flex flex-col items-start gap-2 p-3 rounded-xl text-left transition-all hover:translate-y-[-2px] active:scale-95"
                     style={{ background: PALETTE.surface, border: `1px solid ${PALETTE.borderSoft}` }}
                   >

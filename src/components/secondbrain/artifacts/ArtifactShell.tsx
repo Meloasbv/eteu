@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, forwardRef } from "react";
 import { FOCUS_PALETTE as P } from "./types";
 
 interface Props {
@@ -13,9 +13,13 @@ interface Props {
  * Common shell for all focus artifacts.
  * Translucent card with neon-green border, subtle backdrop blur.
  */
-export function ArtifactShell({ icon, label, badge, children, glow = false }: Props) {
+export const ArtifactShell = forwardRef<HTMLDivElement, Props>(function ArtifactShell(
+  { icon, label, badge, children, glow = false },
+  ref,
+) {
   return (
     <div
+      ref={ref}
       className="rounded-2xl overflow-hidden focus-artifact-enter"
       style={{
         background: "rgba(17, 22, 29, 0.65)",
@@ -63,7 +67,7 @@ export function ArtifactShell({ icon, label, badge, children, glow = false }: Pr
       <div className="px-4 sm:px-5 py-4">{children}</div>
     </div>
   );
-}
+});
 
 interface ActionProps {
   onClick: () => void;
@@ -72,10 +76,14 @@ interface ActionProps {
   disabled?: boolean;
 }
 
-export function ArtifactAction({ onClick, children, variant = "ghost", disabled }: ActionProps) {
+export const ArtifactAction = forwardRef<HTMLButtonElement, ActionProps>(function ArtifactAction(
+  { onClick, children, variant = "ghost", disabled },
+  ref,
+) {
   const isPrimary = variant === "primary";
   return (
     <button
+      ref={ref}
       onClick={onClick}
       disabled={disabled}
       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-bold transition-all hover:scale-[1.03] active:scale-95 disabled:opacity-40 disabled:scale-100 disabled:cursor-not-allowed"
@@ -88,4 +96,4 @@ export function ArtifactAction({ onClick, children, variant = "ghost", disabled 
       {children}
     </button>
   );
-}
+});
