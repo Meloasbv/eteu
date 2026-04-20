@@ -329,7 +329,13 @@ export default function FocusCommandChat({ userCodeId, weeks, devotionals }: Pro
                 return (
                   <button
                     key={qa.id}
-                    onClick={() => (qa.capture ? sendAsUser("") : sendAsUser(qa.cmd))}
+                    onClick={() => {
+                      if (qa.tool) {
+                        window.dispatchEvent(new CustomEvent("focus-open-tool", { detail: { tool: qa.tool } }));
+                        return;
+                      }
+                      qa.capture ? sendAsUser("") : sendAsUser(qa.cmd);
+                    }}
                     className="group flex flex-col items-start gap-2 p-3 rounded-xl text-left transition-all hover:translate-y-[-2px] active:scale-95"
                     style={{ background: PALETTE.surface, border: `1px solid ${PALETTE.borderSoft}` }}
                   >
