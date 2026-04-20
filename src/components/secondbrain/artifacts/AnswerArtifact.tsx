@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useId } from "react";
 import { MessageCircle, BookOpen } from "lucide-react";
 import { ArtifactShell, ArtifactAction } from "./ArtifactShell";
 import { FOCUS_PALETTE as P } from "./types";
+import ListenButton from "./ListenButton";
 
 interface Data {
   question: string;
@@ -19,6 +20,7 @@ const VERSE_RE_INLINE =
   /\b((?:gn|ex|lv|nm|dt|js|jz|rt|sm|rs|cr|sl|pv|ec|is|jr|lm|ez|dn|os|jl|am|ob|jn|mq|na|hc|sf|ag|zc|ml|mt|mc|lc|jo|at|rm|co|gl|ef|fp|cl|ts|tm|tt|fm|hb|tg|pe|jd|ap)\.?\s*\d+(?:\s*[:,.]\s*\d+(?:\s*-\s*\d+)?)?)/gi;
 
 export default function AnswerArtifact({ data, sendAsUser }: Props) {
+  const reactId = useId();
   const [answer, setAnswer] = useState<string>(data.answer ?? "");
   const [loading, setLoading] = useState<boolean>(!data.answer);
   const [error, setError] = useState<string | undefined>(data.error);
@@ -137,6 +139,7 @@ export default function AnswerArtifact({ data, sendAsUser }: Props) {
 
       {!loading && answer && (
         <div className="flex flex-wrap gap-2 mt-4">
+          <ListenButton id={`answer-${reactId}`} text={answer} label="Resposta" />
           <ArtifactAction onClick={() => sendAsUser(`anotar: ${data.question} — ${answer.slice(0, 150)}…`)}>
             📝 Salvar
           </ArtifactAction>
