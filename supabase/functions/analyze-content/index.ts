@@ -6,240 +6,337 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+
+// ---------- helpers ----------
+function safeJsonParse(raw: string): any {
+  let s = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+  try { return JSON.parse(s); } catch { /* fallthrough */ }
+  let repaired = s
+    .replace(/,\s*$/g, "")
+    .replace(/,\s*}/g, "}")
+    .replace(/,\s*]/g, "]");
+  const ob = (repaired.match(/{/g) || []).length;
+  const cb = (repaired.match(/}/g) || []).length;
+  const obk = (repaired.match(/\[/g) || []).length;
+  const cbk = (repaired.match(/]/g) || []).length;
+  repaired = repaired.replace(/,\s*"[^"]*$/, "");
+  repaired = repaired.replace(/:\s*"[^"]*$/, ': ""');
+  repaired = repaired.replace(/:\s*$/, ': null');
+  for (let i = 0; i < obk - cbk; i++) repaired += "]";
+  for (let i = 0; i < ob - cb; i++) repaired += "}";
+  return JSON.parse(repaired);
+}
+
+async function callGateway(messages: any[], maxTokens = 12000) {
+  const res = await fetch(GATEWAY_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "google/gemini-2.5-flash",
+      max_tokens: maxTokens,
+      messages,
+    }),
+  });
+  if (!res.ok) {
+    const status = res.status;
+    const txt = await res.text();
+    console.error("gateway error:", status, txt.slice(0, 500));
+    throw new Error(status === 429 ? "rate_limited" : status === 402 ? "credits_exhausted" : "gateway_error");
   }
+  const data = await res.json();
+  const content = data.choices?.[0]?.message?.content || "";
+  return content;
+}
 
-  try {
-    const { text, pagesText } = await req.json();
+// ---------- prompts ----------
+const STRUCTURE_PROMPT = `Você é um especialista em análise teológica. Recebe um PDF de aula bíblica com slides marcados [[PÁGINA N]].
 
-    if (!text || typeof text !== "string" || text.trim().length < 10) {
-      return new Response(
-        JSON.stringify({ error: "Texto muito curto. Envie pelo menos 10 caracteres." }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+TAREFA: Identifique a estrutura DE ALTO NÍVEL — quais são os blocos temáticos.
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
-    }
-
-    // Build a per-page tagged corpus when available (helps the model attribute page numbers)
-    const isPdf = Array.isArray(pagesText) && pagesText.length > 0;
-    let corpus: string;
-    if (isPdf) {
-      corpus = (pagesText as { page: number; text: string }[])
-        .map(p => `[[PÁGINA ${p.page}]]\n${p.text}`)
-        .join("\n\n")
-        .slice(0, 45000);
-    } else {
-      corpus = text.slice(0, 30000);
-    }
-
-    const pdfRules = isPdf ? `
-
-REGRAS ESPECÍFICAS PARA PDF DE AULA (slides marcados por [[PÁGINA N]]):
-
-1. AGRUPAMENTO POR TÍTULO (CRÍTICO):
-   - Slides consecutivos com o MESMO título de seção pertencem ao MESMO topic.
-   - Exemplo: se slides 16, 17, 18, 19, 20 têm "Convicção de pecado" como título, gere UM ÚNICO topic chamado "Convicção de pecado" com source_slides=[16,17,18,19,20] que agrega TODO o conteúdo desses slides.
-   - JAMAIS crie um topic para cada slide.
-
-2. POUCOS TOPICS DENSOS:
-   - Para 30-60 slides, gere ENTRE 5 E 8 topics. Nunca mais que 8.
-   - Ignore slide de capa (vira main_theme) e slides puramente decorativos.
-   - Cada topic deve cobrir um bloco contíguo de slides (use source_slides para indicar o range).
-
-3. VERSÍCULOS NUNCA SÃO TOPICS:
-   - Versículos vão DENTRO do expanded_note.verses do topic correspondente, com contexto curto e source_slide.
-   - NUNCA gere objetos com type="verse" no key_concepts. Zero VerseCards.
-   - child_verses deve ficar VAZIO ([]) — versículos só vivem no expanded_note.
-
-4. CITAÇÕES DE AUTORES:
-   - Citações (Jonathan Edwards, Sheperd, etc) vão em expanded_note.author_quotes (com text, author, source_slide).
-   - Pode também escolher 1-2 das mais marcantes para virar child_highlights.
-
-5. CONTEÚDO ESCANEÁVEL (CRÍTICO):
-   - expanded_note.key_points: array de 4-8 bullets de NO MÁXIMO 15 PALAVRAS cada. Quebre parágrafos longos em pontos curtos. NUNCA escreva blocos de texto.
-   - expanded_note.subsections: use quando um topic tem sub-temas internos claros (ex: "Os filhos de Gômer" → subsections para Jezreel, Lo-Ruama, Lo-Ami). Cada subsection tem subtitle, points (bullets ≤15 palavras) e source_slides.
-   - explanation deve ser CURTO (1-2 parágrafos no máximo) ou omitido — preferir key_points.
-
-6. HIGHLIGHTS LIMITADOS:
-   - child_highlights: APENAS 1-2 frases REALMENTE citáveis e memoráveis por topic. Não toda frase em negrito.
-   - NÃO gere objetos type="highlight" standalone para PDF (mantenha key_concepts apenas com type="topic").
-
-7. is_key: marque true APENAS para 3-4 topics centrais (recebem imagem).
-` : `
-
-REGRAS PARA TEXTO LIVRE:
-- Gere 5-8 topics densos cobrindo os subtemas principais.
-- Cada topic com expanded_note.key_points (4-8 bullets de ≤15 palavras).
-- Versículos sempre dentro de expanded_note.verses, NUNCA como type="verse".
-- child_highlights: 1-2 frases citáveis por topic.
-- Marque is_key=true para 3-4 topics centrais.
-`;
-
-    const systemPrompt = `Você é um especialista em análise de conteúdo bíblico e teológico. Organize o texto em formato de mapa mental otimizado para estudo: poucos topics densos, conteúdo em bullets curtos escaneáveis, versículos agrupados dentro das notas.
+REGRAS CRÍTICAS:
+1. Slides consecutivos com o MESMO título/tema = MESMO topic. Agrupe agressivamente.
+2. Gere ENTRE 6 E 10 topics (um PDF de 60 slides deve ter ~8 topics). Nunca menos que 6, nunca mais que 10.
+3. Cada topic cobre um RANGE contíguo de slides (use slide_range: [inicio, fim]).
+4. Ignore slide de capa (vai virar main_theme).
+5. Cada topic precisa ter título curto + categoria + range de slides.
 
 CATEGORIAS válidas: teologia, cristologia, pneumatologia, exegese, contexto, aplicacao, escatologia, soteriologia
-${pdfRules}
-SUMMARY DO TOPIC: gancho curto provocativo (máx 80 chars), NÃO resumo acadêmico.
 
-EXPANDED_NOTE — formato detalhado:
-- core_idea: 1 frase essencial (máx 20 palavras)
-- key_points: array de 4-8 bullets, CADA UM com NO MÁXIMO 15 palavras. OBRIGATÓRIO.
-- subsections (opcional): array de { subtitle, points[], source_slides[] } quando o topic tem sub-temas internos
-- verses: array de { ref: "Livro C:V", context: "contexto curto", source_slide: N }
-- author_quotes (opcional): array de { text, author, source_slide }
-- application: 1-2 frases curtas de aplicação prática
-- impact_phrase: 1 frase memorizável (máx 12 palavras)
-
-RETORNE APENAS JSON válido (sem markdown, sem \`\`\`):
+RETORNE APENAS JSON válido, sem markdown:
 {
-  "main_theme": "Título da aula/texto",
-  "summary": "string curta",
+  "main_theme": "Título da aula extraído da capa",
+  "summary": "1 frase sobre o tema (máx 100 chars)",
+  "author": "Nome do autor se aparecer",
+  "total_slides": 60,
+  "topics": [
+    {
+      "id": "t1",
+      "title": "Título curto (2-5 palavras)",
+      "category": "contexto",
+      "slide_range": [2, 5],
+      "summary": "gancho provocativo curto (máx 80 chars)",
+      "is_key": true
+    }
+  ],
+  "keywords": ["palavra1", "palavra2"]
+}
+
+Marque is_key=true APENAS para os 3-4 topics MAIS centrais.`;
+
+const EXPAND_PROMPT = (topicTitle: string, slideRange: [number, number], category: string) =>
+  `Você é um especialista em análise teológica. Recebe os slides ${slideRange[0]} a ${slideRange[1]} de uma aula sobre "${topicTitle}" (categoria: ${category}).
+
+TAREFA: Extraia TODO o conteúdo destes slides em formato escaneável e completo. Não omita nada relevante.
+
+REGRAS:
+1. key_points: 6 a 12 bullets curtos (≤18 palavras cada). Capture TODOS os pontos importantes dos slides.
+2. subsections: SE houver sub-temas claros nos slides, divida em 2-5 subsections, cada uma com seu range próprio e 4-8 bullets.
+3. verses: TODOS os versículos mencionados, com referência exata, contexto curto e source_slide.
+4. author_quotes: TODAS as citações de autores (nome + texto literal + slide). Ex: Jonathan Edwards, Sheperd, Agostinho.
+5. application: 2-3 frases curtas de aplicação prática.
+6. impact_phrase: 1 frase memorizável (máx 14 palavras).
+7. core_idea: 1 frase essencial (máx 22 palavras).
+
+NUNCA escreva parágrafos longos. Sempre bullets escaneáveis.
+
+RETORNE APENAS JSON válido:
+{
+  "core_idea": "string",
+  "key_points": ["bullet ≤18 palavras", "..."],
+  "subsections": [
+    { "subtitle": "Sub-tema", "points": ["bullet", "..."], "source_slides": [N, M] }
+  ],
+  "verses": [
+    { "ref": "Os 1:2-3", "context": "contexto curto", "source_slide": N }
+  ],
+  "author_quotes": [
+    { "text": "citação literal", "author": "Nome", "source_slide": N }
+  ],
+  "application": "string curta",
+  "impact_phrase": "string ≤14 palavras",
+  "child_highlights": ["1 a 3 frases citáveis e memoráveis"]
+}`;
+
+const SIMPLE_PROMPT = `Você é um especialista em análise bíblica. Organize o texto em mapa mental com poucos topics densos.
+
+CATEGORIAS: teologia, cristologia, pneumatologia, exegese, contexto, aplicacao, escatologia, soteriologia
+
+REGRAS:
+- 5 a 8 topics densos.
+- Cada topic com expanded_note completo: core_idea, 6-10 key_points (≤18 palavras), verses, application, impact_phrase.
+- Versículos NUNCA como type="verse" — sempre dentro de expanded_note.verses.
+- child_highlights: 1-2 frases citáveis por topic.
+- is_key=true para 3-4 topics centrais.
+
+RETORNE APENAS JSON:
+{
+  "main_theme": "string",
+  "summary": "string",
   "key_concepts": [
     {
       "id": "concept_1",
       "type": "topic",
-      "title": "Título curto (2-5 palavras)",
-      "summary": "gancho curto max 80 chars",
+      "title": "Título curto",
+      "summary": "gancho ≤80 chars",
       "category": "teologia",
-      "icon_suggestion": "📖",
       "is_key": true,
-      "page_ref": 16,
-      "source_slides": [16, 17, 18, 19, 20],
       "expanded_note": {
         "core_idea": "string",
-        "key_points": ["bullet ≤15 palavras", "bullet ≤15 palavras"],
-        "subsections": [
-          { "subtitle": "Sub-tema", "points": ["bullet"], "source_slides": [42, 43] }
-        ],
-        "verses": [
-          { "ref": "Os 1:2-3", "context": "Deus ordena casamento com Gômer", "source_slide": 10 }
-        ],
-        "author_quotes": [
-          { "text": "citação literal curta", "author": "Jonathan Edwards", "source_slide": 18 }
-        ],
-        "application": "string curta",
-        "impact_phrase": "string ≤12 palavras"
+        "key_points": ["bullet ≤18 palavras"],
+        "verses": [{ "ref": "Liv C:V", "context": "curto" }],
+        "application": "string",
+        "impact_phrase": "string"
       },
-      "child_highlights": ["1-2 frases marcantes apenas"],
+      "child_highlights": ["frase citável"],
       "child_verses": []
     }
   ],
   "hierarchy": { "root": { "label": "string", "children": [] } },
-  "keywords": ["string"],
+  "keywords": [],
   "structured_notes": []
 }`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        max_tokens: 24000,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: `Analise COMPLETAMENTE o conteúdo abaixo, extraindo o máximo de informação. Retorne APENAS JSON válido:\n\n${corpus}` },
-        ],
-      }),
-    });
+// ---------- main handler ----------
+serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
-    if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Limite de requisições atingido. Tente novamente em alguns minutos." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+  try {
+    const { text, pagesText } = await req.json();
+    if (!text || typeof text !== "string" || text.trim().length < 10) {
+      return new Response(JSON.stringify({ error: "Texto muito curto." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY missing");
+
+    const isPdf = Array.isArray(pagesText) && pagesText.length > 0;
+
+    // ===== TEXT-ONLY PATH =====
+    if (!isPdf) {
+      const corpus = text.slice(0, 30000);
+      const content = await callGateway([
+        { role: "system", content: SIMPLE_PROMPT },
+        { role: "user", content: `Analise:\n\n${corpus}` },
+      ], 16000);
+      const result = safeJsonParse(content);
+      result.main_theme = result.main_theme || "Análise";
+      result.summary = result.summary || "";
+      result.key_concepts = result.key_concepts || [];
+      result.hierarchy = result.hierarchy || { root: { label: result.main_theme, children: [] } };
+      result.keywords = result.keywords || [];
+      result.structured_notes = result.structured_notes || [];
+      return new Response(JSON.stringify({ result }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // ===== PDF 2-PASS PATH =====
+    const allPages = pagesText as { page: number; text: string }[];
+    const fullCorpus = allPages.map(p => `[[PÁGINA ${p.page}]]\n${p.text}`).join("\n\n");
+
+    // ---- PASS 1: structure ----
+    console.log(`[analyze-content] PASS 1 — structure (${allPages.length} pages)`);
+    const structureCorpus = fullCorpus.slice(0, 50000);
+    const structureContent = await callGateway([
+      { role: "system", content: STRUCTURE_PROMPT },
+      { role: "user", content: `Analise a estrutura de alto nível deste PDF (${allPages.length} slides):\n\n${structureCorpus}` },
+    ], 6000);
+    const structure = safeJsonParse(structureContent);
+
+    if (!Array.isArray(structure.topics) || structure.topics.length === 0) {
+      throw new Error("Estrutura inválida na primeira passada.");
+    }
+
+    console.log(`[analyze-content] structure → ${structure.topics.length} topics`);
+
+    // ---- PASS 2: expand each topic in parallel (with concurrency limit) ----
+    const pageMap = new Map(allPages.map(p => [p.page, p.text]));
+    const topicsToExpand: any[] = structure.topics;
+
+    async function expandTopic(topic: any, idx: number) {
+      const [start, end] = Array.isArray(topic.slide_range) && topic.slide_range.length === 2
+        ? topic.slide_range
+        : [1, allPages.length];
+      const safeStart = Math.max(1, Math.min(start, allPages.length));
+      const safeEnd = Math.max(safeStart, Math.min(end, allPages.length));
+
+      const slidesText: string[] = [];
+      for (let p = safeStart; p <= safeEnd; p++) {
+        const t = pageMap.get(p);
+        if (t) slidesText.push(`[[SLIDE ${p}]]\n${t}`);
       }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "Créditos de IA esgotados." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
-      throw new Error("AI gateway error");
-    }
+      const corpus = slidesText.join("\n\n").slice(0, 18000);
 
-    const rawText = await response.text();
-    let data;
-    try {
-      data = JSON.parse(rawText);
-    } catch {
-      throw new Error("Resposta da IA foi truncada. Tente com um texto menor.");
-    }
-
-    const finishReason = data.choices?.[0]?.finish_reason;
-    console.log("AI response. finish_reason:", finishReason);
-    let result;
-    const content = data.choices?.[0]?.message?.content || "";
-    let rawArgs = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-
-    if (!rawArgs || rawArgs.length < 10) {
-      throw new Error("A IA não retornou dados. Tente novamente.");
-    }
-
-    try {
-      result = JSON.parse(rawArgs);
-    } catch {
-      let repaired = rawArgs
-        .replace(/,\s*$/g, "")
-        .replace(/,\s*}/g, "}")
-        .replace(/,\s*]/g, "]");
-      const openBraces = (repaired.match(/{/g) || []).length;
-      const closeBraces = (repaired.match(/}/g) || []).length;
-      const openBrackets = (repaired.match(/\[/g) || []).length;
-      const closeBrackets = (repaired.match(/]/g) || []).length;
-      repaired = repaired.replace(/,\s*"[^"]*$/, "");
-      repaired = repaired.replace(/:\s*"[^"]*$/, ': ""');
-      repaired = repaired.replace(/:\s*$/, ': null');
-      for (let i = 0; i < openBrackets - closeBrackets; i++) repaired += "]";
-      for (let i = 0; i < openBraces - closeBraces; i++) repaired += "}";
       try {
-        result = JSON.parse(repaired);
-      } catch (e2) {
-        console.error("JSON repair failed:", (e2 as Error).message);
-        throw new Error("Resposta da IA foi truncada. Tente com um texto menor.");
+        const content = await callGateway([
+          { role: "system", content: EXPAND_PROMPT(topic.title, [safeStart, safeEnd], topic.category || "teologia") },
+          { role: "user", content: `Slides ${safeStart}-${safeEnd}:\n\n${corpus}` },
+        ], 8000);
+        const expanded = safeJsonParse(content);
+        return {
+          id: topic.id || `concept_${idx + 1}`,
+          type: "topic" as const,
+          title: topic.title,
+          summary: topic.summary || expanded.core_idea?.slice(0, 80) || "",
+          category: topic.category || "teologia",
+          icon_suggestion: "📖",
+          is_key: topic.is_key === true,
+          page_ref: safeStart,
+          source_slides: Array.from({ length: safeEnd - safeStart + 1 }, (_, i) => safeStart + i),
+          expanded_note: {
+            core_idea: expanded.core_idea || "",
+            key_points: Array.isArray(expanded.key_points) ? expanded.key_points : [],
+            subsections: Array.isArray(expanded.subsections) ? expanded.subsections : [],
+            verses: Array.isArray(expanded.verses) ? expanded.verses : [],
+            author_quotes: Array.isArray(expanded.author_quotes) ? expanded.author_quotes : [],
+            application: expanded.application || "",
+            impact_phrase: expanded.impact_phrase || "",
+          },
+          child_highlights: Array.isArray(expanded.child_highlights) ? expanded.child_highlights.slice(0, 3) : [],
+          child_verses: [],
+        };
+      } catch (e) {
+        console.warn(`[analyze-content] expand failed for topic ${idx}: ${(e as Error).message}`);
+        // Fallback: use only structure info so the topic still appears
+        return {
+          id: topic.id || `concept_${idx + 1}`,
+          type: "topic" as const,
+          title: topic.title,
+          summary: topic.summary || "",
+          category: topic.category || "teologia",
+          icon_suggestion: "📖",
+          is_key: topic.is_key === true,
+          page_ref: safeStart,
+          source_slides: Array.from({ length: safeEnd - safeStart + 1 }, (_, i) => safeStart + i),
+          expanded_note: {
+            core_idea: "",
+            key_points: [],
+            subsections: [],
+            verses: [],
+            author_quotes: [],
+            application: "",
+            impact_phrase: "",
+          },
+          child_highlights: [],
+          child_verses: [],
+        };
       }
     }
 
-    if (!result.main_theme) result.main_theme = "Análise";
-    if (!result.summary) result.summary = "";
-    if (!result.key_concepts) result.key_concepts = [];
-    if (!result.hierarchy) result.hierarchy = { root: { label: result.main_theme, children: [] } };
-    if (!result.keywords) result.keywords = [];
-    if (!result.structured_notes) result.structured_notes = [];
-
-    // Safety: ensure at least 1 topic is_key (root) when none flagged
-    const topics = (result.key_concepts || []).filter((c: any) => !c.type || c.type === "topic");
-    const hasKey = topics.some((t: any) => t.is_key === true);
-    if (!hasKey && topics.length > 0) {
-      // Mark first 2 topics as key
-      let count = 0;
-      for (const t of topics) {
-        if (count >= 2) break;
-        t.is_key = true;
-        count++;
+    // Run with limited concurrency (3 at a time) to avoid 429
+    const CONCURRENCY = 3;
+    const expandedTopics: any[] = new Array(topicsToExpand.length);
+    for (let i = 0; i < topicsToExpand.length; i += CONCURRENCY) {
+      const batch = topicsToExpand.slice(i, i + CONCURRENCY);
+      const results = await Promise.all(batch.map((t, j) => expandTopic(t, i + j)));
+      results.forEach((r, j) => { expandedTopics[i + j] = r; });
+      // small breather
+      if (i + CONCURRENCY < topicsToExpand.length) {
+        await new Promise(r => setTimeout(r, 300));
       }
     }
 
-    return new Response(
-      JSON.stringify({ result }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    // Safety: ensure at least 2 is_key
+    const hasKey = expandedTopics.some(t => t.is_key === true);
+    if (!hasKey && expandedTopics.length > 0) {
+      expandedTopics[0].is_key = true;
+      if (expandedTopics[1]) expandedTopics[1].is_key = true;
+    }
+
+    const result = {
+      main_theme: structure.main_theme || "Análise",
+      summary: structure.summary || "",
+      key_concepts: expandedTopics,
+      hierarchy: {
+        root: {
+          label: structure.main_theme || "Análise",
+          children: expandedTopics.map((t: any) => ({ label: t.title })),
+        },
+      },
+      keywords: Array.isArray(structure.keywords) ? structure.keywords : [],
+      structured_notes: [],
+      // Extra metadata for the presentation mode
+      pdf_meta: {
+        total_slides: structure.total_slides || allPages.length,
+        author: structure.author || null,
+      },
+    };
+
+    console.log(`[analyze-content] PASS 2 done — ${expandedTopics.length} topics expanded`);
+
+    return new Response(JSON.stringify({ result }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (error) {
     console.error("analyze-content error:", error);
-    return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Erro desconhecido" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    const msg = error instanceof Error ? error.message : "Erro desconhecido";
+    const status = msg === "rate_limited" ? 429 : msg === "credits_exhausted" ? 402 : 500;
+    const userMsg = msg === "rate_limited" ? "Limite de requisições atingido. Tente em alguns minutos."
+      : msg === "credits_exhausted" ? "Créditos de IA esgotados."
+      : msg;
+    return new Response(JSON.stringify({ error: userMsg }),
+      { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { X, ChevronLeft, ChevronRight, Play, Pause, BookOpen } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Play, Pause, BookOpen, Quote as QuoteIcon } from "lucide-react";
 import {
   ReactFlow,
   Background,
@@ -13,8 +13,8 @@ import {
   MarkerType,
 } from "@xyflow/react";
 import dagre from "dagre";
-import type { AnalysisResult, KeyConcept } from "./types";
-import { getCategoryColor, getCategoryName } from "./types";
+import type { AnalysisResult, KeyConcept, NoteSubsection, AuthorQuote, VerseRef } from "./types";
+import { getCategoryColor, getCategoryName, verseRefString } from "./types";
 import RootNodeComp from "./nodes/RootNode";
 import TopicCardComp from "./nodes/TopicCard";
 import HighlightCardComp from "./nodes/HighlightCard";
@@ -32,7 +32,7 @@ interface PresentationModeProps {
   onExit: () => void;
 }
 
-// Build the same graph used in MindMapCanvas (simplified, reuses layout)
+// ============ Graph (visual map behind the captions) ============
 function buildPresentationGraph(analysis: AnalysisResult) {
   const nodes: Node[] = [];
   const edges: Edge[] = [];
@@ -56,11 +56,11 @@ function buildPresentationGraph(analysis: AnalysisResult) {
       position: { x: 0, y: 0 },
       data: {
         label: concept.title,
-        summary: concept.summary || concept.expanded_note?.core_idea || concept.description?.substring(0, 80),
+        summary: concept.summary || concept.expanded_note?.core_idea,
         category: concept.category,
         hasNote: true,
         childCount: (concept.child_highlights || []).length,
-        verseCount: (concept.child_verses || []).length,
+        verseCount: (concept.expanded_note?.verses || []).length,
         nodeId: id,
         isKey: concept.is_key === true,
         pageRef: concept.page_ref,
@@ -71,31 +71,11 @@ function buildPresentationGraph(analysis: AnalysisResult) {
       style: { stroke: `${catColor}66`, strokeWidth: 1.5 },
       markerEnd: { type: MarkerType.ArrowClosed, color: `${catColor}99` },
     });
-
-    (concept.child_highlights || []).forEach((hl, j) => {
-      const hlId = `hl-${i}-${j}`;
-      nodes.push({ id: hlId, type: "highlightCard", position: { x: 0, y: 0 }, data: { label: hl, pageRef: concept.page_ref } });
-      edges.push({
-        id: `e-${id}-${hlId}`, source: id, target: hlId,
-        style: { stroke: "rgba(196,164,106,0.18)", strokeWidth: 1, strokeDasharray: "6 3" },
-      });
-    });
-
-    const childVerses = concept.child_verses || concept.expanded_note?.verses || concept.bible_refs || [];
-    childVerses.forEach((v, j) => {
-      const vId = `verse-${i}-${j}`;
-      nodes.push({ id: vId, type: "verseCard", position: { x: 0, y: 0 }, data: { label: v, pageRef: concept.page_ref } });
-      edges.push({
-        id: `e-${id}-${vId}`, source: id, target: vId,
-        style: { stroke: "rgba(123,163,201,0.2)", strokeWidth: 1 },
-      });
-    });
   });
 
-  // Layout
   const g = new dagre.graphlib.Graph();
   g.setDefaultEdgeLabel(() => ({}));
-  g.setGraph({ rankdir: "LR", nodesep: 60, ranksep: 100, marginx: 60, marginy: 60 });
+  g.setGraph({ rankdir: "LR", nodesep: 70, ranksep: 110, marginx: 60, marginy: 60 });
   const sizeMap: Record<string, { w: number; h: number }> = {
     root: { w: 300, h: 90 },
     topicCard: { w: 280, h: 110 },
@@ -117,37 +97,79 @@ function buildPresentationGraph(analysis: AnalysisResult) {
   return { nodes: positioned, edges };
 }
 
-// Build sequential tour: root → for each topic [topic, highlights..., verses...]
-type TourStop = {
-  nodeId: string;
-  kind: "root" | "topic" | "highlight" | "verse";
-  topicIndex?: number;
-  childIndex?: number;
-  concept?: KeyConcept;
-  text?: string;
-};
+// ============ Tour: 1 stop por subsection (granular) ============
+type TourStop =
+  | { kind: "root"; nodeId: string }
+  | { kind: "topic-intro"; nodeId: string; concept: KeyConcept; topicIndex: number }
+  | { kind: "subsection"; nodeId: string; concept: KeyConcept; topicIndex: number; subsection: NoteSubsection; subIndex: number }
+  | { kind: "verses"; nodeId: string; concept: KeyConcept; topicIndex: number; verses: (string | VerseRef)[] }
+  | { kind: "quote"; nodeId: string; concept: KeyConcept; topicIndex: number; quote: AuthorQuote };
 
 function buildTour(analysis: AnalysisResult): TourStop[] {
-  const stops: TourStop[] = [{ nodeId: "node-root", kind: "root" }];
+  const stops: TourStop[] = [{ kind: "root", nodeId: "node-root" }];
   const topics = (analysis.key_concepts || []).filter(c => !c.type || c.type === "topic");
 
   topics.forEach((concept, i) => {
-    const id = `topic-${concept.id || i}`;
-    stops.push({ nodeId: id, kind: "topic", topicIndex: i, concept });
+    const nodeId = `topic-${concept.id || i}`;
+    // 1) Topic intro slide
+    stops.push({ kind: "topic-intro", nodeId, concept, topicIndex: i });
 
-    (concept.child_highlights || []).forEach((hl, j) => {
-      stops.push({ nodeId: `hl-${i}-${j}`, kind: "highlight", topicIndex: i, childIndex: j, concept, text: hl });
+    const note = concept.expanded_note;
+    if (!note) return;
+
+    // 2) Subsections (each one becomes a slide).
+    // If no subsections but has key_points, synthesize ONE subsection so all bullets show.
+    const subs = note.subsections && note.subsections.length > 0
+      ? note.subsections
+      : (note.key_points && note.key_points.length > 0
+        ? [{ subtitle: "Pontos principais", points: note.key_points, source_slides: concept.source_slides } as NoteSubsection]
+        : []);
+
+    // If many key_points and no real subsections, split into chunks of 5 so each slide stays scannable
+    const expandedSubs: NoteSubsection[] = [];
+    subs.forEach(sub => {
+      if (sub.points.length > 6) {
+        for (let k = 0; k < sub.points.length; k += 5) {
+          expandedSubs.push({
+            subtitle: k === 0 ? sub.subtitle : `${sub.subtitle} (cont.)`,
+            points: sub.points.slice(k, k + 5),
+            source_slides: sub.source_slides,
+          });
+        }
+      } else {
+        expandedSubs.push(sub);
+      }
     });
 
-    const childVerses = (concept.child_verses && concept.child_verses.length > 0)
-      ? concept.child_verses
-      : (concept.expanded_note?.verses ? concept.expanded_note.verses.map(v => typeof v === "string" ? v : v.ref) : (concept.bible_refs || []));
-    childVerses.forEach((v, j) => {
-      stops.push({ nodeId: `verse-${i}-${j}`, kind: "verse", topicIndex: i, childIndex: j, concept, text: v });
+    expandedSubs.forEach((subsection, subIndex) => {
+      stops.push({ kind: "subsection", nodeId, concept, topicIndex: i, subsection, subIndex });
+    });
+
+    // 3) Consolidated verses slide (if any)
+    if (note.verses && note.verses.length > 0) {
+      stops.push({ kind: "verses", nodeId, concept, topicIndex: i, verses: note.verses });
+    }
+
+    // 4) Each author quote becomes its own slide (impact moments)
+    (note.author_quotes || []).forEach(quote => {
+      stops.push({ kind: "quote", nodeId, concept, topicIndex: i, quote });
     });
   });
 
   return stops;
+}
+
+// Helper: extract slide number from a stop (badge "Slide N")
+function getStopSlide(stop: TourStop): number | null {
+  if (stop.kind === "topic-intro") return stop.concept.page_ref || stop.concept.source_slides?.[0] || null;
+  if (stop.kind === "subsection") return stop.subsection.source_slides?.[0] || stop.concept.page_ref || null;
+  if (stop.kind === "verses") {
+    const v = stop.verses[0];
+    if (typeof v !== "string" && v?.source_slide) return v.source_slide;
+    return stop.concept.page_ref || null;
+  }
+  if (stop.kind === "quote") return stop.quote.source_slide || stop.concept.page_ref || null;
+  return null;
 }
 
 function PresentationCanvas({ analysis, onExit }: PresentationModeProps) {
@@ -163,7 +185,7 @@ function PresentationCanvas({ analysis, onExit }: PresentationModeProps) {
 
   const current = tour[stopIdx];
 
-  // Camera animation: pan + zoom to current node
+  // Camera focus
   const focusNode = useCallback((stop: TourStop, instant = false) => {
     const node = initN.find(n => n.id === stop.nodeId);
     if (!node) return;
@@ -176,30 +198,28 @@ function PresentationCanvas({ analysis, onExit }: PresentationModeProps) {
     const s = sizeMap[node.type || "topicCard"];
     const cx = node.position.x + s.w / 2;
     const cy = node.position.y + s.h / 2;
-    const zoom = stop.kind === "root" ? 0.85 : stop.kind === "topic" ? 1.1 : 1.4;
-    setCenter(cx, cy, { zoom, duration: instant ? 0 : 900 });
+    const zoom = stop.kind === "root" ? 0.85 : stop.kind === "topic-intro" ? 1.05 : 1.25;
+    setCenter(cx, cy, { zoom, duration: instant ? 0 : 800 });
 
-    // Highlight current node visually
     setNodes(ns => ns.map(n => ({
       ...n,
       data: { ...n.data, selected: n.id === stop.nodeId },
       style: {
         ...n.style,
-        opacity: n.id === stop.nodeId ? 1 : 0.35,
-        transition: "opacity 0.6s ease",
+        opacity: n.id === stop.nodeId ? 1 : 0.32,
+        transition: "opacity 0.5s ease",
       },
     })));
     setEdges(es => es.map(e => ({
       ...e,
       style: {
         ...e.style,
-        opacity: (e.source === stop.nodeId || e.target === stop.nodeId) ? 1 : 0.2,
-        transition: "opacity 0.6s ease",
+        opacity: (e.source === stop.nodeId || e.target === stop.nodeId) ? 1 : 0.18,
+        transition: "opacity 0.5s ease",
       },
     })));
   }, [initN, setCenter, setNodes, setEdges]);
 
-  // Initial fit
   useEffect(() => {
     const t = setTimeout(() => {
       fitView({ padding: 0.3, duration: 500 });
@@ -209,35 +229,28 @@ function PresentationCanvas({ analysis, onExit }: PresentationModeProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Focus on stop change
-  useEffect(() => {
-    focusNode(current);
-  }, [stopIdx, current, focusNode]);
+  useEffect(() => { focusNode(current); }, [stopIdx, current, focusNode]);
 
-  const goNext = useCallback(() => {
-    setStopIdx(i => Math.min(tour.length - 1, i + 1));
-  }, [tour.length]);
+  const goNext = useCallback(() => setStopIdx(i => Math.min(tour.length - 1, i + 1)), [tour.length]);
+  const goPrev = useCallback(() => setStopIdx(i => Math.max(0, i - 1)), []);
 
-  const goPrev = useCallback(() => {
-    setStopIdx(i => Math.max(0, i - 1));
-  }, []);
-
-  // Click on a node → jump to its tour stop
   const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
     const idx = tour.findIndex(s => s.nodeId === node.id);
-    if (idx >= 0) {
-      setAutoPlay(false);
-      setStopIdx(idx);
-    }
+    if (idx >= 0) { setAutoPlay(false); setStopIdx(idx); }
   }, [tour]);
 
-  // Auto-play (video mode)
+  // Auto-play
   useEffect(() => {
     if (!autoPlay) {
       if (autoPlayRef.current) { window.clearTimeout(autoPlayRef.current); autoPlayRef.current = null; }
       return;
     }
-    const dwell = current.kind === "topic" ? 4500 : current.kind === "root" ? 3500 : 2800;
+    const dwell =
+      current.kind === "topic-intro" ? 4500 :
+      current.kind === "subsection" ? 5500 :
+      current.kind === "verses" ? 4000 :
+      current.kind === "quote" ? 4500 :
+      3500;
     autoPlayRef.current = window.setTimeout(() => {
       if (stopIdx < tour.length - 1) goNext();
       else setAutoPlay(false);
@@ -272,7 +285,17 @@ function PresentationCanvas({ analysis, onExit }: PresentationModeProps) {
     if (Math.abs(dx) > 60) { dx < 0 ? goNext() : goPrev(); }
   };
 
-  // Bottom caption content based on stop kind
+  // Slide badge (top of caption)
+  const slideNum = getStopSlide(current);
+  const SlideBadge = slideNum ? (
+    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full"
+      style={{ background: "rgba(196,164,106,0.08)", border: "1px solid rgba(196,164,106,0.18)" }}>
+      <span className="text-[9px] font-sans tracking-[2px] uppercase" style={{ color: "#8a7d6a" }}>Slide</span>
+      <span className="text-[11px] font-sans font-semibold" style={{ color: "#c4a46a" }}>{slideNum}</span>
+    </div>
+  ) : null;
+
+  // ---------- Captions per stop kind ----------
   const renderCaption = () => {
     if (current.kind === "root") {
       return (
@@ -290,79 +313,115 @@ function PresentationCanvas({ analysis, onExit }: PresentationModeProps) {
       );
     }
 
-    if (current.kind === "topic" && current.concept) {
+    if (current.kind === "topic-intro") {
       const c = current.concept;
       const note = c.expanded_note;
       const catColor = getCategoryColor(c.category);
-      const coreIdea = note?.core_idea || c.coreIdea || "";
-      const affirmations = note?.affirmations || c.keyPoints || [];
-      const impact = note?.impact_phrase || c.impactPhrase;
       return (
         <div className="max-w-[860px] mx-auto">
-          <div className="flex items-center gap-2 justify-center mb-2">
+          <div className="flex items-center gap-2 justify-center mb-3">
             <span className="text-[9px] font-sans font-bold tracking-[2px] uppercase" style={{ color: catColor }}>
               {getCategoryName(c.category)}
             </span>
-            {c.page_ref && (
-              <span className="text-[9px] font-sans tracking-[1.5px] uppercase px-2 py-0.5 rounded"
-                style={{ color: "#8a7d6a", background: "rgba(196,164,106,0.06)" }}>
-                p. {c.page_ref}
-              </span>
-            )}
+            {SlideBadge}
           </div>
-          <h2 className="font-display font-bold text-center mb-3" style={{ color: "#ede4d3", fontSize: "clamp(20px, 2.6vw, 30px)", lineHeight: 1.2 }}>
+          <h2 className="font-display font-bold text-center mb-3" style={{ color: "#ede4d3", fontSize: "clamp(22px, 2.8vw, 32px)", lineHeight: 1.2 }}>
             {c.title}
           </h2>
-          {coreIdea && (
-            <p className="font-body italic text-center mb-3" style={{ color: "#d4b87a", fontSize: "clamp(13px, 1.4vw, 17px)", lineHeight: 1.5 }}>
-              "{coreIdea}"
+          {note?.core_idea && (
+            <p className="font-body italic text-center" style={{ color: "#d4b87a", fontSize: "clamp(14px, 1.5vw, 18px)", lineHeight: 1.5 }}>
+              "{note.core_idea}"
             </p>
           )}
-          {affirmations.length > 0 && (
-            <ul className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5 max-w-[800px] mx-auto">
-              {affirmations.slice(0, 4).map((a, i) => (
-                <li key={i} className="flex items-start gap-2">
-                  <span className="mt-1.5 w-1 h-1 rounded-full flex-shrink-0" style={{ background: catColor }} />
-                  <span className="font-body" style={{ color: "#c4b89e", fontSize: "clamp(11px, 1.1vw, 13px)", lineHeight: 1.5 }}>{a}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-          {impact && (
-            <p className="text-center mt-3 pt-2 font-body italic" style={{ color: "#d4b87a", fontSize: "clamp(11px, 1.2vw, 14px)", borderTop: "1px solid rgba(196,164,106,0.1)" }}>
-              "{impact}"
+          {note?.impact_phrase && (
+            <p className="text-center mt-3 pt-3 font-body italic" style={{ color: "#c4b89e", fontSize: "clamp(12px, 1.2vw, 14px)", borderTop: "1px solid rgba(196,164,106,0.1)" }}>
+              {note.impact_phrase}
             </p>
           )}
         </div>
       );
     }
 
-    if (current.kind === "highlight") {
+    if (current.kind === "subsection") {
+      const c = current.concept;
+      const sub = current.subsection;
+      const catColor = getCategoryColor(c.category);
       return (
-        <div className="text-center max-w-[640px] mx-auto">
-          <p className="text-[9px] font-sans tracking-[2px] uppercase mb-2" style={{ color: "#8a7d6a" }}>
-            Destaque · {current.concept?.title}
-          </p>
-          <p className="font-body italic" style={{ color: "#ede4d3", fontSize: "clamp(15px, 1.8vw, 22px)", lineHeight: 1.5 }}>
-            "{current.text}"
-          </p>
-        </div>
-      );
-    }
-
-    if (current.kind === "verse") {
-      return (
-        <div className="text-center max-w-[640px] mx-auto">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full mb-2"
-            style={{ background: "rgba(123,163,201,0.08)", border: "1px solid rgba(123,163,201,0.25)" }}>
-            <BookOpen size={12} style={{ color: "#7ba3c9" }} />
-            <span className="font-body italic text-[12px]" style={{ color: "#7ba3c9" }}>Referência bíblica</span>
+        <div className="max-w-[920px] mx-auto">
+          <div className="flex items-center gap-2 justify-center mb-2">
+            <span className="text-[9px] font-sans font-bold tracking-[2px] uppercase" style={{ color: catColor }}>
+              {c.title}
+            </span>
+            {SlideBadge}
           </div>
-          <p className="font-display font-bold" style={{ color: "#7ba3c9", fontSize: "clamp(20px, 2.4vw, 28px)" }}>
-            {current.text}
+          <h3 className="font-display font-semibold text-center mb-3" style={{ color: "#ede4d3", fontSize: "clamp(17px, 2vw, 24px)", lineHeight: 1.2 }}>
+            {sub.subtitle}
+          </h3>
+          <ul className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2 max-w-[860px] mx-auto">
+            {sub.points.map((p, i) => (
+              <li key={i} className="flex items-start gap-2.5">
+                <span className="mt-2 w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: catColor }} />
+                <span className="font-body" style={{ color: "#d4cab2", fontSize: "clamp(12px, 1.25vw, 15px)", lineHeight: 1.55 }}>{p}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      );
+    }
+
+    if (current.kind === "verses") {
+      const c = current.concept;
+      return (
+        <div className="max-w-[820px] mx-auto">
+          <div className="flex items-center gap-2 justify-center mb-3">
+            <span className="text-[9px] font-sans font-bold tracking-[2px] uppercase" style={{ color: "#7ba3c9" }}>
+              Versículos · {c.title}
+            </span>
+            {SlideBadge}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-[760px] mx-auto">
+            {current.verses.map((v, i) => {
+              const ref = verseRefString(v);
+              const ctx = typeof v === "string" ? "" : (v.context || "");
+              const slide = typeof v === "string" ? null : v.source_slide;
+              return (
+                <div key={i} className="flex items-start gap-2.5 p-2.5 rounded-lg"
+                  style={{ background: "rgba(123,163,201,0.05)", border: "1px solid rgba(123,163,201,0.15)" }}>
+                  <BookOpen size={14} className="mt-0.5 shrink-0" style={{ color: "#7ba3c9" }} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline gap-2 flex-wrap">
+                      <span className="font-display font-semibold" style={{ color: "#7ba3c9", fontSize: "clamp(13px, 1.3vw, 15px)" }}>{ref}</span>
+                      {slide && (
+                        <span className="text-[9px] font-sans tracking-[1px] uppercase" style={{ color: "#5c5347" }}>Sl. {slide}</span>
+                      )}
+                    </div>
+                    {ctx && (
+                      <p className="font-body italic mt-1" style={{ color: "#a39882", fontSize: "clamp(11px, 1.05vw, 12px)", lineHeight: 1.4 }}>{ctx}</p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    if (current.kind === "quote") {
+      const c = current.concept;
+      const q = current.quote;
+      return (
+        <div className="text-center max-w-[720px] mx-auto">
+          <div className="flex items-center gap-2 justify-center mb-3">
+            <QuoteIcon size={12} style={{ color: "#c4a46a" }} />
+            <span className="text-[9px] font-sans tracking-[2px] uppercase" style={{ color: "#8a7d6a" }}>Citação · {c.title}</span>
+            {SlideBadge}
+          </div>
+          <p className="font-body italic" style={{ color: "#ede4d3", fontSize: "clamp(16px, 1.9vw, 22px)", lineHeight: 1.5 }}>
+            "{q.text}"
           </p>
-          <p className="text-[11px] font-sans mt-2" style={{ color: "#8a7d6a" }}>
-            de "{current.concept?.title}"
+          <p className="font-sans mt-3" style={{ color: "#c4a46a", fontSize: "clamp(11px, 1.1vw, 13px)" }}>
+            — {q.author}
           </p>
         </div>
       );
@@ -370,6 +429,14 @@ function PresentationCanvas({ analysis, onExit }: PresentationModeProps) {
 
     return null;
   };
+
+  // Stop kind label for control bar
+  const stopKindLabel =
+    current.kind === "root" ? "Tema" :
+    current.kind === "topic-intro" ? "Tópico" :
+    current.kind === "subsection" ? "Conteúdo" :
+    current.kind === "verses" ? "Versículos" :
+    current.kind === "quote" ? "Citação" : "";
 
   return (
     <div
@@ -384,7 +451,7 @@ function PresentationCanvas({ analysis, onExit }: PresentationModeProps) {
           style={{ width: `${((stopIdx + 1) / tour.length) * 100}%`, background: "linear-gradient(90deg, #c4a46a, #d4b87a)" }} />
       </div>
 
-      {/* Canvas — top portion */}
+      {/* Canvas */}
       <div className="flex-1 relative overflow-hidden">
         <ReactFlow
           nodes={nodes}
@@ -408,7 +475,6 @@ function PresentationCanvas({ analysis, onExit }: PresentationModeProps) {
           <Background variant={BackgroundVariant.Dots} gap={28} size={1} color="rgba(196,164,106,0.05)" style={{ background: "#0f0d0a" }} />
         </ReactFlow>
 
-        {/* Left/Right click zones for navigation (transparent) */}
         <button
           onClick={goPrev}
           aria-label="Anterior"
@@ -427,22 +493,22 @@ function PresentationCanvas({ analysis, onExit }: PresentationModeProps) {
         </button>
       </div>
 
-      {/* Caption overlay — bottom portion */}
+      {/* Caption */}
       <div
         key={stopIdx}
         className="shrink-0 px-6 py-5 animate-fade-in"
         style={{
           background: "linear-gradient(to top, rgba(15,13,10,0.98), rgba(15,13,10,0.92) 70%, rgba(15,13,10,0))",
           backdropFilter: "blur(10px)",
-          minHeight: 160,
-          maxHeight: "38vh",
+          minHeight: 180,
+          maxHeight: "44vh",
           overflowY: "auto",
         }}
       >
         {renderCaption()}
       </div>
 
-      {/* Bottom control bar */}
+      {/* Bottom bar */}
       <div className="flex items-center justify-between px-6 py-3 shrink-0"
         style={{ background: "rgba(15,13,10,0.95)", borderTop: "1px solid rgba(196,164,106,0.08)" }}>
         <button onClick={goPrev} disabled={stopIdx === 0}
@@ -467,7 +533,7 @@ function PresentationCanvas({ analysis, onExit }: PresentationModeProps) {
             {stopIdx + 1} / {tour.length}
           </span>
           <span className="text-[10px] font-sans uppercase tracking-[1.5px] hidden sm:inline" style={{ color: "#5c5347" }}>
-            {current.kind === "root" ? "Tema" : current.kind === "topic" ? "Tópico" : current.kind === "highlight" ? "Destaque" : "Versículo"}
+            {stopKindLabel}
           </span>
           <button onClick={onExit} className="p-2 rounded-lg transition-colors hover:bg-white/5" style={{ color: "#8a7d6a" }}>
             <X size={16} />
