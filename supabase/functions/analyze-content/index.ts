@@ -96,6 +96,9 @@ Marque is_key=true APENAS para os 3-4 topics centrais (mais slides ou ênfase do
 const EXPAND_PROMPT = (topicTitle: string, slideRange: [number, number], category: string) =>
   `Você é um EXTRATOR de conteúdo. Sua tarefa é REORGANIZAR o que está nos slides ${slideRange[0]}-${slideRange[1]} sobre "${topicTitle}" — NÃO criar conteúdo novo.
 
+═══ FILTRO ANTI-METADADO (CRÍTICO) ═══
+Se o trecho contiver palavras como "FlateDecode", "ColorSpace", "DeviceGray", "DeviceRGB", "MacRomanEncoding", "BaseFont", "StructElem", "StructTreeRoot", "MediaBox", "TimesNewRomanPSMT", "Subtype", "XObject" — IGNORE COMPLETAMENTE. Isso é metadado técnico de PDF, NÃO conteúdo. Nunca inclua essas palavras nos bullets, títulos ou qualquer campo. Se o trecho TODO for só metadado, retorne campos vazios.
+
 ═══ REGRA SUPREMA — FIDELIDADE ABSOLUTA ═══
 VOCÊ NÃO É AUTOR. VOCÊ É EXTRATOR.
 
@@ -236,6 +239,28 @@ serve(async (req) => {
     const { text, pagesText } = await req.json();
     if (!text || typeof text !== "string" || text.trim().length < 10) {
       return new Response(JSON.stringify({ error: "Texto muito curto." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // ===== ANTI-METADATA GUARD =====
+    // Detect when extract-pdf failed silently and passed PDF technical metadata as "text".
+    const metadataRegex = /FlateDecode|ColorSpace|DeviceGray|DeviceRGB|MacRomanEncoding|StructTreeRoot|StructElem|BaseFont|MediaBox|TimesNewRomanPSMT|XObject|\/Subtype|\/Filter/gi;
+    const sample = text.slice(0, 50000);
+    const metaHits = (sample.match(metadataRegex) || []).length;
+    const wordCount = Math.max(sample.split(/\s+/).length, 1);
+    const ratio = metaHits / wordCount;
+    if (metaHits > 8 && ratio > 0.02) {
+      console.warn(`[analyze-content] metadata-only input rejected (hits=${metaHits}, ratio=${ratio.toFixed(3)})`);
+      return new Response(
+        JSON.stringify({
+          error:
+            "Não consegui ler este PDF (provavelmente escaneado ou protegido). Tente exportá-lo novamente como PDF de texto.",
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (false) return new Response(JSON.stringify({}),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY missing");
