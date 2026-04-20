@@ -18,7 +18,7 @@ import "@xyflow/react/dist/style.css";
 import dagre from "dagre";
 import {
   ArrowLeftRight, ArrowUpDown, X, Map, Layers, Eye,
-  Loader2, Presentation, Share2,
+  Loader2, Presentation, Share2, Maximize2, Minimize2,
 } from "lucide-react";
 import type { AnalysisResult, KeyConcept } from "./types";
 import { getCategoryColor } from "./types";
@@ -205,6 +205,28 @@ export default function MindMapCanvas({ analysis, mapId, onEnsureSavedForShare, 
   const [showPresentation, setShowPresentation] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [shareState, setShareState] = useState<{ isPublic: boolean; slug: string | null }>({ isPublic: false, slug: null });
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const toggleFullscreen = useCallback(async () => {
+    const el = containerRef.current;
+    if (!el) return;
+    try {
+      if (!document.fullscreenElement) {
+        await el.requestFullscreen();
+      } else {
+        await document.exitFullscreen();
+      }
+    } catch (e) {
+      console.warn("fullscreen toggle failed", e);
+    }
+  }, []);
+
+  useEffect(() => {
+    const handler = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", handler);
+    return () => document.removeEventListener("fullscreenchange", handler);
+  }, []);
   // Hydrate share state from saved map's study_notes
   useEffect(() => {
     if (!mapId) return;
