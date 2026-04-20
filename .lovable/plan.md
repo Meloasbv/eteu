@@ -1,199 +1,86 @@
 
 
-# Modo Foco como Hub de Artifacts (estilo Claude)
+# Corrigir extração de PDF + reforçar fidelidade do mapa
 
-Transformar o chat do Modo Foco num **command center** onde cada mensagem do usuário é classificada por intenção e responde com um **artifact interativo inline** (cards específicos no fluxo do chat), em vez de abrir o painel inteiro da plataforma.
+## Diagnóstico
 
-Backend de Leitura, Devocional, Mapa Mental, Notas e Segundo Cérebro **permanece exatamente como está** — só o que muda é a camada de apresentação dentro do Modo Foco.
+Seu PDF "John Wesley" tem texto riquíssimo (vida, Aldersgate, Revolução Industrial, teologia arminiana, etc), mas o mapa gerou "FlateDecode / ColorSpace / DeviceGray / TimesNewRomanPSMT".
 
----
+**Causa raiz:** o `extract-pdf` atual faz regex direto nos bytes do PDF. Quando o PDF está comprimido com `FlateDecode` (caso do seu), os streams de texto ficam ilegíveis e o fallback regex pega **metadados técnicos** (nomes de fontes, codecs) achando que é texto. A IA então "resumiu" fielmente esses metadados — exatamente o comportamento esperado dado o lixo que recebeu.
 
-## O que muda visualmente
+A IA está fazendo o trabalho dela. O problema é o input.
 
-**Hoje:** digitar "leitura" abre o `<DevotionalTab/>` ou `<StudyTab/>` inteiro como iframe-like (48vh / 82vh). Pesado, descontextualizado.
+## Solução: trocar o extrator de PDF por um real
 
-**Depois:** digitar "leitura de hoje" mostra um **card compacto verde-neon** dentro do chat com a leitura do dia, checkboxes que marcam direto no Supabase, e botões de ação encadeada. O chat continua sendo o foco.
+### 1. Reescrever `supabase/functions/extract-pdf/index.ts`
 
-```text
-👤 leitura de hoje
-
-🤖 Sua leitura de Segunda — Semana 13.
-   ┌──────────────────────────────────────────┐
-   │ 📖 LEITURA DO DIA       Seg · Semana 13  │
-   │ ─────────────────────────────────────    │
-   │ ☐ Ez 45-48    ☐ Joel 1-3    ☐ Dn 1-3    │
-   │ [✓ Marcar tudo]  [📖 Abrir focus mode]   │
-   └──────────────────────────────────────────┘
-```
-
----
-
-## Arquitetura
-
-### 1. Edge Function `focus-intent` (nova)
-Classificador de intenção via Lovable AI Gateway (`google/gemini-3-flash-preview`) com tool calling estruturado. Recebe `{ text, context }`, retorna:
+Trocar a regex bruta por **`unpdf`** (https://esm.sh/unpdf) — biblioteca Deno-nativa que descomprime FlateDecode, processa fontes e devolve texto real por página.
 
 ```ts
-{
-  intent: "leitura" | "devocional" | "mapa_mental" | "nota" |
-          "cerebro" | "exegese" | "versiculo" | "pergunta" |
-          "capturar" | "timer" | "saudacao",
-  params: { ... },           // chapter, reference, content, etc.
-  response_text: string      // 1-2 frases para o assistente dizer antes do artifact
+import { extractText, getDocumentProxy } from "https://esm.sh/unpdf@0.12.1";
+
+const pdf = await getDocumentProxy(bytes);
+const { totalPages, text } = await extractText(pdf, { mergePages: false });
+// text é string[] — uma entrada por página
+const pages = text.map((t, i) => ({ page: i+1, text: t.trim() }))
+                  .filter(p => p.text.length > 5);
+```
+
+Saída idêntica à atual (`{ text, pages, pagesText }`) — `analyze-content` continua funcionando sem mudanças.
+
+### 2. Validação anti-lixo no `analyze-content`
+
+Adicionar guard antes de chamar a IA:
+
+```ts
+const looksLikeMetadata = /FlateDecode|ColorSpace|DeviceGray|MacRomanEncoding|StructTreeRoot|BaseFont|MediaBox/i;
+const hits = (corpus.match(looksLikeMetadata) || []).length;
+const ratio = hits / Math.max(corpus.split(/\s+/).length, 1);
+if (ratio > 0.05) {
+  return error("PDF não pôde ser lido — texto não extraído corretamente.");
 }
 ```
 
-Detecção rápida client-side por regex para comandos óbvios (`"leitura"`, `"devocional"`, `"capturar:"`) — só cai pro classificador AI quando a intenção for ambígua. Economiza latência e custo.
+Evita o caso de o extrator falhar silenciosamente e gerar mapa-lixo.
 
-### 2. Estrutura de mensagem com artifact
+### 3. Reforçar prompt de fidelidade (pequeno ajuste)
 
-`src/components/secondbrain/FocusCommandChat.tsx` ganha tipo:
+No `EXPAND_PROMPT` atual, adicionar no topo:
 
-```ts
-type ArtifactType =
-  | "reading" | "devotional_today" | "mindmap_list" | "mindmap_preview"
-  | "brain_capture" | "exegese" | "note_saved" | "verse"
-  | "answer" | "timer" | "loading";
+> "Se o trecho contiver palavras como 'FlateDecode', 'ColorSpace', 'BaseFont', 'StructElem', 'MacRomanEncoding' — IGNORE COMPLETAMENTE. Isso é metadado de PDF, não conteúdo. Retorne erro."
 
-interface Msg {
-  id: string;
-  role: "user" | "assistant";
-  text?: string;                     // texto curto do assistente (1-2 frases)
-  artifact?: { type: ArtifactType; data: any };
-  timestamp: number;
-}
-```
+Defesa em profundidade, caso o validador deixe passar.
 
-Cada artifact é um componente próprio em `src/components/secondbrain/artifacts/`:
+### 4. Mensagem de erro clara para o usuário
 
-| Arquivo | Renderiza | Backend |
-|---|---|---|
-| `ReadingArtifact.tsx` | Card da leitura do dia com checkboxes | localStorage `reading-progress` (mesma chave do `WeekSchedule`) |
-| `DevotionalTodayArtifact.tsx` | Versículo do dia + summary + botão "exegese completa" | `DEVOTIONALS` data + `verse-exegesis` |
-| `MindMapListArtifact.tsx` | Lista de mapas + botões "Abrir / Novo / Upload PDF" | `mind_maps` Supabase |
-| `MindMapPreviewArtifact.tsx` | Mini React Flow 320px de altura, zoom/pan | `mind_maps` Supabase |
-| `BrainCaptureArtifact.tsx` | Pensamento registrado + análise psicológica/bíblica | `thoughts` table + `analyze-thought` |
-| `ExegeseArtifact.tsx` | Contexto + termos gregos/hebraicos + aplicação | `verse-exegesis` |
-| `NoteArtifact.tsx` | Confirmação de nota salva + tags | `notes` table |
-| `VerseArtifact.tsx` | Texto do versículo + ações | `bible-context` + ABibliaDigital |
-| `AnswerArtifact.tsx` | Resposta formatada com refs bíblicas clicáveis | `study-chat` |
-| `TimerArtifact.tsx` | Card de controle do Pomodoro inline | estado local do `FocusWorkspace` |
+No `MindMapInput.tsx` (frontend), tratar o novo erro do passo 2 com toast:
 
-### 3. Roteador de intenções (client)
+> "Não consegui ler este PDF (provavelmente escaneado ou protegido). Tente exportá-lo novamente como PDF de texto."
 
-```text
-User input → detectIntentLocal(text)
-              ├─ match? → executa handler direto
-              └─ no match? → fetch focus-intent → handler
-                              ↓
-            Handler:
-              1. Insere placeholder loading artifact
-              2. Executa ação no backend (insert/update/AI call)
-              3. Substitui placeholder pelo artifact final
-              4. Adiciona texto curto do assistente acima
-```
+## Resultado esperado
 
-### 4. Ações encadeadas (`sendAsUser`)
+Após fix, o mesmo PDF deve gerar nodes como:
+- **Contexto e Família** → pontos: "Nasceu em 1703, Epworth", "15º de 19 filhos", "Susanna Wesley — maior influência espiritual"
+- **Tição Tirado do Fogo** → "Resgate do incêndio aos 5 anos", "Mãe creu em missão especial"
+- **Conversão em Aldersgate** → "24 maio 1738", "Prefácio de Lutero a Romanos", "Coração estranhamente aquecido"
+- **Pregação ao Ar Livre** → "Influência de Whitefield", "O mundo é minha paróquia", "400 mil km a cavalo, 40 mil sermões"
+- **Teologia Arminiana** → "Redenção universal", "Livre-arbítrio", "Perfeição cristã"
 
-Botões dentro de artifacts disparam `sendAsUser("salvar esta exegese como nota")` que injeta a frase como mensagem do usuário, processa pelo mesmo pipeline. Cria fluxo conversacional natural.
+Fiel ao slide, sem invenção, sem metadado técnico.
 
-### 5. Captura inteligente do "Capturar"
+## Arquivos alterados
 
-O card "Capturar" da tela inicial **não envia comando** — foca no input e troca placeholder para `"O que está na sua mente?"`. O próximo envio é tratado como pensamento (intent forçado = `cerebro/capture`), evitando o classificador.
+| Arquivo | Mudança |
+|---|---|
+| `supabase/functions/extract-pdf/index.ts` | Reescrito usando `unpdf` |
+| `supabase/functions/analyze-content/index.ts` | Validador anti-metadado + guard no prompt |
+| `src/components/mindmap/MindMapInput.tsx` | Toast de erro amigável |
 
-### 6. Loading states
+## Escopo NÃO incluído
 
-Skeleton verde-neon pulsante com mensagem contextual:
-- "Analisando seu pensamento..." (cerebro)
-- "Consultando o texto original..." (exegese)
-- "Construindo o mapa..." (mapa_mental)
-- "Refletindo sobre isso..." (pergunta)
+- Redesign visual do NotePanel (já está bom)
+- Sistema de 3 níveis (já implementado)
+- Transformações (já funcionam)
 
-### 7. Persistência da sessão (opcional, fim do bloco)
-
-Nova tabela:
-```sql
-CREATE TABLE focus_sessions (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_code_id uuid NOT NULL,
-  messages jsonb DEFAULT '[]',
-  started_at timestamptz DEFAULT now(),
-  ended_at timestamptz,
-  focus_minutes int DEFAULT 0,
-  artifacts_used text[] DEFAULT '{}'
-);
-```
-
-Restaura sessão se reaberta em <2h; senão nova com saudação contextual.
-
-### 8. Saudação automática
-
-Ao abrir o Modo Foco com chat vazio, dispara automaticamente:
-```text
-🤖 Bom dia, Melo. Sua leitura de hoje é Ez 45-48, Joel 1-3, Dn 1-3.
-   [ReadingArtifact com checkboxes prontos]
-```
-Calculado a partir de `WEEKS` + dia atual.
-
----
-
-## Estilo visual (mantém paleta atual `#0B0F14` / `#00FF94`)
-
-- Artifacts são **cards translúcidos** com `border: 1px solid rgba(0,255,148,0.12)`, `border-radius: 16px`, `backdrop-filter: blur(8px)`.
-- Header do artifact: ícone 20px verde + label uppercase tracking-2px + badge à direita (semana, tipo, etc).
-- Botões internos: pílulas verde-neon translúcidas com hover suave.
-- Animação de entrada: fade + translateY 8px, 0.3s ease-out.
-- Mensagens do assistente continuam **flush** (sem balão), tipografia serif Crimson, indent 24px.
-- Mensagens do usuário continuam pílula verde sutil à direita.
-
----
-
-## Arquivos afetados
-
-**Novos:**
-- `supabase/functions/focus-intent/index.ts`
-- `src/components/secondbrain/artifacts/ReadingArtifact.tsx`
-- `src/components/secondbrain/artifacts/DevotionalTodayArtifact.tsx`
-- `src/components/secondbrain/artifacts/MindMapListArtifact.tsx`
-- `src/components/secondbrain/artifacts/MindMapPreviewArtifact.tsx`
-- `src/components/secondbrain/artifacts/BrainCaptureArtifact.tsx`
-- `src/components/secondbrain/artifacts/ExegeseArtifact.tsx`
-- `src/components/secondbrain/artifacts/NoteArtifact.tsx`
-- `src/components/secondbrain/artifacts/VerseArtifact.tsx`
-- `src/components/secondbrain/artifacts/AnswerArtifact.tsx`
-- `src/components/secondbrain/artifacts/TimerArtifact.tsx`
-- `src/components/secondbrain/artifacts/ArtifactRenderer.tsx` (switch central)
-- `src/components/secondbrain/artifacts/types.ts`
-- `src/lib/focusIntent.ts` (regex local + chamada à edge function)
-- Migration: `focus_sessions` table + RLS
-
-**Modificados:**
-- `src/components/secondbrain/FocusCommandChat.tsx` — substitui sistema de tool panels por sistema de artifacts; adiciona saudação inicial; integra `sendAsUser`; troca handler dos quick chips.
-- `src/components/secondbrain/FocusWorkspace.tsx` — atalhos da sidebar agora chamam `sendAsUser`; expõe controles do Pomodoro para o `TimerArtifact`; remove o `renderTab` (não precisa mais expor o painel da plataforma).
-- `src/pages/Index.tsx` — remove `renderTab` callback; passa apenas `userCodeId` e `onClose`.
-- `.lovable/memory/features/second-brain/focus-workspace.md` — atualizar para o modelo artifact-first.
-
----
-
-## Plano de execução em 3 blocos
-
-**Bloco 1 — Core (esta primeira passada):**
-- Edge function `focus-intent`
-- `types.ts` + `ArtifactRenderer` + `focusIntent.ts` lib
-- Refatorar `FocusCommandChat` pro novo modelo
-- 4 artifacts essenciais: `Reading`, `BrainCapture`, `Exegese`, `Answer`
-- Saudação inicial automática
-- Loading states
-
-**Bloco 2 — Artifacts complementares:**
-- `Devotional`, `Note`, `Verse`, `MindMapList`, `MindMapPreview`, `Timer`
-- Ações encadeadas via `sendAsUser`
-- Card "Capturar" muda placeholder do input
-
-**Bloco 3 — Persistência:**
-- Migration `focus_sessions`
-- Restauração de sessão recente
-- Heatmap de minutos no `TodayDashboard`
-
-Todo o backend de leitura/devocional/mapa/notas/cérebro permanece intacto — os artifacts são uma nova camada de apresentação que conversa com as tabelas e edge functions já existentes.
+Apenas corrigir a porta de entrada — texto real do PDF chegando até a IA.
 
