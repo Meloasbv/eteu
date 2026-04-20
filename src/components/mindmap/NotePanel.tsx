@@ -145,6 +145,7 @@ export default function NotePanel({
   const legacyVerses = !note?.verses?.length ? (concept.bible_refs || []).map(r => ({ ref: r } as VerseRef)) : [];
   const verses: VerseRef[] = versesRich.length > 0 ? versesRich : legacyVerses;
   const authorQuotes = note?.author_quotes || [];
+  const stories = note?.stories || [];
   const application = note?.application || concept.practicalApplication || "";
   const impactPhrase = note?.impact_phrase || concept.impactPhrase || "";
   const sourceSlides = concept.source_slides || (concept.page_ref ? [concept.page_ref] : []);
@@ -469,6 +470,17 @@ export default function NotePanel({
                     )}
                   </div>
                 </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {stories.length > 0 && (
+          <>
+            <SectionLabel>HISTÓRIAS</SectionLabel>
+            <div className="space-y-2 mb-6">
+              {stories.map((story, i) => (
+                <StoryCard key={i} story={story} onVerseClick={handleVerseClick} />
               ))}
             </div>
           </>
