@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { BookOpen, Check, ChevronRight } from "lucide-react";
+import { BookOpen, Check, ChevronRight, Headphones, Loader2, Pause, Play } from "lucide-react";
 import { ArtifactShell, ArtifactAction } from "./ArtifactShell";
 import { FOCUS_PALETTE as P } from "./types";
 import { haptic } from "@/hooks/useHaptic";
+import { useFocusTTS, focusTTS } from "@/hooks/useFocusTTS";
 
 const READING_KEY = "bible-plan-progress";
 
