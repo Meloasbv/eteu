@@ -228,6 +228,7 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
   const [musicPlaying, setMusicPlaying] = useState(false);
   const playerRef = useRef<HTMLIFrameElement>(null);
   const isMobile = useIsMobile();
+  const [focusOpen, setFocusOpen] = useState(false);
 
   // Reading focus mode
   const [focusReading, setFocusReading] = useState<{ weekIdx: number; dayIdx: number; dayName: string; readings: string[] } | null>(null);
