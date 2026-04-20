@@ -30,6 +30,18 @@ export function detectIntentLocal(raw: string): IntentResult | null {
   const lower = text.toLowerCase();
   const wordCount = text.split(/\s+/).length;
 
+  // TTS stop commands → dispatch event, return saudacao with empty text
+  if (/^(parar|pausar|silenciar)\s+(leitura|voz|[aá]udio|tts)/i.test(text)) {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("focus-tts-stop"));
+    }
+    return {
+      intent: "saudacao",
+      params: {},
+      response_text: "Leitura interrompida.",
+    };
+  }
+
   // Greeting
   if (/^(oi|olá|ola|bom dia|boa tarde|boa noite|hey|hello)[!.?\s]*$/i.test(text)) {
     return {
@@ -107,8 +119,8 @@ export function detectIntentLocal(raw: string): IntentResult | null {
     };
   }
 
-  // Verse view explicit ("ver versículo X", "ler X", "mostrar X")
-  const verseMatch = text.match(/^(?:ver|ler|mostrar|abrir)\s+(?:vers[íi]culo\s+)?(.+)/i);
+  // Verse view explicit ("ver versículo X", "ler X", "mostrar X", "ouvir X")
+  const verseMatch = text.match(/^(?:ver|ler|ouvir|mostrar|abrir)\s+(?:vers[íi]culo\s+)?(.+)/i);
   if (verseMatch && VERSE_RE.test(verseMatch[1])) {
     return {
       intent: "versiculo",

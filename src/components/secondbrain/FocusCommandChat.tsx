@@ -7,6 +7,7 @@ import ArtifactRenderer from "./artifacts/ArtifactRenderer";
 import type { FocusMsg, ArtifactPayload } from "./artifacts/types";
 import { computeTodayReading, greetingByHour } from "@/lib/readingPlan";
 import { findRecentSession, createSession, updateSession } from "@/lib/focusSession";
+import ListenButton from "./artifacts/ListenButton";
 
 export type FocusPanelKey = "leitura" | "devocional" | "anotacoes" | "cerebro";
 
@@ -406,6 +407,9 @@ export default function FocusCommandChat({ userCodeId, weeks, devotionals }: Pro
                         <p className="text-[10px] font-bold uppercase tracking-[1.4px]" style={{ color: PALETTE.textDim }}>
                           Assistente
                         </p>
+                        {!m.artifact && m.text.length > 8 && (
+                          <ListenButton id={`msg-${m.id}`} text={m.text} label="Assistente" size="sm" />
+                        )}
                       </div>
                       <div
                         className="text-[15px] leading-[1.75] whitespace-pre-wrap pl-6"
