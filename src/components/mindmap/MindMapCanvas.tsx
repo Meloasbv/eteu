@@ -41,7 +41,7 @@ const nodeTypes = {
 };
 
 const defaultEdgeOptions = {
-  type: "bezier" as const,
+  type: "default" as const,
   animated: false,
   style: { stroke: "rgba(196,164,106,0.18)", strokeWidth: 1.5 },
   markerEnd: { type: MarkerType.ArrowClosed, color: "rgba(196,164,106,0.25)", width: 12, height: 12 },
