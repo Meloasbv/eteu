@@ -410,10 +410,7 @@ export default function FocusWorkspace({ open, onClose, tab, setTab, renderTab }
 
           {/* COMMAND CHAT — the hub */}
           <div className="flex-1 overflow-hidden relative min-h-0">
-            <FocusCommandChat
-              renderPanel={(key) => renderTab(key)}
-              onPanelFocus={(key) => setTab(key as FocusTab)}
-            />
+            <FocusCommandChat />
           </div>
         </main>
       </div>
