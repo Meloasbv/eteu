@@ -101,9 +101,15 @@ function buildFromAnalysis(
     },
   });
 
-  const topicConcepts = (analysis.key_concepts || []).filter(
+  // Sort topics by their first source slide so the visual order matches the PDF
+  const allTopics = (analysis.key_concepts || []).filter(
     c => !c.type || c.type === "topic"
   );
+  const topicConcepts = [...allTopics].sort((a, b) => {
+    const aSlide = a.source_slides?.[0] ?? a.page_ref ?? 999;
+    const bSlide = b.source_slides?.[0] ?? b.page_ref ?? 999;
+    return aSlide - bSlide;
+  });
 
   topicConcepts.forEach((concept, i) => {
     const id = `topic-${concept.id || i}`;
@@ -114,6 +120,10 @@ function buildFromAnalysis(
     const verseCount = noteVerses.length || (concept.bible_refs || []).length;
     const keyPointsCount = (concept.expanded_note?.key_points || concept.expanded_note?.affirmations || []).length;
     const slides = concept.source_slides || (concept.page_ref ? [concept.page_ref] : []);
+    const stories = (concept.expanded_note?.stories || []).map(s => ({
+      title: s.title,
+      source_slide: s.source_slide,
+    }));
 
     nodes.push({
       id,
@@ -133,14 +143,29 @@ function buildFromAnalysis(
         sourceSlides: slides,
         imageUrl: images[id],
         imageLoading: loadingImages[id],
+        orderIndex: i + 1,
+        stories,
       },
     });
 
-    // Connect root → topic
+    // Connect root → topic with a numbered label so the reading order is visible
     edges.push({
       id: `edge-root-${id}`,
       source: rootId,
       target: id,
+      label: `${i + 1}`,
+      labelStyle: {
+        fill: catColor,
+        fontSize: 11,
+        fontWeight: 700,
+        fontFamily: "Inter, sans-serif",
+      },
+      labelBgStyle: {
+        fill: "#1e1a14",
+        fillOpacity: 1,
+      },
+      labelBgPadding: [4, 6],
+      labelBgBorderRadius: 8,
       style: { stroke: `${catColor}66`, strokeWidth: 1.5 },
     });
 
@@ -251,7 +276,14 @@ export default function MindMapCanvas({ analysis, mapId, onEnsureSavedForShare, 
   const [loadingImages, setLoadingImages] = useState<Record<string, boolean>>({});
 
   const topicConcepts = useMemo(
-    () => (analysis.key_concepts || []).filter(c => !c.type || c.type === "topic"),
+    () => {
+      const all = (analysis.key_concepts || []).filter(c => !c.type || c.type === "topic");
+      return [...all].sort((a, b) => {
+        const aSlide = a.source_slides?.[0] ?? a.page_ref ?? 999;
+        const bSlide = b.source_slides?.[0] ?? b.page_ref ?? 999;
+        return aSlide - bSlide;
+      });
+    },
     [analysis]
   );
 
