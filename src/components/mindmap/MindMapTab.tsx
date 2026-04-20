@@ -1,9 +1,11 @@
 import { useState, useCallback, useEffect, lazy, Suspense } from "react";
-import { Loader2, Sparkles, PenTool, Clock, Trash2, Edit3, FileText, Upload, CheckCircle2 } from "lucide-react";
+import { Loader2, Sparkles, PenTool, Clock, Trash2, Edit3, FileText } from "lucide-react";
 import MindMapInput from "./MindMapInput";
+import PipelineProgressView from "./PipelineProgress";
 import type { AnalysisResult } from "./types";
 import { supabase } from "@/integrations/supabase/client";
 import { setCachedMap, getCachedMap, setInflight, getInflight } from "./mapCache";
+import { runMindMapPipeline, type PipelineProgress } from "@/lib/mindMapPipeline";
 
 const MindMapCanvas = lazy(() => import("./MindMapCanvas"));
 const ManualMindMapCanvas = lazy(() => import("./ManualMindMapCanvas"));
@@ -22,11 +24,13 @@ interface SavedMap {
   source_type: string | null;
 }
 
-interface PdfProgress {
-  step: "uploading" | "extracting" | "analyzing" | "generating" | "done";
+type PdfStage = "uploading" | "extracting" | "pipeline";
+
+interface PdfState {
+  stage: PdfStage;
   fileName: string;
   pages?: number;
-  percent: number;
+  pipeline: PipelineProgress | null;
 }
 
 export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
@@ -38,7 +42,7 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
   const [loadingMaps, setLoadingMaps] = useState(true);
   const [editMapId, setEditMapId] = useState<string | null>(null);
   const [aiMapId, setAiMapId] = useState<string | null>(null);
-  const [pdfProgress, setPdfProgress] = useState<PdfProgress | null>(null);
+  const [pdfState, setPdfState] = useState<PdfState | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
   const saveAiMap = useCallback(async (result: AnalysisResult, existingMapId: string | null = null) => {
@@ -206,7 +210,7 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
 
     setError(null);
     setMode("pdf-processing");
-    setPdfProgress({ step: "uploading", fileName: file.name, percent: 10 });
+    setPdfState({ stage: "uploading", fileName: file.name, pipeline: null });
 
     try {
       const arrayBuffer = await file.arrayBuffer();
@@ -217,7 +221,7 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
       }
       const base64 = btoa(binary);
 
-      setPdfProgress({ step: "extracting", fileName: file.name, percent: 30 });
+      setPdfState({ stage: "extracting", fileName: file.name, pipeline: null });
 
       const extractUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-pdf`;
       const extractRes = await fetch(extractUrl, {
@@ -233,52 +237,44 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
       if (!extractRes.ok || extractData?.error) {
         setError(extractData?.error || "Erro ao extrair texto do PDF.");
         setMode("select");
-        setPdfProgress(null);
+        setPdfState(null);
         return;
       }
 
-      setPdfProgress({ step: "analyzing", fileName: file.name, pages: extractData.pages, percent: 55 });
+      const pages = (extractData.pagesText as { page: number; text: string }[]) || [];
+      if (pages.length === 0) {
+        setError("Não foi possível extrair texto deste PDF.");
+        setMode("select");
+        setPdfState(null);
+        return;
+      }
 
-      const analyzeUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-content`;
-      const analyzeRes = await fetch(analyzeUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+      // Run new pipeline (one AI call per group, in parallel)
+      const pdfTitle = file.name.replace(/\.pdf$/i, "").trim() || "Estudo";
+      const result = await runMindMapPipeline({
+        pagesText: pages,
+        pdfTitle,
+        onProgress: (progress) => {
+          setPdfState({
+            stage: "pipeline",
+            fileName: file.name,
+            pages: extractData.pages,
+            pipeline: progress,
+          });
         },
-        body: JSON.stringify({ text: extractData.text }),
       });
-      const analyzeData = await analyzeRes.json();
-      if (!analyzeRes.ok || analyzeData?.error) {
-        setError(analyzeData?.error || "Erro ao analisar conteúdo.");
-        setMode("select");
-        setPdfProgress(null);
-        return;
-      }
 
-      setPdfProgress({ step: "generating", fileName: file.name, pages: extractData.pages, percent: 85 });
-
-      await new Promise(r => setTimeout(r, 500));
-
-      if (analyzeData?.result) {
-        setPdfProgress({ step: "done", fileName: file.name, pages: extractData.pages, percent: 100 });
-        await new Promise(r => setTimeout(r, 600));
-        const savedMapId = await saveAiMap(analyzeData.result);
-        setAnalysis(analyzeData.result);
-        setAiMapId(savedMapId);
-        await fetchMaps();
-        setMode("ai-canvas");
-      } else {
-        setError("Resposta inesperada da IA.");
-        setMode("select");
-      }
+      const savedMapId = await saveAiMap(result);
+      setAnalysis(result);
+      setAiMapId(savedMapId);
+      await fetchMaps();
+      setMode("ai-canvas");
     } catch (error) {
       console.error("PDF mind map generation failed:", error);
       setError(error instanceof Error ? error.message : "Erro de conexão. Verifique sua internet.");
       setMode("select");
     } finally {
-      setPdfProgress(null);
+      setPdfState(null);
     }
   }, [fetchMaps, saveAiMap]);
 
@@ -313,57 +309,20 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
     </div>
   );
 
-  if (mode === "pdf-processing" && pdfProgress) {
-    const steps = [
-      { key: "uploading", label: "Upload concluído", icon: Upload },
-      { key: "extracting", label: `Texto extraído${pdfProgress.pages ? ` (${pdfProgress.pages} páginas)` : ""}`, icon: FileText },
-      { key: "analyzing", label: "Analisando conteúdo com IA...", icon: Sparkles },
-      { key: "generating", label: "Gerando mapa mental", icon: PenTool },
-    ];
-    const currentIdx = steps.findIndex(s => s.key === pdfProgress.step);
-
+  if (mode === "pdf-processing" && pdfState) {
+    const preStep =
+      pdfState.stage === "uploading" ? "uploading" :
+      pdfState.stage === "extracting" ? "extracting" :
+      null;
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] px-4 py-8 animate-fade-in">
-        <div className="w-full max-w-sm rounded-2xl p-8"
-          style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}>
-          <div className="flex items-center gap-3 mb-6">
-            <FileText size={20} className="text-primary" />
-            <p className="text-sm font-display font-semibold text-foreground truncate">
-              {pdfProgress.fileName}
-            </p>
-          </div>
-
-          <div className="space-y-3 mb-6">
-            {steps.map((step, i) => {
-              const isDone = i < currentIdx || pdfProgress.step === "done";
-              const isActive = i === currentIdx && pdfProgress.step !== "done";
-              return (
-                <div key={step.key} className={`flex items-center gap-3 text-sm font-ui transition-opacity ${isDone || isActive ? "opacity-100" : "opacity-30"}`}>
-                  {isDone ? (
-                    <CheckCircle2 size={16} className="text-primary flex-shrink-0" />
-                  ) : isActive ? (
-                    <Loader2 size={16} className="animate-spin text-primary flex-shrink-0" />
-                  ) : (
-                    <div className="w-4 h-4 rounded-full flex-shrink-0" style={{ border: "2px solid hsl(var(--border))" }} />
-                  )}
-                  <span className={isDone ? "text-foreground" : isActive ? "text-foreground" : "text-muted-foreground"}>
-                    {step.label}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: "hsl(var(--muted))" }}>
-            <div
-              className="h-full rounded-full transition-all duration-500 ease-out"
-              style={{ width: `${pdfProgress.percent}%`, background: "hsl(var(--primary))" }}
-            />
-          </div>
-          <p className="text-[11px] text-muted-foreground font-ui text-right mt-1">{pdfProgress.percent}%</p>
-        </div>
-      </div>
+      <PipelineProgressView
+        fileName={pdfState.fileName}
+        progress={pdfState.pipeline}
+        preExtractStep={preStep as any}
+        pages={pdfState.pages}
+      />
     );
+  }
   }
 
   if (mode === "ai-canvas" && analysis) {

@@ -39,6 +39,26 @@ export interface StoryNarrative {
   source_slide?: number;
 }
 
+export interface KeyDate {
+  date: string;           // ex: "1703", "24/05/1738", "séc. XVIII"
+  event: string;          // ex: "Nascimento em Epworth"
+  source_slide?: number;
+}
+
+export interface KeyPerson {
+  name: string;
+  role: string;           // 1 frase descrevendo função/relação
+  points?: string[];      // bullets sobre a pessoa, extraídos do material
+  source_slide?: number;
+}
+
+export interface QuizQuestion {
+  question: string;
+  options: string[];
+  answer_index?: number | null;
+  source_slide?: number;
+}
+
 export interface ConceptConnection {
   concept_id?: string;
   concept_title: string;
@@ -58,6 +78,8 @@ export interface ExpandedNote {
   subsections?: NoteSubsection[];
   author_quotes?: AuthorQuote[];
   stories?: StoryNarrative[];        // histórias/narrativas importantes do material
+  key_dates?: KeyDate[];             // datas/eventos cronológicos
+  key_people?: KeyPerson[];          // personagens com papel relevante
   // ── Level 2 (expanded view) ──
   detailed_explanation?: string;     // full paragraph (3-6 sentences)
   historical_context?: string;       // historical / cultural background
@@ -126,6 +148,7 @@ export interface AnalysisResult {
     total_slides?: number;
     author?: string | null;
   };
+  quiz_questions?: QuizQuestion[];   // perguntas extraídas dos slides de quiz (se existir)
 }
 
 // Category palette
