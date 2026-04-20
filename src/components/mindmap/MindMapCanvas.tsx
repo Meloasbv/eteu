@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useEffect, useState, lazy, Suspense } from "react";
+import { useCallback, useMemo, useEffect, useState, useRef, lazy, Suspense } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
@@ -18,7 +18,7 @@ import "@xyflow/react/dist/style.css";
 import dagre from "dagre";
 import {
   ArrowLeftRight, ArrowUpDown, X, Map, Layers, Eye,
-  Loader2, Presentation, Share2,
+  Loader2, Presentation, Share2, Maximize2, Minimize2,
 } from "lucide-react";
 import type { AnalysisResult, KeyConcept } from "./types";
 import { getCategoryColor } from "./types";
@@ -205,6 +205,28 @@ export default function MindMapCanvas({ analysis, mapId, onEnsureSavedForShare, 
   const [showPresentation, setShowPresentation] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [shareState, setShareState] = useState<{ isPublic: boolean; slug: string | null }>({ isPublic: false, slug: null });
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const toggleFullscreen = useCallback(async () => {
+    const el = containerRef.current;
+    if (!el) return;
+    try {
+      if (!document.fullscreenElement) {
+        await el.requestFullscreen();
+      } else {
+        await document.exitFullscreen();
+      }
+    } catch (e) {
+      console.warn("fullscreen toggle failed", e);
+    }
+  }, []);
+
+  useEffect(() => {
+    const handler = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", handler);
+    return () => document.removeEventListener("fullscreenchange", handler);
+  }, []);
   // Hydrate share state from saved map's study_notes
   useEffect(() => {
     if (!mapId) return;
@@ -390,13 +412,23 @@ export default function MindMapCanvas({ analysis, mapId, onEnsureSavedForShare, 
   }
 
   return (
-    <div className="flex flex-col h-full w-full">
+    <div ref={containerRef} className="flex flex-col h-full w-full" style={{ background: isFullscreen ? "#16130f" : undefined }}>
       <div className="flex items-center justify-between px-4 py-2 shrink-0"
         style={{ borderBottom: "1px solid rgba(196,164,106,0.1)" }}>
         <StudyModeTabs />
-        <button onClick={onClose} className="p-2 rounded-lg transition-colors" style={{ color: "#8a7d6a" }}>
-          <X size={16} />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={toggleFullscreen}
+            title={isFullscreen ? "Sair de tela cheia" : "Tela cheia"}
+            className="p-2 rounded-lg transition-colors hover:bg-white/5"
+            style={{ color: "#8a7d6a" }}
+          >
+            {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+          </button>
+          <button onClick={onClose} className="p-2 rounded-lg transition-colors hover:bg-white/5" style={{ color: "#8a7d6a" }}>
+            <X size={16} />
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-1 min-h-0">
@@ -460,6 +492,11 @@ export default function MindMapCanvas({ analysis, mapId, onEnsureSavedForShare, 
                 <div className="w-px h-4 mx-1" style={{ background: "rgba(196,164,106,0.15)" }} />
                 <ToolbarBtn icon={Presentation} label="Apresentar" onClick={() => setShowPresentation(true)} />
                 <ToolbarBtn icon={Share2} label="Compartilhar" onClick={() => setShowShareDialog(true)} />
+                <ToolbarBtn
+                  icon={isFullscreen ? Minimize2 : Maximize2}
+                  label={isFullscreen ? "Sair tela cheia" : "Tela cheia"}
+                  onClick={toggleFullscreen}
+                />
               </div>
             </Panel>
           </ReactFlow>

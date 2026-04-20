@@ -76,6 +76,14 @@ export interface StructuredNote {
   points: string[];
 }
 
+export interface SlideSummary {
+  slide: number;
+  title?: string;
+  summary: string;
+  topic_id?: string;
+  category?: string;
+}
+
 export interface AnalysisResult {
   main_theme: string;
   summary: string;
@@ -85,6 +93,11 @@ export interface AnalysisResult {
   };
   keywords: string[];
   structured_notes: StructuredNote[];
+  slide_summaries?: SlideSummary[];
+  pdf_meta?: {
+    total_slides?: number;
+    author?: string | null;
+  };
 }
 
 // Category palette

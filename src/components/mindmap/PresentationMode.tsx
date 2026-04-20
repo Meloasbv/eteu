@@ -13,7 +13,7 @@ import {
   MarkerType,
 } from "@xyflow/react";
 import dagre from "dagre";
-import type { AnalysisResult, KeyConcept, NoteSubsection, AuthorQuote, VerseRef } from "./types";
+import type { AnalysisResult, KeyConcept, NoteSubsection, AuthorQuote, VerseRef, SlideSummary } from "./types";
 import { getCategoryColor, getCategoryName, verseRefString } from "./types";
 import RootNodeComp from "./nodes/RootNode";
 import TopicCardComp from "./nodes/TopicCard";
@@ -103,11 +103,15 @@ type TourStop =
   | { kind: "topic-intro"; nodeId: string; concept: KeyConcept; topicIndex: number }
   | { kind: "subsection"; nodeId: string; concept: KeyConcept; topicIndex: number; subsection: NoteSubsection; subIndex: number }
   | { kind: "verses"; nodeId: string; concept: KeyConcept; topicIndex: number; verses: (string | VerseRef)[] }
-  | { kind: "quote"; nodeId: string; concept: KeyConcept; topicIndex: number; quote: AuthorQuote };
+  | { kind: "quote"; nodeId: string; concept: KeyConcept; topicIndex: number; quote: AuthorQuote }
+  | { kind: "slides-overview"; nodeId: string; slides: SlideSummary[] }
+  | { kind: "slide-summary"; nodeId: string; slideSummary: SlideSummary; concept?: KeyConcept };
 
 function buildTour(analysis: AnalysisResult): TourStop[] {
   const stops: TourStop[] = [{ kind: "root", nodeId: "node-root" }];
   const topics = (analysis.key_concepts || []).filter(c => !c.type || c.type === "topic");
+  const topicById = new Map<string, KeyConcept>();
+  topics.forEach((t, i) => topicById.set(t.id || `concept_${i + 1}`, t));
 
   topics.forEach((concept, i) => {
     const nodeId = `topic-${concept.id || i}`;
@@ -156,6 +160,17 @@ function buildTour(analysis: AnalysisResult): TourStop[] {
     });
   });
 
+  // 5) Slide-by-slide coverage: ensure EVERY slide of the source PDF is represented.
+  const slides = analysis.slide_summaries || [];
+  if (slides.length > 0) {
+    stops.push({ kind: "slides-overview", nodeId: "node-root", slides });
+    slides.forEach(s => {
+      const concept = s.topic_id ? topicById.get(s.topic_id) : undefined;
+      const nodeId = concept ? `topic-${concept.id || ""}` : "node-root";
+      stops.push({ kind: "slide-summary", nodeId, slideSummary: s, concept });
+    });
+  }
+
   return stops;
 }
 
@@ -169,6 +184,7 @@ function getStopSlide(stop: TourStop): number | null {
     return stop.concept.page_ref || null;
   }
   if (stop.kind === "quote") return stop.quote.source_slide || stop.concept.page_ref || null;
+  if (stop.kind === "slide-summary") return stop.slideSummary.slide;
   return null;
 }
 
@@ -198,7 +214,11 @@ function PresentationCanvas({ analysis, onExit }: PresentationModeProps) {
     const s = sizeMap[node.type || "topicCard"];
     const cx = node.position.x + s.w / 2;
     const cy = node.position.y + s.h / 2;
-    const zoom = stop.kind === "root" ? 0.85 : stop.kind === "topic-intro" ? 1.05 : 1.25;
+    const zoom =
+      stop.kind === "root" ? 0.85 :
+      stop.kind === "slides-overview" ? 0.75 :
+      stop.kind === "topic-intro" ? 1.05 :
+      1.25;
     setCenter(cx, cy, { zoom, duration: instant ? 0 : 800 });
 
     setNodes(ns => ns.map(n => ({
@@ -250,6 +270,8 @@ function PresentationCanvas({ analysis, onExit }: PresentationModeProps) {
       current.kind === "subsection" ? 5500 :
       current.kind === "verses" ? 4000 :
       current.kind === "quote" ? 4500 :
+      current.kind === "slides-overview" ? 6000 :
+      current.kind === "slide-summary" ? 3000 :
       3500;
     autoPlayRef.current = window.setTimeout(() => {
       if (stopIdx < tour.length - 1) goNext();
@@ -427,6 +449,81 @@ function PresentationCanvas({ analysis, onExit }: PresentationModeProps) {
       );
     }
 
+    if (current.kind === "slides-overview") {
+      const slides = current.slides;
+      return (
+        <div className="max-w-[1100px] mx-auto">
+          <div className="flex items-center gap-2 justify-center mb-3">
+            <span className="text-[9px] font-sans font-bold tracking-[2px] uppercase" style={{ color: "#c4a46a" }}>
+              Todos os slides do PDF
+            </span>
+            <span className="text-[10px] font-sans" style={{ color: "#5c5347" }}>· {slides.length} slides</span>
+          </div>
+          <p className="text-center font-body italic mb-4" style={{ color: "#a39882", fontSize: "clamp(11px, 1.1vw, 13px)" }}>
+            Clique em qualquer slide para abri-lo. A apresentação continua slide por slide.
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 max-h-[28vh] overflow-y-auto pr-1">
+            {slides.map((s) => {
+              const cat = s.category;
+              const color = cat ? getCategoryColor(cat) : "#8a7d6a";
+              const idx = tour.findIndex(t => t.kind === "slide-summary" && (t as any).slideSummary?.slide === s.slide);
+              return (
+                <button
+                  key={s.slide}
+                  onClick={() => { if (idx >= 0) { setAutoPlay(false); setStopIdx(idx); } }}
+                  className="text-left rounded-lg p-2 transition-all hover:scale-[1.02] active:scale-95"
+                  style={{
+                    background: "rgba(196,164,106,0.04)",
+                    border: `1px solid ${color}33`,
+                  }}
+                >
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <span className="text-[9px] font-sans font-bold" style={{ color }}>{s.slide}</span>
+                    {s.title && (
+                      <span className="text-[9px] font-sans truncate" style={{ color: "#a39882" }}>{s.title}</span>
+                    )}
+                  </div>
+                  <p className="text-[10px] font-body line-clamp-2" style={{ color: "#d4cab2", lineHeight: 1.35 }}>
+                    {s.summary}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    if (current.kind === "slide-summary") {
+      const s = current.slideSummary;
+      const cat = s.category;
+      const color = cat ? getCategoryColor(cat) : "#c4a46a";
+      const c = current.concept;
+      return (
+        <div className="text-center max-w-[820px] mx-auto">
+          <div className="flex items-center gap-2 justify-center mb-3">
+            <span className="text-[9px] font-sans font-bold tracking-[2px] uppercase" style={{ color }}>
+              {c ? c.title : "Slide do PDF"}
+            </span>
+            {SlideBadge}
+          </div>
+          {s.title && (
+            <h3 className="font-display font-semibold mb-3" style={{ color: "#ede4d3", fontSize: "clamp(18px, 2.2vw, 26px)", lineHeight: 1.2 }}>
+              {s.title}
+            </h3>
+          )}
+          <p className="font-body" style={{ color: "#d4cab2", fontSize: "clamp(13px, 1.4vw, 17px)", lineHeight: 1.55 }}>
+            {s.summary}
+          </p>
+          {!c && (
+            <p className="text-[10px] mt-4 font-sans italic" style={{ color: "#5c5347" }}>
+              Slide secundário · sem tópico principal vinculado
+            </p>
+          )}
+        </div>
+      );
+    }
+
     return null;
   };
 
@@ -436,7 +533,9 @@ function PresentationCanvas({ analysis, onExit }: PresentationModeProps) {
     current.kind === "topic-intro" ? "Tópico" :
     current.kind === "subsection" ? "Conteúdo" :
     current.kind === "verses" ? "Versículos" :
-    current.kind === "quote" ? "Citação" : "";
+    current.kind === "quote" ? "Citação" :
+    current.kind === "slides-overview" ? "Visão geral" :
+    current.kind === "slide-summary" ? `Slide ${current.slideSummary.slide}` : "";
 
   return (
     <div

@@ -122,6 +122,23 @@ RETORNE APENAS JSON válido:
   "child_highlights": ["1 a 3 frases citáveis e memoráveis"]
 }`;
 
+const SLIDES_SUMMARY_PROMPT = `Você recebe os slides de um PDF de aula bíblica, marcados [[SLIDE N]].
+TAREFA: Para CADA slide, gere um resumo curto e fiel ao conteúdo daquele slide.
+
+REGRAS:
+1. UM objeto por slide, sem exceção. Se o slide é só capa/transição, ainda assim gere algo (ex: "Capa da aula").
+2. summary: máx 22 palavras, descrevendo o ponto principal do slide.
+3. title: 2-5 palavras (rótulo do slide). Se não houver título visível, infira.
+4. Mantenha a ORDEM dos slides.
+
+RETORNE APENAS JSON válido:
+{
+  "slides": [
+    { "slide": 1, "title": "Capa", "summary": "Apresentação da aula sobre Oséias por Alessandro Caetano." },
+    { "slide": 2, "title": "Contexto histórico", "summary": "Israel no século VIII a.C., reinado de Jeroboão II, idolatria generalizada." }
+  ]
+}`;
+
 const SIMPLE_PROMPT = `Você é um especialista em análise bíblica. Organize o texto em mapa mental com poucos topics densos.
 
 CATEGORIAS: teologia, cristologia, pneumatologia, exegese, contexto, aplicacao, escatologia, soteriologia
@@ -306,6 +323,51 @@ serve(async (req) => {
       if (expandedTopics[1]) expandedTopics[1].is_key = true;
     }
 
+    // ---- PASS 3: per-slide summaries (so EVERY slide is represented) ----
+    console.log(`[analyze-content] PASS 3 — per-slide summaries`);
+    const SLIDE_BATCH = 25; // process N slides per LLM call
+    const slideSummaries: Array<{ slide: number; title?: string; summary: string }> = [];
+    for (let i = 0; i < allPages.length; i += SLIDE_BATCH) {
+      const batch = allPages.slice(i, i + SLIDE_BATCH);
+      const corpus = batch.map(p => `[[SLIDE ${p.page}]]\n${(p.text || "").slice(0, 1200)}`).join("\n\n");
+      try {
+        const content = await callGateway([
+          { role: "system", content: SLIDES_SUMMARY_PROMPT },
+          { role: "user", content: `Resuma cada slide:\n\n${corpus}` },
+        ], 4500);
+        const parsed = safeJsonParse(content);
+        if (Array.isArray(parsed?.slides)) {
+          parsed.slides.forEach((s: any) => {
+            if (typeof s?.slide === "number" && typeof s?.summary === "string") {
+              slideSummaries.push({ slide: s.slide, title: s.title || undefined, summary: s.summary });
+            }
+          });
+        }
+      } catch (e) {
+        console.warn(`[analyze-content] slide summary batch ${i} failed:`, (e as Error).message);
+        // Fallback: minimal summary so the slide still appears
+        batch.forEach(p => {
+          slideSummaries.push({ slide: p.page, summary: (p.text || "").trim().slice(0, 140) || `Slide ${p.page}` });
+        });
+      }
+      if (i + SLIDE_BATCH < allPages.length) await new Promise(r => setTimeout(r, 250));
+    }
+
+    // Cross-link each slide summary back to a topic (when its slide falls in a topic's range)
+    const slideToTopic = new Map<number, { id: string; category: string }>();
+    expandedTopics.forEach((t: any) => {
+      (t.source_slides || []).forEach((sl: number) => {
+        slideToTopic.set(sl, { id: t.id, category: t.category });
+      });
+    });
+    const linkedSlides = slideSummaries
+      .sort((a, b) => a.slide - b.slide)
+      .map(s => ({
+        ...s,
+        topic_id: slideToTopic.get(s.slide)?.id,
+        category: slideToTopic.get(s.slide)?.category,
+      }));
+
     const result = {
       main_theme: structure.main_theme || "Análise",
       summary: structure.summary || "",
@@ -318,6 +380,7 @@ serve(async (req) => {
       },
       keywords: Array.isArray(structure.keywords) ? structure.keywords : [],
       structured_notes: [],
+      slide_summaries: linkedSlides,
       // Extra metadata for the presentation mode
       pdf_meta: {
         total_slides: structure.total_slides || allPages.length,
@@ -325,7 +388,7 @@ serve(async (req) => {
       },
     };
 
-    console.log(`[analyze-content] PASS 2 done — ${expandedTopics.length} topics expanded`);
+    console.log(`[analyze-content] PASS 3 done — ${linkedSlides.length} slide summaries`);
 
     return new Response(JSON.stringify({ result }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } });
