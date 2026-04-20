@@ -13,7 +13,7 @@ import {
   MarkerType,
 } from "@xyflow/react";
 import dagre from "dagre";
-import type { AnalysisResult, KeyConcept, NoteSubsection, AuthorQuote, VerseRef } from "./types";
+import type { AnalysisResult, KeyConcept, NoteSubsection, AuthorQuote, VerseRef, SlideSummary } from "./types";
 import { getCategoryColor, getCategoryName, verseRefString } from "./types";
 import RootNodeComp from "./nodes/RootNode";
 import TopicCardComp from "./nodes/TopicCard";
@@ -103,11 +103,15 @@ type TourStop =
   | { kind: "topic-intro"; nodeId: string; concept: KeyConcept; topicIndex: number }
   | { kind: "subsection"; nodeId: string; concept: KeyConcept; topicIndex: number; subsection: NoteSubsection; subIndex: number }
   | { kind: "verses"; nodeId: string; concept: KeyConcept; topicIndex: number; verses: (string | VerseRef)[] }
-  | { kind: "quote"; nodeId: string; concept: KeyConcept; topicIndex: number; quote: AuthorQuote };
+  | { kind: "quote"; nodeId: string; concept: KeyConcept; topicIndex: number; quote: AuthorQuote }
+  | { kind: "slides-overview"; nodeId: string; slides: SlideSummary[] }
+  | { kind: "slide-summary"; nodeId: string; slideSummary: SlideSummary; concept?: KeyConcept };
 
 function buildTour(analysis: AnalysisResult): TourStop[] {
   const stops: TourStop[] = [{ kind: "root", nodeId: "node-root" }];
   const topics = (analysis.key_concepts || []).filter(c => !c.type || c.type === "topic");
+  const topicById = new Map<string, KeyConcept>();
+  topics.forEach((t, i) => topicById.set(t.id || `concept_${i + 1}`, t));
 
   topics.forEach((concept, i) => {
     const nodeId = `topic-${concept.id || i}`;
@@ -156,6 +160,17 @@ function buildTour(analysis: AnalysisResult): TourStop[] {
     });
   });
 
+  // 5) Slide-by-slide coverage: ensure EVERY slide of the source PDF is represented.
+  const slides = analysis.slide_summaries || [];
+  if (slides.length > 0) {
+    stops.push({ kind: "slides-overview", nodeId: "node-root", slides });
+    slides.forEach(s => {
+      const concept = s.topic_id ? topicById.get(s.topic_id) : undefined;
+      const nodeId = concept ? `topic-${concept.id || ""}` : "node-root";
+      stops.push({ kind: "slide-summary", nodeId, slideSummary: s, concept });
+    });
+  }
+
   return stops;
 }
 
@@ -169,6 +184,7 @@ function getStopSlide(stop: TourStop): number | null {
     return stop.concept.page_ref || null;
   }
   if (stop.kind === "quote") return stop.quote.source_slide || stop.concept.page_ref || null;
+  if (stop.kind === "slide-summary") return stop.slideSummary.slide;
   return null;
 }
 
