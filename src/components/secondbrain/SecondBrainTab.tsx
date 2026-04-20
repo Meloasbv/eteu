@@ -74,7 +74,19 @@ function timeAgo(dateStr: string): string {
 type ViewMode = "today" | "para" | "capture" | "graph" | "patterns";
 
 // ── Main Component ──
-export default function SecondBrainTab({ userCodeId }: { userCodeId: string }) {
+export default function SecondBrainTab({
+  userCodeId,
+  onRequestReading,
+  onRequestDevotional,
+  onRequestNotes,
+  onRequestMindMap,
+}: {
+  userCodeId: string;
+  onRequestReading?: () => void;
+  onRequestDevotional?: () => void;
+  onRequestNotes?: () => void;
+  onRequestMindMap?: () => void;
+}) {
   const [viewMode, setViewMode] = useState<ViewMode>("today");
   const [focusOpen, setFocusOpen] = useState(false);
   const [content, setContent] = useState("");
@@ -332,7 +344,17 @@ export default function SecondBrainTab({ userCodeId }: { userCodeId: string }) {
       )}
 
       <Suspense fallback={null}>
-        {focusOpen && <FocusMode userCodeId={userCodeId} open={focusOpen} onClose={() => setFocusOpen(false)} />}
+        {focusOpen && (
+          <FocusWorkspace
+            userCodeId={userCodeId}
+            open={focusOpen}
+            onClose={() => setFocusOpen(false)}
+            onRequestReading={() => { setFocusOpen(false); onRequestReading?.(); }}
+            onRequestDevotional={() => { setFocusOpen(false); onRequestDevotional?.(); }}
+            onRequestNotes={() => { setFocusOpen(false); onRequestNotes?.(); }}
+            onRequestMindMap={() => { setFocusOpen(false); onRequestMindMap?.(); }}
+          />
+        )}
       </Suspense>
 
       {/* Content */}
