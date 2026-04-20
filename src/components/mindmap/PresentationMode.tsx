@@ -462,6 +462,47 @@ function PresentationCanvas({ analysis, onExit }: PresentationModeProps) {
       );
     }
 
+    if (current.kind === "story") {
+      const c = current.concept;
+      const s = current.story;
+      const catColor = getCategoryColor(c.category);
+      return (
+        <div className="max-w-[820px] mx-auto">
+          <div className="flex items-center gap-2 justify-center mb-3 flex-wrap">
+            <BookMarked size={12} style={{ color: "#d4854a" }} />
+            <span className="text-[9px] font-sans font-bold tracking-[2px] uppercase" style={{ color: "#d4854a" }}>
+              História · {c.title}
+            </span>
+            {SlideBadge}
+          </div>
+          <h3
+            className="font-display font-bold text-center mb-3"
+            style={{ color: "#ede4d3", fontSize: "clamp(18px, 2.2vw, 26px)", lineHeight: 1.25 }}
+          >
+            {s.title}
+          </h3>
+          <div
+            className="rounded-xl px-4 py-4 sm:px-6 sm:py-5"
+            style={{
+              background: "rgba(212,133,74,0.06)",
+              borderLeft: `3px solid ${catColor}`,
+              borderRadius: "0 14px 14px 0",
+            }}
+          >
+            {s.narrative.split("\n\n").map((para, i) => (
+              <p
+                key={i}
+                className="font-body mb-2.5 last:mb-0"
+                style={{ color: "#d4cab2", fontSize: "clamp(13px, 1.4vw, 16px)", lineHeight: 1.65 }}
+              >
+                {para}
+              </p>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
     if (current.kind === "quote") {
       const c = current.concept;
       const q = current.quote;
@@ -629,12 +670,13 @@ function PresentationCanvas({ analysis, onExit }: PresentationModeProps) {
       {/* Caption */}
       <div
         key={stopIdx}
-        className="shrink-0 px-6 py-5 animate-fade-in"
+        className="shrink-0 animate-fade-in"
         style={{
+          padding: isMobile ? "16px 16px 12px" : "20px 24px",
           background: "linear-gradient(to top, rgba(15,13,10,0.98), rgba(15,13,10,0.92) 70%, rgba(15,13,10,0))",
           backdropFilter: "blur(10px)",
-          minHeight: 180,
-          maxHeight: "44vh",
+          minHeight: isMobile ? 200 : 180,
+          maxHeight: isMobile ? "62vh" : "44vh",
           overflowY: "auto",
         }}
       >
@@ -642,21 +684,34 @@ function PresentationCanvas({ analysis, onExit }: PresentationModeProps) {
       </div>
 
       {/* Bottom bar */}
-      <div className="flex items-center justify-between px-6 py-3 shrink-0"
-        style={{ background: "rgba(15,13,10,0.95)", borderTop: "1px solid rgba(196,164,106,0.08)" }}>
-        <button onClick={goPrev} disabled={stopIdx === 0}
-          className="p-2 rounded-lg transition-opacity disabled:opacity-10" style={{ color: "#c4a46a" }}>
-          <ChevronLeft size={22} />
+      <div
+        className="flex items-center justify-between shrink-0"
+        style={{
+          padding: isMobile ? "10px 12px env(safe-area-inset-bottom, 8px)" : "12px 24px",
+          background: "rgba(15,13,10,0.95)",
+          borderTop: "1px solid rgba(196,164,106,0.08)",
+        }}
+      >
+        <button
+          onClick={goPrev}
+          disabled={stopIdx === 0}
+          aria-label="Anterior"
+          className="rounded-lg transition-opacity disabled:opacity-10 active:scale-95"
+          style={{ color: "#c4a46a", padding: isMobile ? 12 : 8, minWidth: 44, minHeight: 44 }}
+        >
+          <ChevronLeft size={isMobile ? 24 : 22} />
         </button>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <button
             onClick={() => setAutoPlay(p => !p)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all text-[11px] font-sans font-semibold"
+            className="flex items-center gap-1.5 rounded-lg transition-all text-[11px] font-sans font-semibold active:scale-95"
             style={{
+              padding: isMobile ? "8px 12px" : "6px 12px",
               background: autoPlay ? "rgba(196,164,106,0.15)" : "transparent",
               color: autoPlay ? "#c4a46a" : "#8a7d6a",
               border: `1px solid ${autoPlay ? "rgba(196,164,106,0.3)" : "rgba(196,164,106,0.1)"}`,
+              minHeight: 36,
             }}
           >
             {autoPlay ? <Pause size={12} /> : <Play size={12} />}
@@ -668,14 +723,24 @@ function PresentationCanvas({ analysis, onExit }: PresentationModeProps) {
           <span className="text-[10px] font-sans uppercase tracking-[1.5px] hidden sm:inline" style={{ color: "#5c5347" }}>
             {stopKindLabel}
           </span>
-          <button onClick={onExit} className="p-2 rounded-lg transition-colors hover:bg-white/5" style={{ color: "#8a7d6a" }}>
-            <X size={16} />
+          <button
+            onClick={onExit}
+            aria-label="Sair"
+            className="rounded-lg transition-colors hover:bg-white/5 active:scale-95"
+            style={{ color: "#8a7d6a", padding: isMobile ? 10 : 8, minWidth: 40, minHeight: 40 }}
+          >
+            <X size={isMobile ? 18 : 16} />
           </button>
         </div>
 
-        <button onClick={goNext} disabled={stopIdx === tour.length - 1}
-          className="p-2 rounded-lg transition-opacity disabled:opacity-10" style={{ color: "#c4a46a" }}>
-          <ChevronRight size={22} />
+        <button
+          onClick={goNext}
+          disabled={stopIdx === tour.length - 1}
+          aria-label="Próximo"
+          className="rounded-lg transition-opacity disabled:opacity-10 active:scale-95"
+          style={{ color: "#c4a46a", padding: isMobile ? 12 : 8, minWidth: 44, minHeight: 44 }}
+        >
+          <ChevronRight size={isMobile ? 24 : 22} />
         </button>
       </div>
     </div>
