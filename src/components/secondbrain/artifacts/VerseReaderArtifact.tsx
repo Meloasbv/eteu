@@ -194,7 +194,6 @@ export default function VerseReaderArtifact({ data, sendAsUser }: Props) {
   }, [isThis]);
 
   // Listen for end-of-utterance: when our id stops being active, advance to next
-  const wasPlayingRef = useRef(false);
   useEffect(() => {
     if (isPlaying) {
       wasPlayingRef.current = true;
@@ -209,7 +208,7 @@ export default function VerseReaderArtifact({ data, sendAsUser }: Props) {
       if (v) {
         focusTTS.speak(
           `versereader-${data.reference}-${next}`,
-          `Versículo ${v.number}. ${v.text}`,
+          v.text,
           { label: `${data.reference}:${v.number}` },
         );
       }
