@@ -76,6 +76,13 @@ const PERIODS = [
 
 const RECENT_MS = 7 * 86400000; // 7 days
 
+function hexToRgb(hex: string): { r: number; g: number; b: number } {
+  const m = hex.replace("#", "");
+  const full = m.length === 3 ? m.split("").map(c => c + c).join("") : m;
+  const num = parseInt(full, 16);
+  return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 };
+}
+
 interface ThoughtGraphProps {
   userCodeId: string;
   /** "gold" (default), "neon" (Focus), or "area" (uses themeColor prop) */
