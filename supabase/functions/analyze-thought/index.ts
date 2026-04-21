@@ -5,74 +5,71 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const systemPrompt = `Você é um conselheiro sábio que combina psicologia (TCC, Inteligência Emocional) com sabedoria bíblica reformada.
-O usuário registra pensamentos no seu "Segundo Cérebro". Você recebe o pensamento ATUAL e uma lista numerada de PENSAMENTOS PASSADOS dele.
+const BASE_PROMPT = `Você é um conselheiro sábio que combina psicologia (TCC, Inteligência Emocional) com sabedoria bíblica reformada.
+O usuário registra pensamentos no seu "Segundo Cérebro". Você recebe o pensamento ATUAL, a ÁREA em que ele foi capturado, e uma lista numerada de PENSAMENTOS PASSADOS dele.
 
-Sua tarefa: analisar o pensamento atual E identificar conexões REAIS e EXPLICADAS com pensamentos passados.
+Retorne APENAS JSON válido (sem markdown, sem backticks).
 
-Retorne APENAS JSON válido (sem markdown, sem backticks):
-
+Estrutura JSON base:
 {
   "detected_type": "problema|insight|estudo|reflexão|oração|decisão|emocional|ideia|pergunta",
-
-  "psychological_analysis": {
-    "pattern": "Nome do padrão psicológico (ex: Catastrofização, Ruminação, Autocobrança)",
-    "explanation": "1-2 frases sobre o que está acontecendo psicologicamente",
-    "reframe": "Forma alternativa e saudável de enxergar (1 frase)"
-  },
-
-  "biblical_analysis": {
-    "principle": "Princípio bíblico aplicável",
-    "verses": ["Referência 1", "Referência 2"],
-    "application": "Como a Escritura fala sobre isso (1-2 frases)"
-  },
-
-  "diagnosis": {
-    "summary": "Diagnóstico em 1 frase direta",
-    "action": "Ação prática sugerida",
-    "question": "Pergunta para aprofundar"
-  },
-
-  "keywords": ["palavra1", "palavra2", "palavra3"],
-
+  "psychological_analysis": { "pattern": "...", "explanation": "...", "reframe": "..." },
+  "biblical_analysis": { "principle": "...", "verses": ["..."], "application": "..." },
+  "diagnosis": { "summary": "...", "action": "...", "question": "..." },
+  "keywords": ["..."],
   "emotion_score": { "valence": 0.0, "intensity": 0.0 },
-
   "connections": [
-    {
-      "past_index": 0,
-      "type": "semantic|emotional|thematic|causal|recurring",
-      "strength": 0.75,
-      "explanation": "Por que esses dois pensamentos estão conectados (1 frase concreta, ex: 'Ambos refletem autocobrança após falha')."
-    }
+    { "past_index": 0, "type": "semantic|emotional|thematic|causal|recurring", "strength": 0.75, "explanation": "..." }
   ]
 }
 
 REGRAS PARA CONNECTIONS:
-- Inclua APENAS conexões REAIS e específicas. Se não houver, retorne array vazio [].
-- Máximo 5 conexões. Priorize as mais fortes.
-- past_index = índice (0-based) do pensamento passado na lista que recebeu.
-- type:
-  • "semantic" = mesmo assunto / sobreposição de keywords genuína
-  • "emotional" = mesma carga emocional ou padrão emocional
-  • "thematic" = mesmo tema espiritual / teológico
-  • "causal" = um parece ser causa ou consequência do outro
-  • "recurring" = padrão que se repete (mesmo problema, mesma luta)
-- strength: 0.3 (fraca) a 1.0 (muito forte). Seja honesto. Se for fraca, marque como fraca.
-- explanation deve ser ESPECÍFICA, não genérica. Ruim: "ambos falam de fé". Bom: "Ambos mostram cobrança própria após falhar com a esposa".
+- APENAS conexões REAIS e específicas; máximo 5; explanation concreta.
+- past_index = índice (0-based) na lista recebida.
+- strength: 0.3–1.0 honesto.
 
 REGRAS GERAIS:
-- Seja direto. Sem rodeios.
-- Análise psicológica nomeia padrões reais.
-- Análise bíblica teologicamente sólida (perspectiva reformada).
-- Versículos MAIS relevantes para a situação específica.
-- valence: -1.0 (muito negativo) a 1.0 (muito positivo)
-- intensity: 0.0 (calmo) a 1.0 (intenso)`;
+- Direto, sem rodeios.
+- Padrões psicológicos reais (TCC).
+- Análise bíblica reformada com versículos relevantes.
+- valence: -1.0 a 1.0; intensity: 0.0 a 1.0.`;
+
+const AREA_INSTRUCTIONS: Record<string, string> = {
+  reflexao: `
+ÁREA: REFLEXÃO 🪞
+- Tom: calmo, analítico, sem julgamento. Como terapeuta TCC cristão.
+- Foque em padrão emocional e cognitivo (catastrofização, ruminação, autocobrança, etc).
+- ADICIONE ao JSON o campo "reflection_exercise":
+  {
+    "title": "Nome curto do exercício (ex: Reestruturação cognitiva)",
+    "questions": ["Pergunta 1 que faz pensar", "Pergunta 2", "Pergunta 3"]
+  }
+- 3 perguntas guiadas que ajudem o usuário a destrinchar o pensamento.`,
+  oracao: `
+ÁREA: ORAÇÃO 🙏
+- Tom: acolhedor, pastoral, reverente. Sem psicologismos pesados — fale como pastor reformado.
+- psychological_analysis pode ser breve ou omitido. Foque em biblical_analysis.
+- ADICIONE ao JSON o campo "suggested_prayer":
+  "Texto de uma oração curta (3 a 5 frases), em primeira pessoa, ARA-style, que o usuário possa orar agora mesmo a partir desse pensamento."
+- diagnosis.action = passo concreto de fé/oração.`,
+  brainstorm: `
+ÁREA: BRAINSTORM ⚡
+- Tom: energético, criativo, prático. Como mentor estratégico.
+- Foque em desdobrar a ideia, não em emoções.
+- ADICIONE ao JSON o campo "expansion":
+  {
+    "angles": ["Ângulo 1 da ideia", "Ângulo 2", "Ângulo 3"],
+    "next_steps": ["Próximo passo concreto 1", "Próximo passo 2"],
+    "risks": ["Risco/objeção a considerar"]
+  }
+- diagnosis.action = primeiro próximo passo prático.`,
+};
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { content, pastThoughts } = await req.json();
+    const { content, pastThoughts, area } = await req.json();
     if (!content) {
       return new Response(JSON.stringify({ error: "content is required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -82,7 +79,6 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
-    // pastThoughts: [{ id, type, content, keywords?, created_at? }]
     const past = (pastThoughts || []).slice(0, 30);
     const pastText = past.length === 0
       ? "(nenhum pensamento anterior)"
@@ -91,7 +87,13 @@ serve(async (req) => {
           return `${i}. [${t.type}] "${(t.content || "").substring(0, 180)}"${kw}`;
         }).join("\n");
 
-    const userMessage = `PENSAMENTO ATUAL:\n"${content}"\n\nPENSAMENTOS PASSADOS DO USUÁRIO (use o índice para referenciar em "connections"):\n${pastText}`;
+    const areaKey = typeof area === "string" && AREA_INSTRUCTIONS[area] ? area : null;
+    const systemPrompt = areaKey
+      ? `${BASE_PROMPT}\n\n${AREA_INSTRUCTIONS[areaKey]}`
+      : BASE_PROMPT;
+
+    const areaLabel = areaKey ? `\nÁREA: ${areaKey.toUpperCase()}` : "";
+    const userMessage = `PENSAMENTO ATUAL:${areaLabel}\n"${content}"\n\nPENSAMENTOS PASSADOS DO USUÁRIO (use o índice para referenciar em "connections"):\n${pastText}`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -130,7 +132,6 @@ serve(async (req) => {
 
     const analysis = JSON.parse(raw);
 
-    // Resolve past_index -> id, filter invalid
     const rawConns = Array.isArray(analysis.connections) ? analysis.connections : [];
     const resolvedConnections = rawConns
       .map((c: any) => {
