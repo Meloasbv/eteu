@@ -4,7 +4,7 @@ import { verseRefString } from "@/components/mindmap/types";
 
 interface Props {
   verses: (string | VerseRef)[];
-  onSelect?: (ref: string) => void;
+  onSelect?: (ref: string, el: HTMLElement) => void;
 }
 
 export default function StudyVerseChips({ verses, onSelect }: Props) {
@@ -17,7 +17,7 @@ export default function StudyVerseChips({ verses, onSelect }: Props) {
         return (
           <button
             key={i}
-            onClick={() => onSelect?.(ref)}
+            onClick={(e) => onSelect?.(ref, e.currentTarget)}
             className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-ui transition-all hover:scale-105 active:scale-95"
             style={{
               background: "hsl(var(--primary) / 0.08)",
