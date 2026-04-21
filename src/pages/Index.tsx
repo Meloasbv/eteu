@@ -15,7 +15,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useScrollDirection } from "@/hooks/useScrollDirection";
 import { haptic } from "@/hooks/useHaptic";
 import { BookOpen, Flame, PenLine, Check, Sun, Moon, LogOut, Sparkles, CheckCheck, Brain, Zap } from "lucide-react";
-import SecondBrainTab from "@/components/secondbrain/SecondBrainTab";
+import BrainAreasHub from "@/components/secondbrain/areas/BrainAreasHub";
 import { lazy, Suspense } from "react";
 const FocusWorkspace = lazy(() => import("@/components/secondbrain/FocusWorkspace"));
 
@@ -599,13 +599,7 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
 
         {/* ── SEGUNDO CÉREBRO TAB ── */}
         {tab === "cerebro" && (
-          <SecondBrainTab
-            userCodeId={userCodeId}
-            onRequestReading={() => setTab("leitura")}
-            onRequestDevotional={() => setTab("devocional")}
-            onRequestNotes={() => setTab("anotacoes")}
-            onRequestMindMap={() => setTab("anotacoes")}
-          />
+          <BrainAreasHub userCodeId={userCodeId} />
         )}
 
       </div>
