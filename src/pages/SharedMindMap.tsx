@@ -85,7 +85,12 @@ export default function SharedMindMap() {
   if (hasGuide) {
     return (
       <div className="h-screen w-screen" style={{ background: "hsl(var(--background))" }}>
-        <StudyGuide analysis={analysis} onBack={() => window.history.back()} />
+        <StudyGuide
+          analysis={analysis}
+          onBack={() => window.history.back()}
+          sharedMode
+          sharedSlug={slug}
+        />
       </div>
     );
   }

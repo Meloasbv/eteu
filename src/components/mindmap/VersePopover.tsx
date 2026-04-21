@@ -126,10 +126,16 @@ export default function VersePopover({
           </div>
           <div className="flex items-center gap-1">
             <button
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent("focus-open-tool", {
+                  detail: { tool: "verse-reader", reference }
+                }));
+                onClose();
+              }}
               className="p-1 rounded-md transition-colors hover:bg-white/5"
-              title="Abrir na Leitura"
+              title="Ler no Modo Foco"
             >
-              <ExternalLink size={14} style={{ color: "#8a7d6a" }} />
+              <ExternalLink size={14} style={{ color: "#c4a46a" }} />
             </button>
             <button
               onClick={onClose}
