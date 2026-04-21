@@ -156,9 +156,12 @@ export default function ThoughtGraph({ userCodeId, theme = "gold", themeColor, e
         const ms = filterPeriod === "week" ? 7 * 86400000 : filterPeriod === "month" ? 30 * 86400000 : 90 * 86400000;
         result = result.filter(t => now - new Date(t.created_at).getTime() < ms);
       }
+      if (filterIds) {
+        result = result.filter(t => filterIds.has(t.id) || (ghostIds && ghostIds.has(t.id)));
+      }
     }
     return result;
-  }, [thoughts, filterType, filterPeriod, focusedIds]);
+  }, [thoughts, filterType, filterPeriod, focusedIds, filterIds, ghostIds]);
 
   // Connections relevant to the focused node (for side panel)
   const focusedConnections = useMemo(() => {
