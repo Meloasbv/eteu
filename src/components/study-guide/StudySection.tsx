@@ -49,6 +49,11 @@ export default function StudySection({
   const numberSize = isTertiary ? "w-5 h-5 text-[10px]" : "w-7 h-7 text-[11px]";
   const verticalPad = isTertiary ? "py-2" : "py-3";
 
+  // For grouped continuation members, render an inline divider + small subtitle instead of the full header,
+  // and force-expanded so all content is visible together under the parent block.
+  const headerHidden = isGroupedMember;
+  const effectiveExpanded = isGroupedMember ? true : expanded;
+
   return (
     <section
       id={sectionId}
@@ -56,52 +61,64 @@ export default function StudySection({
       style={{
         background: active ? "hsl(var(--primary) / 0.03)" : "transparent",
         borderRadius: 12,
-        borderLeft: importance === "primary" ? `2px solid ${color}55` : "2px solid transparent",
-        paddingLeft: importance === "primary" ? 8 : 0,
+        borderLeft: importance === "primary" && !isGroupedMember ? `2px solid ${color}55` : "2px solid transparent",
+        paddingLeft: importance === "primary" && !isGroupedMember ? 8 : 0,
         opacity: isTertiary ? 0.78 : 1,
       }}
     >
-      <button
-        onClick={onToggle}
-        className={`w-full flex items-start gap-3 px-1 ${verticalPad} text-left group`}
-      >
-        <span
-          className={`flex-shrink-0 ${numberSize} rounded-full flex items-center justify-center font-ui font-bold mt-0.5`}
-          style={{ background: `${color}22`, color }}
+      {!headerHidden ? (
+        <button
+          onClick={onToggle}
+          className={`w-full flex items-start gap-3 px-1 ${verticalPad} text-left group`}
         >
-          {String(index + 1).padStart(2, "0")}
-        </span>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-baseline gap-2 flex-wrap">
-            <h3 className={`font-display ${titleSize} font-bold text-foreground tracking-tight leading-tight`}>
-              {concept.title}
-            </h3>
-            <span className="text-[9px] tracking-[2px] uppercase font-ui" style={{ color }}>
-              {getCategoryName(concept.category)}
-            </span>
-            {isTertiary && (
-              <span className="text-[8.5px] tracking-[1.5px] uppercase font-ui text-muted-foreground/50">
-                · resumo
+          <span
+            className={`flex-shrink-0 ${numberSize} rounded-full flex items-center justify-center font-ui font-bold mt-0.5`}
+            style={{ background: `${color}22`, color }}
+          >
+            {String(index + 1).padStart(2, "0")}
+          </span>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-baseline gap-2 flex-wrap">
+              <h3 className={`font-display ${titleSize} font-bold text-foreground tracking-tight leading-tight`}>
+                {concept.title}
+              </h3>
+              <span className="text-[9px] tracking-[2px] uppercase font-ui" style={{ color }}>
+                {getCategoryName(concept.category)}
               </span>
-            )}
-            {slides && (
-              <span className="text-[10px] text-muted-foreground/60 font-ui ml-auto">
-                {slides}
-              </span>
+              {isTertiary && (
+                <span className="text-[8.5px] tracking-[1.5px] uppercase font-ui text-muted-foreground/50">
+                  · resumo
+                </span>
+              )}
+              {slides && (
+                <span className="text-[10px] text-muted-foreground/60 font-ui ml-auto">
+                  {slides}
+                </span>
+              )}
+            </div>
+            {concept.summary && !expanded && (
+              <p className="text-[13px] text-muted-foreground/80 font-body mt-1 line-clamp-2">
+                {concept.summary}
+              </p>
             )}
           </div>
-          {concept.summary && !expanded && (
-            <p className="text-[13px] text-muted-foreground/80 font-body mt-1 line-clamp-2">
-              {concept.summary}
-            </p>
+          <ChevronDown
+            size={16}
+            className="text-muted-foreground/60 transition-transform mt-1.5 flex-shrink-0"
+            style={{ transform: expanded ? "rotate(180deg)" : "rotate(0deg)" }}
+          />
+        </button>
+      ) : (
+        <div className="pl-10 pr-2 pt-1 pb-1.5 flex items-center gap-2">
+          <span className="h-px flex-1" style={{ background: `${color}22` }} />
+          {slides && (
+            <span className="text-[9.5px] tracking-[1.5px] uppercase font-ui text-muted-foreground/60">
+              continuação · {slides}
+            </span>
           )}
+          <span className="h-px flex-1" style={{ background: `${color}22` }} />
         </div>
-        <ChevronDown
-          size={16}
-          className="text-muted-foreground/60 transition-transform mt-1.5 flex-shrink-0"
-          style={{ transform: expanded ? "rotate(180deg)" : "rotate(0deg)" }}
-        />
-      </button>
+      )}
 
       {expanded && note && (
         <div className="pl-10 pr-2 pb-5 animate-fade-in space-y-3">
