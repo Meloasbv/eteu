@@ -14,7 +14,13 @@ interface Props {
   onToggle: () => void;
   sectionId: string;
   active?: boolean;
-  onVerseClick?: (ref: string) => void;
+  onVerseClick?: (ref: string, el: HTMLElement) => void;
+  /** Lowercased names of people that should be rendered (others were already shown earlier). */
+  showPeopleNames?: Set<string>;
+  /** When true, this section is a continuation of a grouped block — render compactly without the title row. */
+  isGroupedMember?: boolean;
+  /** When false, hide the analogy block (avoids repeating "Pense assim" in every member of a group). */
+  showAnalogy?: boolean;
 }
 
 export default function StudySection({
@@ -25,6 +31,9 @@ export default function StudySection({
   sectionId,
   active,
   onVerseClick,
+  showPeopleNames,
+  isGroupedMember = false,
+  showAnalogy = true,
 }: Props) {
   const note = concept.expanded_note;
   const color = getCategoryColor(concept.category);
