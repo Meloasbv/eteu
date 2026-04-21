@@ -579,13 +579,18 @@ export type Database = {
         Row: {
           analysis: Json | null
           archived: boolean
+          area: string
           content: string
           created_at: string
           emotion_intensity: number | null
           emotion_valence: number | null
           id: string
           is_favorite: boolean | null
+          kanban_status: string | null
           keywords: string[] | null
+          prayer_answered_at: string | null
+          prayer_status: string | null
+          reflection_exercise: Json | null
           type: string
           updated_at: string
           user_code_id: string
@@ -593,13 +598,18 @@ export type Database = {
         Insert: {
           analysis?: Json | null
           archived?: boolean
+          area?: string
           content: string
           created_at?: string
           emotion_intensity?: number | null
           emotion_valence?: number | null
           id?: string
           is_favorite?: boolean | null
+          kanban_status?: string | null
           keywords?: string[] | null
+          prayer_answered_at?: string | null
+          prayer_status?: string | null
+          reflection_exercise?: Json | null
           type?: string
           updated_at?: string
           user_code_id: string
@@ -607,13 +617,18 @@ export type Database = {
         Update: {
           analysis?: Json | null
           archived?: boolean
+          area?: string
           content?: string
           created_at?: string
           emotion_intensity?: number | null
           emotion_valence?: number | null
           id?: string
           is_favorite?: boolean | null
+          kanban_status?: string | null
           keywords?: string[] | null
+          prayer_answered_at?: string | null
+          prayer_status?: string | null
+          reflection_exercise?: Json | null
           type?: string
           updated_at?: string
           user_code_id?: string
