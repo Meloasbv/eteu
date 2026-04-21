@@ -120,7 +120,7 @@ export default function StudySection({
         </div>
       )}
 
-      {expanded && note && (
+      {effectiveExpanded && note && (
         <div className="pl-10 pr-2 pb-5 animate-fade-in space-y-3">
           {note.core_idea && (
             <div
@@ -169,8 +169,8 @@ export default function StudySection({
             </div>
           )}
 
-          {/* Analogy — didactic illustration */}
-          {note.analogy && note.analogy.trim().length > 0 && (
+          {/* Analogy — only render when explicitly allowed (avoids repeating "Pense assim" in every grouped block) */}
+          {showAnalogy && note.analogy && note.analogy.trim().length > 0 && (
             <div
               className="p-3.5 rounded-xl flex gap-3"
               style={{
@@ -219,13 +219,19 @@ export default function StudySection({
             </div>
           )}
 
-          {note.key_people && note.key_people.length > 0 && (
-            <div className="space-y-2">
-              {note.key_people.map((p, i) => (
-                <StudyPersonCard key={i} person={p} />
-              ))}
-            </div>
-          )}
+          {note.key_people && note.key_people.length > 0 && (() => {
+            const filtered = showPeopleNames
+              ? note.key_people.filter(p => showPeopleNames.has((p.name || "").trim().toLowerCase()))
+              : note.key_people;
+            if (filtered.length === 0) return null;
+            return (
+              <div className="space-y-2">
+                {filtered.map((p, i) => (
+                  <StudyPersonCard key={i} person={p} />
+                ))}
+              </div>
+            );
+          })()}
 
           {note.stories && note.stories.length > 0 && (
             <div className="space-y-2">
