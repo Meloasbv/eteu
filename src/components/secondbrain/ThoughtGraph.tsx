@@ -76,6 +76,13 @@ const PERIODS = [
 
 const RECENT_MS = 7 * 86400000; // 7 days
 
+function hexToRgb(hex: string): { r: number; g: number; b: number } {
+  const m = hex.replace("#", "");
+  const full = m.length === 3 ? m.split("").map(c => c + c).join("") : m;
+  const num = parseInt(full, 16);
+  return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 };
+}
+
 interface ThoughtGraphProps {
   userCodeId: string;
   /** "gold" (default), "neon" (Focus), or "area" (uses themeColor prop) */
@@ -282,19 +289,29 @@ export default function ThoughtGraph({ userCodeId, theme = "gold", themeColor, e
     const pulseAlpha = (Math.sin(pulseRef.current) + 1) / 2; // 0..1
 
     // Draw edges (sorted weak→strong so strong ones render on top)
+    const isNeon = theme === "neon";
+    const isAreaTheme = theme === "area";
+    const NEON = "#00FF94";
+    const AREA = themeColor || NEON;
+    const themedAccent = isNeon ? NEON : isAreaTheme ? AREA : null;
+
     const sortedLinks = [...links].sort((a, b) => a.strength - b.strength);
     sortedLinks.forEach(link => {
       const s = link.source as GraphNode;
       const t = link.target as GraphNode;
       if (s.x == null || t.x == null) return;
 
+      // Ghost edge if either endpoint is ghosted
+      const isGhostEdge = ghostIds && (ghostIds.has(s.id) || ghostIds.has(t.id));
+
       const isHighlighted = hovered && (s.id === hovered.id || t.id === hovered.id);
       const isRecent = now - new Date(link.created_at).getTime() < RECENT_MS;
       const isWeak = link.strength < 0.4;
 
-      const connColor = CONN_TYPE_LABELS[link.connection_type]?.color || "#c4a46a";
+      const connColor = themedAccent ?? (CONN_TYPE_LABELS[link.connection_type]?.color || "#c4a46a");
       const baseAlpha = isWeak ? 0.08 : 0.12 + link.strength * 0.35;
-      const alpha = isHighlighted ? Math.min(0.85, baseAlpha + 0.4) : baseAlpha;
+      let alpha = isHighlighted ? Math.min(0.85, baseAlpha + 0.4) : baseAlpha;
+      if (isGhostEdge) alpha = Math.min(alpha, 0.08);
       const width = 0.6 + link.strength * 3.2;
 
       ctx.beginPath();
@@ -303,50 +320,56 @@ export default function ThoughtGraph({ userCodeId, theme = "gold", themeColor, e
       ctx.strokeStyle = `${connColor}${Math.round(alpha * 255).toString(16).padStart(2, "0")}`;
       ctx.lineWidth = isHighlighted ? width + 1 : width;
 
-      if (isRecent) {
+      // Dashed for ghost edges
+      if (isGhostEdge) {
+        ctx.setLineDash([3, 4]);
+      }
+
+      if (isRecent && !isGhostEdge) {
         ctx.shadowColor = connColor;
         ctx.shadowBlur = 6 + pulseAlpha * 8;
       }
       ctx.stroke();
       ctx.shadowBlur = 0;
+      ctx.setLineDash([]);
     });
 
     // Draw nodes
-    const isNeon = theme === "neon";
-    const NEON = "#00FF94";
     nodes.forEach(node => {
       if (node.x == null || node.y == null) return;
       const r = getNodeRadius(node.connectionCount);
       const baseColor = TYPE_COLORS[node.type] || "#c4a46a";
-      const color = isNeon ? NEON : baseColor;
+      const color = themedAccent ?? baseColor;
       const isHovered = hovered?.id === node.id;
       const isFocused = focusNodeId === node.id;
       const isFiltered = filterType && node.type !== filterType && !focusedIds;
+      const isGhost = ghostIds && ghostIds.has(node.id) && !(filterIds && filterIds.has(node.id));
       const isRecent = now - new Date(node.created_at).getTime() < RECENT_MS;
+      const themed = isNeon || isAreaTheme;
 
-      // Recent glow ring (stronger in neon)
-      if (isRecent && !isFiltered) {
+      // Recent glow ring
+      if (isRecent && !isFiltered && !isGhost) {
         ctx.beginPath();
-        ctx.arc(node.x, node.y, r + (isNeon ? 6 : 4) + pulseAlpha * (isNeon ? 4 : 2), 0, Math.PI * 2);
-        const alphaHex = Math.round(pulseAlpha * (isNeon ? 180 : 100)).toString(16).padStart(2, "0");
+        ctx.arc(node.x, node.y, r + (themed ? 6 : 4) + pulseAlpha * (themed ? 4 : 2), 0, Math.PI * 2);
+        const alphaHex = Math.round(pulseAlpha * (themed ? 180 : 100)).toString(16).padStart(2, "0");
         ctx.strokeStyle = `${color}${alphaHex}`;
-        ctx.lineWidth = isNeon ? 2 : 1.5;
-        if (isNeon) {
-          ctx.shadowColor = NEON;
+        ctx.lineWidth = themed ? 2 : 1.5;
+        if (themed) {
+          ctx.shadowColor = color;
           ctx.shadowBlur = 8 + pulseAlpha * 8;
         }
         ctx.stroke();
         ctx.shadowBlur = 0;
       }
 
-      // Focused node ring
+      // Focused ring
       if (isFocused) {
         ctx.beginPath();
         ctx.arc(node.x, node.y, r + 6, 0, Math.PI * 2);
-        ctx.strokeStyle = isNeon ? NEON : "#fef3c7";
+        ctx.strokeStyle = themed ? color : "#fef3c7";
         ctx.lineWidth = 2;
-        if (isNeon) {
-          ctx.shadowColor = NEON;
+        if (themed) {
+          ctx.shadowColor = color;
           ctx.shadowBlur = 14;
         }
         ctx.stroke();
@@ -355,25 +378,28 @@ export default function ThoughtGraph({ userCodeId, theme = "gold", themeColor, e
 
       ctx.beginPath();
       ctx.arc(node.x, node.y, isHovered ? r * 1.18 : r, 0, Math.PI * 2);
-      if (isNeon) {
-        ctx.fillStyle = `rgba(0,255,148,${isHovered || isFocused ? 0.22 : 0.10})`;
-        ctx.globalAlpha = isFiltered ? 0.25 : 1;
+      if (themed) {
+        // Translucent themed fill
+        const fillAlpha = isGhost ? 0.05 : (isHovered || isFocused ? 0.22 : 0.10);
+        const rgb = hexToRgb(color);
+        ctx.fillStyle = `rgba(${rgb.r},${rgb.g},${rgb.b},${fillAlpha})`;
+        ctx.globalAlpha = isGhost ? 0.35 : (isFiltered ? 0.25 : 1);
         ctx.fill();
-        ctx.strokeStyle = NEON;
+        ctx.strokeStyle = color;
         ctx.lineWidth = isHovered || isFocused ? 2 : 1.4;
+        if (isGhost) ctx.globalAlpha = 0.25;
         ctx.stroke();
       } else {
         ctx.fillStyle = color;
-        ctx.globalAlpha = isFiltered ? 0.18 : isHovered || isFocused ? 1 : 0.82;
+        ctx.globalAlpha = isGhost ? 0.15 : (isFiltered ? 0.18 : isHovered || isFocused ? 1 : 0.82);
         ctx.fill();
 
-        // Inner highlight (gold theme only)
         ctx.beginPath();
         ctx.arc(node.x - r * 0.3, node.y - r * 0.3, r * 0.35, 0, Math.PI * 2);
         ctx.fillStyle = "rgba(255,255,255,0.18)";
         ctx.fill();
 
-        if (isHovered || isFocused) {
+        if ((isHovered || isFocused) && !isGhost) {
           ctx.shadowColor = color;
           ctx.shadowBlur = 22;
           ctx.beginPath();
@@ -386,7 +412,7 @@ export default function ThoughtGraph({ userCodeId, theme = "gold", themeColor, e
       ctx.globalAlpha = 1;
 
       // Label on hover or focus
-      if (isHovered || isFocused) {
+      if ((isHovered || isFocused) && !isGhost) {
         const label = node.content.substring(0, 50) + (node.content.length > 50 ? "…" : "");
         ctx.font = "11px ui-sans-serif, system-ui, sans-serif";
         ctx.textAlign = "center";
@@ -395,20 +421,20 @@ export default function ThoughtGraph({ userCodeId, theme = "gold", themeColor, e
         const pad = 6;
         const bgW = metrics.width + pad * 2;
         const bgH = 18;
-        ctx.fillStyle = isNeon ? "rgba(17,22,29,0.92)" : "rgba(15, 13, 10, 0.85)";
+        ctx.fillStyle = themed ? "rgba(17,22,29,0.92)" : "rgba(15, 13, 10, 0.85)";
         ctx.fillRect(node.x - bgW / 2, node.y + r + 8, bgW, bgH);
-        if (isNeon) {
-          ctx.strokeStyle = `${NEON}55`;
+        if (themed) {
+          ctx.strokeStyle = `${color}55`;
           ctx.lineWidth = 1;
           ctx.strokeRect(node.x - bgW / 2, node.y + r + 8, bgW, bgH);
         }
-        ctx.fillStyle = isNeon ? "#E6EDF3" : "#ede4d3";
+        ctx.fillStyle = themed ? "#E6EDF3" : "#ede4d3";
         ctx.fillText(label, node.x, node.y + r + 21);
       }
     });
 
     ctx.restore();
-  }, [hoveredNode, filterType, focusNodeId, focusedIds, theme]);
+  }, [hoveredNode, filterType, focusNodeId, focusedIds, theme, themeColor, ghostIds, filterIds]);
 
   // Resize canvas
   useEffect(() => {

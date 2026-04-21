@@ -9,7 +9,8 @@ import { toast } from "@/hooks/use-toast";
 import { useFocusMusic, FOCUS_TRACKS, type FocusTrackKey } from "@/hooks/useFocusMusic";
 import FocusCommandChat, { type FocusPanelKey } from "./FocusCommandChat";
 import FocusTTSPlayer from "./FocusTTSPlayer";
-import BrainFocusMode from "./BrainFocusMode";
+import BrainAreasHub from "./areas/BrainAreasHub";
+import type { BrainArea } from "@/lib/brainAreas";
 import type { FocusOpenToolDetail, FocusToolKey } from "@/lib/focusTools";
 
 const MindMapTab = lazy(() => import("@/components/mindmap/MindMapTab"));
@@ -557,14 +558,34 @@ export default function FocusWorkspace({ open, onClose, tab, setTab, userCodeId,
         </div>
       )}
 
-      {/* Brain Focus Mode (always overlays the chat when active) */}
-      <BrainFocusMode
-        open={brainMode}
-        userCodeId={userCodeId}
-        initialContent={brainSeed}
-        onExit={() => { setBrainMode(false); setBrainSeed(""); }}
-      />
-
+      {/* Brain Areas Hub (overlays the chat when active) */}
+      {brainMode && (
+        <div className="absolute inset-0 z-[250]" style={{ background: PALETTE.bg }}>
+          <div
+            className="absolute top-0 left-0 right-0 z-[260] flex items-center gap-3 px-4 py-2.5 border-b shrink-0"
+            style={{ background: PALETTE.surface, borderColor: PALETTE.border }}
+          >
+            <button
+              onClick={() => { setBrainMode(false); setBrainSeed(""); haptic("light"); }}
+              className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors"
+              style={{ background: PALETTE.surfaceLight, color: PALETTE.text, border: `1px solid ${PALETTE.border}` }}
+              aria-label="Voltar ao chat do Foco"
+            >
+              <X size={15} />
+            </button>
+            <p className="text-[11px] font-bold uppercase tracking-[2px]" style={{ color: PALETTE.primary }}>
+              Segundo Cérebro · Áreas
+            </p>
+          </div>
+          <div className="absolute inset-0 pt-[57px]">
+            <BrainAreasHub
+              userCodeId={userCodeId}
+              initialContent={brainSeed}
+              onAreaClose={() => { /* stays open in hub */ }}
+            />
+          </div>
+        </div>
+      )}
       {/* Celebration */}
       {showCelebration && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[400] animate-fade-in">
