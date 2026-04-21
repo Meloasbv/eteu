@@ -7,12 +7,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { setCachedMap, getCachedMap, setInflight, getInflight } from "./mapCache";
 import { runMindMapPipeline, type PipelineProgress } from "@/lib/mindMapPipeline";
 
-const MindMapCanvas = lazy(() => import("./MindMapCanvas"));
 const ManualMindMapCanvas = lazy(() => import("./ManualMindMapCanvas"));
 const StudyGuide = lazy(() => import("@/components/study-guide/StudyGuide"));
 // Warm canvas chunk in the background so first open is instant
 if (typeof window !== "undefined") {
-  setTimeout(() => { import("./ManualMindMapCanvas"); import("./MindMapCanvas"); import("@/components/study-guide/StudyGuide"); }, 800);
+  setTimeout(() => { import("./ManualMindMapCanvas"); import("@/components/study-guide/StudyGuide"); }, 800);
 }
 
 type Mode = "select" | "ai-input" | "ai-canvas" | "ai-guide" | "manual" | "pdf-processing";
@@ -326,7 +325,7 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
     );
   }
 
-  if (mode === "ai-guide" && analysis) {
+  if ((mode === "ai-guide" || mode === "ai-canvas") && analysis) {
     return (
       <div className="h-full w-full">
         <Suspense fallback={fallback}>
@@ -337,22 +336,6 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
             mapId={aiMapId}
             onEnsureSavedForShare={() => saveAiMap(analysis, aiMapId)}
             onBack={() => { setAnalysis(null); setAiMapId(null); setActiveSectionId(null); setMode("select"); }}
-            onSwitchToMap={() => setMode("ai-canvas")}
-          />
-        </Suspense>
-      </div>
-    );
-  }
-
-  if (mode === "ai-canvas" && analysis) {
-    return (
-      <div className="h-full w-full">
-        <Suspense fallback={fallback}>
-          <MindMapCanvas
-            analysis={analysis}
-            mapId={aiMapId}
-            onEnsureSavedForShare={() => saveAiMap(analysis, aiMapId)}
-            onClose={() => setMode("ai-guide")}
           />
         </Suspense>
       </div>

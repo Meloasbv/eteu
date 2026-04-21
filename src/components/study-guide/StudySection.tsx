@@ -14,7 +14,13 @@ interface Props {
   onToggle: () => void;
   sectionId: string;
   active?: boolean;
-  onVerseClick?: (ref: string) => void;
+  onVerseClick?: (ref: string, el: HTMLElement) => void;
+  /** Lowercased names of people that should be rendered (others were already shown earlier). */
+  showPeopleNames?: Set<string>;
+  /** When true, this section is a continuation of a grouped block — render compactly without the title row. */
+  isGroupedMember?: boolean;
+  /** When false, hide the analogy block (avoids repeating "Pense assim" in every member of a group). */
+  showAnalogy?: boolean;
 }
 
 export default function StudySection({
@@ -25,6 +31,9 @@ export default function StudySection({
   sectionId,
   active,
   onVerseClick,
+  showPeopleNames,
+  isGroupedMember = false,
+  showAnalogy = true,
 }: Props) {
   const note = concept.expanded_note;
   const color = getCategoryColor(concept.category);
@@ -40,6 +49,11 @@ export default function StudySection({
   const numberSize = isTertiary ? "w-5 h-5 text-[10px]" : "w-7 h-7 text-[11px]";
   const verticalPad = isTertiary ? "py-2" : "py-3";
 
+  // For grouped continuation members, render an inline divider + small subtitle instead of the full header,
+  // and force-expanded so all content is visible together under the parent block.
+  const headerHidden = isGroupedMember;
+  const effectiveExpanded = isGroupedMember ? true : expanded;
+
   return (
     <section
       id={sectionId}
@@ -47,54 +61,66 @@ export default function StudySection({
       style={{
         background: active ? "hsl(var(--primary) / 0.03)" : "transparent",
         borderRadius: 12,
-        borderLeft: importance === "primary" ? `2px solid ${color}55` : "2px solid transparent",
-        paddingLeft: importance === "primary" ? 8 : 0,
+        borderLeft: importance === "primary" && !isGroupedMember ? `2px solid ${color}55` : "2px solid transparent",
+        paddingLeft: importance === "primary" && !isGroupedMember ? 8 : 0,
         opacity: isTertiary ? 0.78 : 1,
       }}
     >
-      <button
-        onClick={onToggle}
-        className={`w-full flex items-start gap-3 px-1 ${verticalPad} text-left group`}
-      >
-        <span
-          className={`flex-shrink-0 ${numberSize} rounded-full flex items-center justify-center font-ui font-bold mt-0.5`}
-          style={{ background: `${color}22`, color }}
+      {!headerHidden ? (
+        <button
+          onClick={onToggle}
+          className={`w-full flex items-start gap-3 px-1 ${verticalPad} text-left group`}
         >
-          {String(index + 1).padStart(2, "0")}
-        </span>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-baseline gap-2 flex-wrap">
-            <h3 className={`font-display ${titleSize} font-bold text-foreground tracking-tight leading-tight`}>
-              {concept.title}
-            </h3>
-            <span className="text-[9px] tracking-[2px] uppercase font-ui" style={{ color }}>
-              {getCategoryName(concept.category)}
-            </span>
-            {isTertiary && (
-              <span className="text-[8.5px] tracking-[1.5px] uppercase font-ui text-muted-foreground/50">
-                · resumo
+          <span
+            className={`flex-shrink-0 ${numberSize} rounded-full flex items-center justify-center font-ui font-bold mt-0.5`}
+            style={{ background: `${color}22`, color }}
+          >
+            {String(index + 1).padStart(2, "0")}
+          </span>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-baseline gap-2 flex-wrap">
+              <h3 className={`font-display ${titleSize} font-bold text-foreground tracking-tight leading-tight`}>
+                {concept.title}
+              </h3>
+              <span className="text-[9px] tracking-[2px] uppercase font-ui" style={{ color }}>
+                {getCategoryName(concept.category)}
               </span>
-            )}
-            {slides && (
-              <span className="text-[10px] text-muted-foreground/60 font-ui ml-auto">
-                {slides}
-              </span>
+              {isTertiary && (
+                <span className="text-[8.5px] tracking-[1.5px] uppercase font-ui text-muted-foreground/50">
+                  · resumo
+                </span>
+              )}
+              {slides && (
+                <span className="text-[10px] text-muted-foreground/60 font-ui ml-auto">
+                  {slides}
+                </span>
+              )}
+            </div>
+            {concept.summary && !expanded && (
+              <p className="text-[13px] text-muted-foreground/80 font-body mt-1 line-clamp-2">
+                {concept.summary}
+              </p>
             )}
           </div>
-          {concept.summary && !expanded && (
-            <p className="text-[13px] text-muted-foreground/80 font-body mt-1 line-clamp-2">
-              {concept.summary}
-            </p>
+          <ChevronDown
+            size={16}
+            className="text-muted-foreground/60 transition-transform mt-1.5 flex-shrink-0"
+            style={{ transform: expanded ? "rotate(180deg)" : "rotate(0deg)" }}
+          />
+        </button>
+      ) : (
+        <div className="pl-10 pr-2 pt-1 pb-1.5 flex items-center gap-2">
+          <span className="h-px flex-1" style={{ background: `${color}22` }} />
+          {slides && (
+            <span className="text-[9.5px] tracking-[1.5px] uppercase font-ui text-muted-foreground/60">
+              continuação · {slides}
+            </span>
           )}
+          <span className="h-px flex-1" style={{ background: `${color}22` }} />
         </div>
-        <ChevronDown
-          size={16}
-          className="text-muted-foreground/60 transition-transform mt-1.5 flex-shrink-0"
-          style={{ transform: expanded ? "rotate(180deg)" : "rotate(0deg)" }}
-        />
-      </button>
+      )}
 
-      {expanded && note && (
+      {effectiveExpanded && note && (
         <div className="pl-10 pr-2 pb-5 animate-fade-in space-y-3">
           {note.core_idea && (
             <div
@@ -143,8 +169,8 @@ export default function StudySection({
             </div>
           )}
 
-          {/* Analogy — didactic illustration */}
-          {note.analogy && note.analogy.trim().length > 0 && (
+          {/* Analogy — only render when explicitly allowed (avoids repeating "Pense assim" in every grouped block) */}
+          {showAnalogy && note.analogy && note.analogy.trim().length > 0 && (
             <div
               className="p-3.5 rounded-xl flex gap-3"
               style={{
@@ -193,13 +219,19 @@ export default function StudySection({
             </div>
           )}
 
-          {note.key_people && note.key_people.length > 0 && (
-            <div className="space-y-2">
-              {note.key_people.map((p, i) => (
-                <StudyPersonCard key={i} person={p} />
-              ))}
-            </div>
-          )}
+          {note.key_people && note.key_people.length > 0 && (() => {
+            const filtered = showPeopleNames
+              ? note.key_people.filter(p => showPeopleNames.has((p.name || "").trim().toLowerCase()))
+              : note.key_people;
+            if (filtered.length === 0) return null;
+            return (
+              <div className="space-y-2">
+                {filtered.map((p, i) => (
+                  <StudyPersonCard key={i} person={p} />
+                ))}
+              </div>
+            );
+          })()}
 
           {note.stories && note.stories.length > 0 && (
             <div className="space-y-2">
