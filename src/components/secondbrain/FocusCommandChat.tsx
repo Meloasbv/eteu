@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { ArrowUp, BookOpen, Flame, PenLine, Brain, Sparkles } from "lucide-react";
+import { ArrowUp, BookOpen, Flame, PenLine, Brain, Sparkles, Radio } from "lucide-react";
 import { haptic } from "@/hooks/useHaptic";
 import { toast } from "@/hooks/use-toast";
 import { routeIntent, LOADING_MESSAGES, type FocusIntent } from "@/lib/focusIntent";
@@ -15,21 +15,22 @@ const QUICK_ACTIONS: { id: string; label: string; icon: any; hint: string; cmd: 
   { id: "leitura", label: "Leitura", icon: BookOpen, hint: "Plano bíblico", cmd: "leitura de hoje" },
   { id: "devocional", label: "Devocional", icon: Flame, hint: "Meditação", cmd: "devocional do dia" },
   { id: "estudo", label: "Estudo", icon: Brain, hint: "PDF · guia · mapa", cmd: "meus estudos" },
+  { id: "transcrever", label: "Transcrever", icon: Radio, hint: "Ouvir e escrever", cmd: "transcrição ao vivo" },
   { id: "caderno", label: "Caderno", icon: PenLine, hint: "Notas", cmd: "", tool: "notebook" },
   { id: "cerebro", label: "Cérebro", icon: Sparkles, hint: "Capturar ideias", cmd: "", brain: true },
 ];
 
 const PALETTE = {
-  bg: "#0B0F14",
-  surface: "#11161D",
-  surfaceLight: "#1A2129",
-  border: "#1F2730",
-  borderSoft: "#161C24",
-  primary: "#00FF94",
-  primarySoft: "#1DB954",
-  text: "#E6EDF3",
-  textDim: "#7A8A99",
-  textFaint: "#4A5868",
+  bg: "#0a0805",
+  surface: "#13100b",
+  surfaceLight: "#1a1610",
+  border: "#2a2218",
+  borderSoft: "#1f1a13",
+  primary: "#d4a94a",
+  primarySoft: "#b8902f",
+  text: "#ede4d0",
+  textDim: "#8a7e66",
+  textFaint: "#574d3d",
 };
 
 interface DevDay {
@@ -255,6 +256,17 @@ export default function FocusCommandChat({ userCodeId, weeks, devotionals }: Pro
             if (!assistantText) assistantText = result.response_text || "Controles do Pomodoro:";
             break;
           }
+          case "transcricao": {
+            finalArtifact = {
+              type: "transcription",
+              data: {
+                autoStart: result.params?.autoStart ?? true,
+                presentMode: result.params?.presentMode ?? false,
+              },
+            };
+            if (!assistantText) assistantText = "Transcrição ao vivo:";
+            break;
+          }
           case "saudacao": {
             finalArtifact = {
               type: "answer",
@@ -339,7 +351,7 @@ export default function FocusCommandChat({ userCodeId, weeks, devotionals }: Pro
 
   const placeholder = captureMode
     ? "O que está na sua mente?"
-    : "O que quer fazer? Ex: 'leitura', 'exegese de João 1', 'capturar: ...'";
+    : "O que quer fazer? Ex: 'leitura', 'transcrever', 'exegese de João 1'";
 
   return (
     <div className="h-full w-full flex flex-col" style={{ background: PALETTE.bg, color: PALETTE.text }}>
@@ -347,7 +359,7 @@ export default function FocusCommandChat({ userCodeId, weeks, devotionals }: Pro
         <div className="mx-auto w-full max-w-[760px] px-4 sm:px-8 py-8 pb-6">
           {/* Quick actions only when there's just the welcome msg */}
           {messages.length <= 1 && (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-6">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 mb-6">
               {QUICK_ACTIONS.map((qa) => {
                 const Icon = qa.icon;
                 return (
