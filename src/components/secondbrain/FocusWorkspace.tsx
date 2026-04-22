@@ -357,142 +357,216 @@ export default function FocusWorkspace({ open, onClose, tab, setTab, userCodeId,
 
         {/* ─── MAIN AREA ─── */}
         <main className="flex-1 flex flex-col overflow-hidden min-w-0">
-          {/* Top bar — Pomodoro + music + controls */}
-          <div
-            className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 border-b shrink-0 flex-wrap sm:flex-nowrap"
-            style={{ background: PALETTE.surface, borderColor: PALETTE.border }}
-          >
-            {/* Mobile menu button */}
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="focus-mobile-menu w-9 h-9 rounded-lg flex items-center justify-center transition-colors shrink-0"
-              style={{ background: PALETTE.surfaceLight, color: PALETTE.text }}
-              aria-label="Abrir menu"
+          {/* Top bar — minimal by default; hidden in zen */}
+          {!zenMode && (
+            <div
+              className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 border-b shrink-0 flex-wrap sm:flex-nowrap"
+              style={{ background: PALETTE.surface, borderColor: PALETTE.border }}
             >
-              <Menu size={16} />
-            </button>
+              {/* Mobile menu */}
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="focus-mobile-menu w-9 h-9 rounded-lg flex items-center justify-center transition-colors shrink-0"
+                style={{ background: PALETTE.surfaceLight, color: PALETTE.text }}
+                aria-label="Abrir menu"
+              >
+                <Menu size={16} />
+              </button>
 
-            {/* Pomodoro */}
-            <div className="flex items-center gap-2.5 shrink-0">
-              <div className="relative w-[60px] h-[60px] sm:w-[70px] sm:h-[70px] shrink-0">
-                <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
-                  <circle cx="50" cy="50" r={ringRadius} fill="none" stroke={PALETTE.border} strokeWidth="5" />
-                  <circle
-                    cx="50" cy="50" r={ringRadius} fill="none"
-                    stroke={PALETTE.primary} strokeWidth="5" strokeLinecap="round"
-                    strokeDasharray={ringCirc}
-                    strokeDashoffset={ringCirc * (1 - progress)}
-                    style={{ transition: "stroke-dashoffset 1s linear", filter: `drop-shadow(0 0 6px ${PALETTE.primary}88)` }}
+              {chromeCollapsed ? (
+                /* Compact chip: timer + music play in a single pill */
+                <button
+                  onClick={() => { setChromeCollapsed(false); haptic("light"); }}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-full transition-all hover:scale-[1.02]"
+                  style={{
+                    background: PALETTE.surfaceLight,
+                    border: `1px solid ${PALETTE.border}`,
+                  }}
+                  title="Expandir controles"
+                >
+                  <span
+                    className="w-1.5 h-1.5 rounded-full"
+                    style={{
+                      background: running ? PALETTE.primary : PALETTE.textDim,
+                      boxShadow: running ? `0 0 6px ${PALETTE.primary}` : "none",
+                    }}
                   />
-                </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-[14px] sm:text-[16px] font-bold tabular-nums leading-none" style={{ color: PALETTE.primary }}>
+                  <span className="text-[11px] font-bold tabular-nums" style={{ color: PALETTE.text }}>
                     {mm}:{ss}
                   </span>
-                  <span className="text-[7px] sm:text-[8px] uppercase tracking-[2px] mt-0.5" style={{ color: PALETTE.textDim }}>
-                    {phase === "focus" ? "Foco" : "Pausa"}
+                  <span className="text-[9px] uppercase tracking-[1.5px]" style={{ color: PALETTE.textDim }}>
+                    {phase === "focus" ? "foco" : "pausa"}
                   </span>
-                </div>
-              </div>
-              <div className="flex flex-col gap-1">
-                <button
-                  onClick={() => { setRunning(r => !r); haptic("light"); }}
-                  className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold transition-all hover:scale-105 active:scale-95"
-                  style={{
-                    background: running ? `${PALETTE.primary}14` : PALETTE.surfaceLight,
-                    color: running ? PALETTE.primary : PALETTE.text,
-                    border: `1px solid ${running ? PALETTE.primary + "55" : PALETTE.border}`,
-                  }}>
-                  {running ? <><Pause size={10} /> Pausar</> : <><Play size={10} /> Continuar</>}
+                  <span className="w-px h-3 mx-0.5" style={{ background: PALETTE.border }} />
+                  <span
+                    onClick={(e) => { e.stopPropagation(); toggle(); haptic("light"); }}
+                    className="flex items-center justify-center cursor-pointer"
+                    style={{ color: playing ? PALETTE.primary : PALETTE.textDim }}
+                  >
+                    {playing ? <Pause size={11} /> : <Play size={11} />}
+                  </span>
+                  <ChevronDown size={11} style={{ color: PALETTE.textDim }} />
                 </button>
-                <button
-                  onClick={() => {
-                    setPhase("focus"); setSecondsLeft(POMODORO_MIN.focus * 60); setRunning(true); haptic("medium");
-                  }}
-                  className="px-2 py-1 rounded-md text-[9px] font-bold uppercase tracking-wider transition-colors"
-                  style={{ color: PALETTE.textDim, border: `1px solid ${PALETTE.border}` }}>
-                  Reiniciar
-                </button>
-              </div>
-            </div>
+              ) : (
+                <>
+                  {/* Pomodoro */}
+                  <div className="flex items-center gap-2.5 shrink-0">
+                    <div className="relative w-[52px] h-[52px] sm:w-[58px] sm:h-[58px] shrink-0">
+                      <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
+                        <circle cx="50" cy="50" r={ringRadius} fill="none" stroke={PALETTE.border} strokeWidth="4" />
+                        <circle
+                          cx="50" cy="50" r={ringRadius} fill="none"
+                          stroke={PALETTE.primary} strokeWidth="4" strokeLinecap="round"
+                          strokeDasharray={ringCirc}
+                          strokeDashoffset={ringCirc * (1 - progress)}
+                          style={{ transition: "stroke-dashoffset 1s linear" }}
+                        />
+                      </svg>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <span className="text-[12px] sm:text-[13px] font-bold tabular-nums leading-none" style={{ color: PALETTE.primary }}>
+                          {mm}:{ss}
+                        </span>
+                        <span className="text-[7px] uppercase tracking-[1.8px] mt-0.5" style={{ color: PALETTE.textDim }}>
+                          {phase === "focus" ? "Foco" : "Pausa"}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => { setRunning(r => !r); haptic("light"); }}
+                      className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold transition-all hover:scale-105 active:scale-95"
+                      style={{
+                        background: running ? `${PALETTE.primary}14` : PALETTE.surfaceLight,
+                        color: running ? PALETTE.primary : PALETTE.text,
+                        border: `1px solid ${running ? PALETTE.primary + "55" : PALETTE.border}`,
+                      }}>
+                      {running ? <><Pause size={10} /> Pausar</> : <><Play size={10} /> Continuar</>}
+                    </button>
+                  </div>
 
-            <div className="flex-1 min-w-0" />
+                  <div className="flex-1 min-w-0" />
 
-            {/* Music mini-player — hidden on small mobile, visible from sm */}
-            <div
-              className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl shrink-0"
-              style={{ background: PALETTE.surfaceLight, border: `1px solid ${PALETTE.border}` }}
-            >
-              <button onClick={toggle} className="hover:opacity-100 transition-opacity" style={{ color: PALETTE.text }}>
-                {playing ? <Pause size={13} /> : <Play size={13} />}
-              </button>
-              <button onClick={skip} className="hover:opacity-100 transition-opacity" style={{ color: PALETTE.text }}>
-                <SkipForward size={13} />
-              </button>
-              <div className="text-[10px] min-w-[70px]" style={{ color: PALETTE.textDim }}>
-                {trackKey === "custom" ? "🎧 Custom" : `${FOCUS_TRACKS[trackKey].emoji} ${FOCUS_TRACKS[trackKey].label}`}
-              </div>
-              <Volume2 size={10} style={{ color: PALETTE.textDim }} />
-              <input
-                type="range" min={0} max={100} value={volume}
-                onChange={(e) => changeVolume(parseInt(e.target.value, 10))}
-                className="w-12"
-                style={{ accentColor: PALETTE.primary }}
-              />
-              <div className="w-px h-4" style={{ background: PALETTE.border }} />
-              {(["lofi", "piano", "ambient"] as FocusTrackKey[]).map(k => (
-                <button key={k} onClick={() => setTrack(k)}
-                  className="w-6 h-6 rounded-full text-xs transition-all hover:scale-110 flex items-center justify-center"
-                  style={{
-                    background: trackKey === k ? `${PALETTE.primary}22` : "transparent",
-                    border: `1px solid ${trackKey === k ? PALETTE.primary + "66" : PALETTE.border}`,
-                  }}>
-                  {FOCUS_TRACKS[k as Exclude<FocusTrackKey, "custom">].emoji}
+                  {/* Music mini-player */}
+                  <div
+                    className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl shrink-0"
+                    style={{ background: PALETTE.surfaceLight, border: `1px solid ${PALETTE.border}` }}
+                  >
+                    <button onClick={toggle} style={{ color: PALETTE.text }}>
+                      {playing ? <Pause size={13} /> : <Play size={13} />}
+                    </button>
+                    <button onClick={skip} style={{ color: PALETTE.text }}>
+                      <SkipForward size={13} />
+                    </button>
+                    <div className="text-[10px] min-w-[60px]" style={{ color: PALETTE.textDim }}>
+                      {trackKey === "custom" ? "🎧 Custom" : `${FOCUS_TRACKS[trackKey].emoji} ${FOCUS_TRACKS[trackKey].label}`}
+                    </div>
+                    <Volume2 size={10} style={{ color: PALETTE.textDim }} />
+                    <input
+                      type="range" min={0} max={100} value={volume}
+                      onChange={(e) => changeVolume(parseInt(e.target.value, 10))}
+                      className="w-12"
+                      style={{ accentColor: PALETTE.primary }}
+                    />
+                    <div className="w-px h-4" style={{ background: PALETTE.border }} />
+                    {(["lofi", "piano", "ambient"] as FocusTrackKey[]).map(k => (
+                      <button key={k} onClick={() => setTrack(k)}
+                        className="w-6 h-6 rounded-full text-xs transition-all hover:scale-110 flex items-center justify-center"
+                        style={{
+                          background: trackKey === k ? `${PALETTE.primary}22` : "transparent",
+                          border: `1px solid ${trackKey === k ? PALETTE.primary + "66" : PALETTE.border}`,
+                        }}>
+                        {FOCUS_TRACKS[k as Exclude<FocusTrackKey, "custom">].emoji}
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => setShowYtInput(v => !v)}
+                      className="w-6 h-6 rounded-full flex items-center justify-center transition-all hover:scale-110"
+                      style={{
+                        background: trackKey === "custom" ? `${PALETTE.primary}22` : "transparent",
+                        border: `1px solid ${trackKey === "custom" ? PALETTE.primary + "66" : PALETTE.border}`,
+                        color: trackKey === "custom" ? PALETTE.primary : PALETTE.text,
+                      }}
+                      title="Link YouTube"
+                    >
+                      <Youtube size={10} />
+                    </button>
+                  </div>
+
+                  {/* Mobile compact music toggle */}
+                  <button
+                    onClick={toggle}
+                    className="sm:hidden w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                    style={{ background: PALETTE.surfaceLight, color: PALETTE.text, border: `1px solid ${PALETTE.border}` }}
+                    aria-label={playing ? "Pausar música" : "Tocar música"}
+                  >
+                    {playing ? <Pause size={14} /> : <Play size={14} />}
+                  </button>
+                </>
+              )}
+
+              <div className={chromeCollapsed ? "flex-1 min-w-0" : ""} />
+
+              {/* Minimize chrome toggle */}
+              {!chromeCollapsed && (
+                <button
+                  onClick={() => { setChromeCollapsed(true); haptic("light"); }}
+                  className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors shrink-0"
+                  style={{ background: PALETTE.surfaceLight, color: PALETTE.textDim, border: `1px solid ${PALETTE.border}` }}
+                  aria-label="Minimizar barra"
+                  title="Minimizar"
+                >
+                  <ChevronUp size={13} />
                 </button>
-              ))}
+              )}
+
+              {/* Zen mode (hide everything except chat) */}
               <button
-                onClick={() => setShowYtInput(v => !v)}
-                className="w-6 h-6 rounded-full flex items-center justify-center transition-all hover:scale-110"
-                style={{
-                  background: trackKey === "custom" ? `${PALETTE.primary}22` : "transparent",
-                  border: `1px solid ${trackKey === "custom" ? PALETTE.primary + "66" : PALETTE.border}`,
-                  color: trackKey === "custom" ? PALETTE.primary : PALETTE.text,
-                }}
-                title="Adicionar link do YouTube"
+                onClick={() => { setZenMode(true); haptic("medium"); }}
+                className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors shrink-0"
+                style={{ background: PALETTE.surfaceLight, color: PALETTE.textDim, border: `1px solid ${PALETTE.border}` }}
+                aria-label="Modo zen"
+                title="Modo zen (Cmd+Shift+Z)"
               >
-                <Youtube size={10} />
+                <Eye size={13} />
+              </button>
+
+              <button
+                onClick={toggleFullscreen}
+                className="hidden sm:flex w-9 h-9 rounded-lg items-center justify-center transition-colors shrink-0"
+                style={{ background: PALETTE.surfaceLight, color: PALETTE.text, border: `1px solid ${PALETTE.border}` }}
+                aria-label={isFullscreen ? "Sair da tela cheia" : "Tela cheia"}
+                title={isFullscreen ? "Sair da tela cheia" : "Tela cheia"}
+              >
+                {isFullscreen ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
+              </button>
+              <button
+                onClick={onClose}
+                className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors shrink-0"
+                style={{ background: PALETTE.surfaceLight, color: PALETTE.text, border: `1px solid ${PALETTE.border}` }}
+                aria-label="Sair do Modo Foco"
+                title="Sair do Modo Foco"
+              >
+                <X size={15} />
               </button>
             </div>
+          )}
 
-            {/* Mobile compact music toggle */}
+          {/* Zen exit pill (top-right floating) */}
+          {zenMode && (
             <button
-              onClick={toggle}
-              className="sm:hidden w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-              style={{ background: PALETTE.surfaceLight, color: PALETTE.text, border: `1px solid ${PALETTE.border}` }}
-              aria-label={playing ? "Pausar música" : "Tocar música"}
+              onClick={() => { setZenMode(false); haptic("light"); }}
+              className="absolute top-3 right-3 z-[260] flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all hover:scale-105"
+              style={{
+                background: `${PALETTE.bg}cc`,
+                border: `1px solid ${PALETTE.border}`,
+                color: PALETTE.textDim,
+                backdropFilter: "blur(8px)",
+              }}
+              title="Sair do Zen (Esc)"
             >
-              {playing ? <Pause size={14} /> : <Play size={14} />}
+              <Minimize2 size={11} />
+              <span className="text-[10px] uppercase tracking-[1.5px] font-bold">Sair zen</span>
             </button>
-
-            <button
-              onClick={toggleFullscreen}
-              className="hidden sm:flex w-9 h-9 rounded-lg items-center justify-center transition-colors shrink-0"
-              style={{ background: PALETTE.surfaceLight, color: PALETTE.text, border: `1px solid ${PALETTE.border}` }}
-              aria-label={isFullscreen ? "Sair da tela cheia" : "Tela cheia"}
-              title={isFullscreen ? "Sair da tela cheia" : "Tela cheia"}
-            >
-              {isFullscreen ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
-            </button>
-            <button
-              onClick={onClose}
-              className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors shrink-0"
-              style={{ background: PALETTE.surfaceLight, color: PALETTE.text, border: `1px solid ${PALETTE.border}` }}
-              aria-label="Sair do Modo Foco"
-              title="Sair do Modo Foco"
-            >
-              <X size={15} />
-            </button>
-          </div>
+          )}
 
           {/* YouTube input row */}
           {showYtInput && (
