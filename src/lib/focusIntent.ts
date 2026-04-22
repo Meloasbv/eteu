@@ -14,6 +14,7 @@ export type FocusIntent =
   | "versiculo"
   | "pergunta"
   | "timer"
+  | "transcricao"
   | "saudacao";
 
 export interface IntentResult {
@@ -60,6 +61,21 @@ export function detectIntentLocal(raw: string): IntentResult | null {
   }
   if (/^(reiniciar|resetar|reset)\s*(o\s*)?(timer|pomodoro|foco)?$/i.test(text)) {
     return { intent: "timer", params: { action: "reset" }, response_text: "Timer reiniciado." };
+  }
+
+  // Transcription / live captions
+  if (
+    wordCount <= 5 &&
+    /\b(transcri[cç][aã]o|transcrever|legend(a|as)|ditado|apresent(ar|a[cç][aã]o)\s+(ao\s+)?vivo|ouvir\s+e\s+escrever)\b/i.test(
+      lower,
+    )
+  ) {
+    const present = /\bapresent/i.test(lower);
+    return {
+      intent: "transcricao",
+      params: { autoStart: true, presentMode: present },
+      response_text: present ? "Modo apresentação ativo:" : "Transcrição ao vivo:",
+    };
   }
 
   // Capture prefix → open Brain Mode pre-filled (no longer auto-saves in chat)
@@ -186,5 +202,6 @@ export const LOADING_MESSAGES: Record<FocusIntent, string> = {
   versiculo: "Buscando o versículo...",
   pergunta: "Refletindo sobre isso...",
   timer: "Ajustando timer...",
+  transcricao: "Iniciando transcrição...",
   saudacao: "",
 };
