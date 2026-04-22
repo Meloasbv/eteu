@@ -11,6 +11,7 @@ import VerseReaderArtifact from "./VerseReaderArtifact";
 import MindMapListArtifact from "./MindMapListArtifact";
 import MindMapPreviewArtifact from "./MindMapPreviewArtifact";
 import TimerArtifact from "./TimerArtifact";
+import TranscriptionArtifact from "./TranscriptionArtifact";
 import type { ArtifactPayload } from "./types";
 
 interface Props {
@@ -46,6 +47,8 @@ export default function ArtifactRenderer({ artifact, userCodeId, sendAsUser }: P
       return <MindMapPreviewArtifact data={data} userCodeId={userCodeId} sendAsUser={sendAsUser} />;
     case "timer":
       return <TimerArtifact data={data} sendAsUser={sendAsUser} />;
+    case "transcription":
+      return <TranscriptionArtifact data={data} userCodeId={userCodeId} sendAsUser={sendAsUser} />;
     default:
       return (
         <SaudacaoArtifact

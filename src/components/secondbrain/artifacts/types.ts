@@ -10,6 +10,7 @@ export type ArtifactType =
   | "verse_reader"
   | "answer"
   | "timer"
+  | "transcription"
   | "loading";
 
 export interface ArtifactPayload {
