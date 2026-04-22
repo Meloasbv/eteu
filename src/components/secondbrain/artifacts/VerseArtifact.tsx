@@ -19,7 +19,7 @@ export default function VerseArtifact({ data, sendAsUser }: Props) {
   useEffect(() => {
     if (data.text) return;
     let alive = true;
-    const ref = encodeURIComponent(data.reference);
+    const ref = encodeURIComponent(sanitizeBibleRef(data.reference));
     fetch(`https://bible-api.com/${ref}?translation=almeida`)
       .then((r) => r.json())
       .then((j) => {
