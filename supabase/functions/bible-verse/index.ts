@@ -1,3 +1,4 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
@@ -8,13 +9,11 @@ const corsHeaders = {
 
 // Map abbreviations / variants to canonical Portuguese book names used in the DB.
 const BOOK_ALIASES: Record<string, string> = {
-  // Pentateuco
   "gn": "Gênesis", "gen": "Gênesis", "gên": "Gênesis", "genesis": "Gênesis", "gênesis": "Gênesis",
   "ex": "Êxodo", "êx": "Êxodo", "exodo": "Êxodo", "êxodo": "Êxodo",
   "lv": "Levítico", "lev": "Levítico", "levitico": "Levítico", "levítico": "Levítico",
   "nm": "Números", "num": "Números", "numeros": "Números", "números": "Números",
   "dt": "Deuteronômio", "deut": "Deuteronômio", "deuteronomio": "Deuteronômio", "deuteronômio": "Deuteronômio",
-  // Históricos
   "js": "Josué", "jos": "Josué", "josue": "Josué", "josué": "Josué",
   "jz": "Juízes", "jui": "Juízes", "juízes": "Juízes", "juizes": "Juízes",
   "rt": "Rute", "rut": "Rute", "rute": "Rute",
@@ -27,19 +26,16 @@ const BOOK_ALIASES: Record<string, string> = {
   "ed": "Esdras", "esd": "Esdras", "esdras": "Esdras",
   "ne": "Neemias", "nee": "Neemias", "neemias": "Neemias",
   "et": "Ester", "est": "Ester", "ester": "Ester",
-  // Poéticos
-  "jó": "Jó", "jo_book": "Jó", "job": "Jó",
+  "jó": "Jó", "job": "Jó",
   "sl": "Salmos", "sal": "Salmos", "salmo": "Salmos", "salmos": "Salmos",
   "pv": "Provérbios", "prov": "Provérbios", "provérbios": "Provérbios", "proverbios": "Provérbios",
   "ec": "Eclesiastes", "ecl": "Eclesiastes", "eclesiastes": "Eclesiastes",
   "ct": "Cantares", "cant": "Cantares", "cânticos": "Cantares", "canticos": "Cantares", "cantares": "Cantares",
-  // Profetas maiores
   "is": "Isaías", "isa": "Isaías", "isaias": "Isaías", "isaías": "Isaías",
   "jr": "Jeremias", "jer": "Jeremias", "jeremias": "Jeremias",
   "lm": "Lamentações", "lam": "Lamentações", "lamentações": "Lamentações", "lamentacoes": "Lamentações",
   "ez": "Ezequiel", "eze": "Ezequiel", "ezequiel": "Ezequiel",
   "dn": "Daniel", "dan": "Daniel", "daniel": "Daniel",
-  // Profetas menores
   "os": "Oséias", "ose": "Oséias", "oseias": "Oséias", "oséias": "Oséias",
   "jl": "Joel", "joel": "Joel",
   "am": "Amós", "amos": "Amós", "amós": "Amós",
@@ -52,13 +48,11 @@ const BOOK_ALIASES: Record<string, string> = {
   "ag": "Ageu", "age": "Ageu", "ageu": "Ageu",
   "zc": "Zacarias", "zac": "Zacarias", "zacarias": "Zacarias",
   "ml": "Malaquias", "mal": "Malaquias", "malaquias": "Malaquias",
-  // Evangelhos / Atos
   "mt": "Mateus", "mat": "Mateus", "mateus": "Mateus",
   "mc": "Marcos", "mar": "Marcos", "marcos": "Marcos",
   "lc": "Lucas", "luc": "Lucas", "lucas": "Lucas",
   "jo": "João", "joão": "João", "joao": "João",
   "at": "Atos", "ato": "Atos", "atos": "Atos",
-  // Cartas Paulinas
   "rm": "Romanos", "rom": "Romanos", "romanos": "Romanos",
   "1co": "1 Coríntios", "1 co": "1 Coríntios", "1 coríntios": "1 Coríntios", "1 corintios": "1 Coríntios",
   "2co": "2 Coríntios", "2 co": "2 Coríntios", "2 coríntios": "2 Coríntios", "2 corintios": "2 Coríntios",
@@ -72,7 +66,6 @@ const BOOK_ALIASES: Record<string, string> = {
   "2tm": "2 Timóteo", "2 tm": "2 Timóteo", "2 timóteo": "2 Timóteo", "2 timoteo": "2 Timóteo",
   "tt": "Tito", "tit": "Tito", "tito": "Tito",
   "fm": "Filemom", "flm": "Filemom", "filemom": "Filemom", "filemon": "Filemom",
-  // Cartas gerais + Apocalipse
   "hb": "Hebreus", "heb": "Hebreus", "hebreus": "Hebreus",
   "tg": "Tiago", "tia": "Tiago", "tiago": "Tiago",
   "1pe": "1 Pedro", "1 pe": "1 Pedro", "1 pedro": "1 Pedro",
@@ -85,7 +78,7 @@ const BOOK_ALIASES: Record<string, string> = {
 };
 
 interface ParsedRef {
-  book: string;        // canonical
+  book: string;
   chapter: number;
   verseStart?: number;
   verseEnd?: number;
@@ -93,17 +86,15 @@ interface ParsedRef {
 
 function normalizeRef(input: string): ParsedRef | null {
   if (!input) return null;
-  // Strip semicolons and trailing punctuation
   const cleaned = input
     .replace(/;/g, " ")
     .replace(/[.,;:\s]+$/g, "")
     .replace(/\s+/g, " ")
     .trim();
 
-  // Match: <book> <chapter>[:<verse>[-<endVerse>]]
-  // book may include a leading numeral (e.g. "1 João", "2 Cor")
+  // <book> <chapter>[:<verse>[-<endVerse>]]
   const m = cleaned.match(
-    /^(\d?\s?[A-Za-zÀ-ÿ\.]+(?:\s+[A-Za-zÀ-ÿ\.]+)?)\s+(\d{1,3})(?:[:\.]\s*(\d{1,3}))?(?:\s*[-–]\s*(\d{1,3}))?$/,
+    /^([1-3]?\s?[A-Za-zÀ-ÿ\.]+(?:\s+[A-Za-zÀ-ÿ\.]+)?)\s+(\d{1,3})(?:[:\.]\s*(\d{1,3}))?(?:\s*[-–]\s*(\d{1,3}))?$/,
   );
   if (!m) return null;
 
@@ -119,7 +110,7 @@ function normalizeRef(input: string): ParsedRef | null {
   };
 }
 
-function formatRefLabel(p: ParsedRef): string {
+function formatLabel(p: ParsedRef): string {
   let label = `${p.book} ${p.chapter}`;
   if (p.verseStart) {
     label += `:${p.verseStart}`;
@@ -128,4 +119,86 @@ function formatRefLabel(p: ParsedRef): string {
   return label;
 }
 
-serve(); // placeholder so editor doesn't error before serve import
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const body = await req.json().catch(() => ({}));
+    const reference: string = body.reference || body.ref || body.verse || "";
+
+    if (!reference) {
+      return new Response(
+        JSON.stringify({ error: "Referência não fornecida." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    const parsed = normalizeRef(reference);
+    if (!parsed) {
+      return new Response(
+        JSON.stringify({ error: "Referência não reconhecida.", input: reference }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+
+    let query = supabase
+      .from("bible_verses")
+      .select("book, chapter, verse, text")
+      .eq("translation", "arc")
+      .eq("book", parsed.book)
+      .eq("chapter", parsed.chapter)
+      .order("verse", { ascending: true });
+
+    if (parsed.verseStart) {
+      query = query.gte("verse", parsed.verseStart);
+      query = query.lte("verse", parsed.verseEnd ?? parsed.verseStart);
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      console.error("DB error:", error);
+      return new Response(
+        JSON.stringify({ error: "DB error", message: error.message }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    const verses = data || [];
+    if (verses.length === 0) {
+      return new Response(
+        JSON.stringify({
+          error: "Versículo não encontrado no banco local.",
+          reference: formatLabel(parsed),
+          found: false,
+        }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    const text = verses.map((v) => v.text).join(" ");
+    return new Response(
+      JSON.stringify({
+        reference: formatLabel(parsed),
+        translation: "arc",
+        translation_name: "Almeida Revista e Corrigida",
+        text,
+        verses,
+        found: true,
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  } catch (e) {
+    console.error("bible-verse error:", e);
+    return new Response(
+      JSON.stringify({ error: e instanceof Error ? e.message : "Erro desconhecido" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+});
