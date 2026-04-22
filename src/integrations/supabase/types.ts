@@ -32,6 +32,36 @@ export type Database = {
         }
         Relationships: []
       }
+      bible_verses: {
+        Row: {
+          book: string
+          chapter: number
+          created_at: string
+          id: number
+          text: string
+          translation: string
+          verse: number
+        }
+        Insert: {
+          book: string
+          chapter: number
+          created_at?: string
+          id?: number
+          text: string
+          translation?: string
+          verse: number
+        }
+        Update: {
+          book?: string
+          chapter?: number
+          created_at?: string
+          id?: number
+          text?: string
+          translation?: string
+          verse?: number
+        }
+        Relationships: []
+      }
       favorite_verses: {
         Row: {
           comment: string | null
