@@ -22,7 +22,7 @@ interface Props {
 async function fetchVerseText(ref: string): Promise<string> {
   // Try bible-api.com (Portuguese ARA)
   try {
-    const r = await fetch(`https://bible-api.com/${encodeURIComponent(ref)}?translation=almeida`);
+    const r = await fetch(`https://bible-api.com/${encodeURIComponent(sanitizeBibleRef(ref))}?translation=almeida`);
     if (r.ok) {
       const d = await r.json();
       if (d.text) return d.text.trim();
