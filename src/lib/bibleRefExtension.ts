@@ -45,7 +45,7 @@ async function fetchVerseText(normalized: string): Promise<string | null> {
     return pendingFetches.get(normalized)!;
   }
 
-  const apiRef = toApiRef(normalized);
+  const apiRef = sanitizeBibleRef(toApiRef(normalized));
   const promise = (async () => {
     // 1. Try bible-api.com with Portuguese translations
     try {
