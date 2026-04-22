@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { ArrowUp, BookOpen, Flame, PenLine, Brain, Sparkles } from "lucide-react";
+import { ArrowUp, BookOpen, Flame, PenLine, Brain, Sparkles, Radio } from "lucide-react";
 import { haptic } from "@/hooks/useHaptic";
 import { toast } from "@/hooks/use-toast";
 import { routeIntent, LOADING_MESSAGES, type FocusIntent } from "@/lib/focusIntent";
@@ -15,6 +15,7 @@ const QUICK_ACTIONS: { id: string; label: string; icon: any; hint: string; cmd: 
   { id: "leitura", label: "Leitura", icon: BookOpen, hint: "Plano bíblico", cmd: "leitura de hoje" },
   { id: "devocional", label: "Devocional", icon: Flame, hint: "Meditação", cmd: "devocional do dia" },
   { id: "estudo", label: "Estudo", icon: Brain, hint: "PDF · guia · mapa", cmd: "meus estudos" },
+  { id: "transcrever", label: "Transcrever", icon: Radio, hint: "Ouvir e escrever", cmd: "transcrição ao vivo" },
   { id: "caderno", label: "Caderno", icon: PenLine, hint: "Notas", cmd: "", tool: "notebook" },
   { id: "cerebro", label: "Cérebro", icon: Sparkles, hint: "Capturar ideias", cmd: "", brain: true },
 ];
@@ -350,7 +351,7 @@ export default function FocusCommandChat({ userCodeId, weeks, devotionals }: Pro
 
   const placeholder = captureMode
     ? "O que está na sua mente?"
-    : "O que quer fazer? Ex: 'leitura', 'exegese de João 1', 'capturar: ...'";
+    : "O que quer fazer? Ex: 'leitura', 'transcrever', 'exegese de João 1'";
 
   return (
     <div className="h-full w-full flex flex-col" style={{ background: PALETTE.bg, color: PALETTE.text }}>
