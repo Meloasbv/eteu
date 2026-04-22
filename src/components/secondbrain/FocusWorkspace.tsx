@@ -93,6 +93,10 @@ export default function FocusWorkspace({ open, onClose, tab, setTab, userCodeId,
   const [showYtInput, setShowYtInput] = useState(false);
   const [ytInput, setYtInput] = useState("");
 
+  // UX: collapse top chrome (Pomodoro/music shrink to chip) + Zen (full immersive)
+  const [chromeCollapsed, setChromeCollapsed] = useState(false);
+  const [zenMode, setZenMode] = useState(false);
+
   const reduceMotion = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
   // Restore today's focus minutes
