@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { getCachedVerse, setCachedVerse } from "@/lib/bibleRefDetection";
+import { getCachedVerse, setCachedVerse, sanitizeBibleRef } from "@/lib/bibleRefDetection";
 
 type Tab = "verse" | "context" | "exegesis" | "connections";
 
