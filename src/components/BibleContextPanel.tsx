@@ -86,7 +86,7 @@ export default function BibleContextPanel({ open, reference, onClose, onInsertVe
 
     setVerseLoading(true);
     try {
-      const apiRef = toApiRef(reference);
+      const apiRef = sanitizeBibleRef(toApiRef(reference));
       const res = await fetch(`https://bible-api.com/${encodeURIComponent(apiRef)}?translation=almeida`);
       if (res.ok) {
         const data = await res.json();
