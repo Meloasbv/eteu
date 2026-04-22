@@ -159,6 +159,21 @@ export function detectBibleReferences(text: string): BibleRef[] {
 const VERSE_CACHE_KEY = "bible-verse-cache";
 const VERSE_CACHE_TTL = 30 * 24 * 60 * 60 * 1000; // 30 days
 
+/**
+ * Sanitize a Bible reference before sending to bible-api.com.
+ * The API treats `;` as a chapter separator and `,` as a verse separator,
+ * which causes a single ref like "João 3:16;" to fetch extra verses.
+ * We strip semicolons and trailing punctuation, and normalize whitespace.
+ */
+export function sanitizeBibleRef(ref: string): string {
+  if (!ref) return ref;
+  return ref
+    .replace(/;/g, " ")           // remove range/chapter separators
+    .replace(/[.,;:\s]+$/g, "")   // trim trailing punctuation
+    .replace(/\s+/g, " ")          // collapse whitespace
+    .trim();
+}
+
 interface CachedVerse {
   text: string;
   timestamp: number;
