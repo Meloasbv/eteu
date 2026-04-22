@@ -20,16 +20,16 @@ const QUICK_ACTIONS: { id: string; label: string; icon: any; hint: string; cmd: 
 ];
 
 const PALETTE = {
-  bg: "#0B0F14",
-  surface: "#11161D",
-  surfaceLight: "#1A2129",
-  border: "#1F2730",
-  borderSoft: "#161C24",
-  primary: "#00FF94",
-  primarySoft: "#1DB954",
-  text: "#E6EDF3",
-  textDim: "#7A8A99",
-  textFaint: "#4A5868",
+  bg: "#0a0805",
+  surface: "#13100b",
+  surfaceLight: "#1a1610",
+  border: "#2a2218",
+  borderSoft: "#1f1a13",
+  primary: "#d4a94a",
+  primarySoft: "#b8902f",
+  text: "#ede4d0",
+  textDim: "#8a7e66",
+  textFaint: "#574d3d",
 };
 
 interface DevDay {

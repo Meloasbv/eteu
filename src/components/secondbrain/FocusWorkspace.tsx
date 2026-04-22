@@ -19,16 +19,16 @@ const NotebookList = lazy(() => import("@/components/study/NotebookList"));
 // WEEKS data needed by FocusCommandChat to compute today's reading
 const WEEKS_FALLBACK: any[] = [];
 
-// Solid fixed palette — no cycling colors
+// Devotional black/gold palette
 const PALETTE = {
-  bg: "#0B0F14",
-  surface: "#11161D",
-  surfaceLight: "#1A2129",
-  border: "#1F2730",
-  primary: "#00FF94",
-  primarySoft: "#1DB954",
-  text: "#E6EDF3",
-  textDim: "#7A8A99",
+  bg: "#0a0805",
+  surface: "#13100b",
+  surfaceLight: "#1a1610",
+  border: "#2a2218",
+  primary: "#d4a94a",
+  primarySoft: "#b8902f",
+  text: "#ede4d0",
+  textDim: "#8a7e66",
 };
 
 export type FocusTab = "leitura" | "devocional" | "anotacoes" | "cerebro";
