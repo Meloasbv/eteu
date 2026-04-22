@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { BookOpen, Loader2, PenLine, Search } from "lucide-react";
 import { ArtifactShell, ArtifactAction } from "./ArtifactShell";
 import { FOCUS_PALETTE as P } from "./types";
+import { sanitizeBibleRef } from "@/lib/bibleRefDetection";
 import ListenButton from "./ListenButton";
 
 interface Props {
