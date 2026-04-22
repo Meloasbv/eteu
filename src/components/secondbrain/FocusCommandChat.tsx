@@ -359,7 +359,7 @@ export default function FocusCommandChat({ userCodeId, weeks, devotionals }: Pro
         <div className="mx-auto w-full max-w-[760px] px-4 sm:px-8 py-8 pb-6">
           {/* Quick actions only when there's just the welcome msg */}
           {messages.length <= 1 && (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-6">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 mb-6">
               {QUICK_ACTIONS.map((qa) => {
                 const Icon = qa.icon;
                 return (
