@@ -5,6 +5,7 @@ import { FOCUS_PALETTE as P } from "./types";
 import { haptic } from "@/hooks/useHaptic";
 import { useFocusTTS, focusTTS } from "@/hooks/useFocusTTS";
 import { computeReadingForDate } from "@/lib/readingPlan";
+import { sanitizeBibleRef } from "@/lib/bibleRefDetection";
 
 const READING_KEY = "bible-plan-progress";
 
