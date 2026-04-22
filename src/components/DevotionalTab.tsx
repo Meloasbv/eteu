@@ -167,7 +167,8 @@ export default function DevotionalTab({ devotionals, aprilCalendar, aprilThemes,
   const fetchVerse = useCallback(async (ref: string, versionId: string): Promise<string | null> => {
     const apiKey = BIBLE_VERSIONS.find(v => v.id === versionId)?.apiKey || "almeida";
     try {
-      const r = await fetch(`https://bible-api.com/${encodeURIComponent(ref)}?translation=${apiKey}`);
+      const cleanRef = ref.replace(/;/g, " ").replace(/[.,;:\s]+$/g, "").replace(/\s+/g, " ").trim();
+      const r = await fetch(`https://bible-api.com/${encodeURIComponent(cleanRef)}?translation=${apiKey}`);
       if (r.ok) {
         const data = await r.json();
         return data?.text?.trim() || null;
