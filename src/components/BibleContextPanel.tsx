@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { getCachedVerse, setCachedVerse } from "@/lib/bibleRefDetection";
+import { getCachedVerse, setCachedVerse, sanitizeBibleRef } from "@/lib/bibleRefDetection";
 
 type Tab = "verse" | "context" | "exegesis" | "connections";
 
@@ -86,7 +86,7 @@ export default function BibleContextPanel({ open, reference, onClose, onInsertVe
 
     setVerseLoading(true);
     try {
-      const apiRef = toApiRef(reference);
+      const apiRef = sanitizeBibleRef(toApiRef(reference));
       const res = await fetch(`https://bible-api.com/${encodeURIComponent(apiRef)}?translation=almeida`);
       if (res.ok) {
         const data = await res.json();

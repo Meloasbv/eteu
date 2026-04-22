@@ -93,7 +93,8 @@ export default function VerseReaderArtifact({ data, sendAsUser }: Props) {
     };
 
     const tryBibleApi = async (): Promise<ParsedVerse[]> => {
-      const ref = encodeURIComponent(refs[0]);
+      const cleanRef = refs[0].replace(/;/g, " ").replace(/[.,;:\s]+$/g, "").replace(/\s+/g, " ").trim();
+      const ref = encodeURIComponent(cleanRef);
       const r = await fetch(`https://bible-api.com/${ref}?translation=almeida`);
       const j = await r.json();
       const list: ParsedVerse[] = Array.isArray(j?.verses)

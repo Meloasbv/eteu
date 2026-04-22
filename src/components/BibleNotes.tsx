@@ -249,7 +249,7 @@ function expandAbbrev(ref: string): string {
 }
 
 async function fetchVerse(ref: string, version = "almeida"): Promise<{ text: string; reference: string } | null> {
-  const expanded = expandAbbrev(ref);
+  const expanded = expandAbbrev(ref).replace(/;/g, " ").replace(/[.,;:\s]+$/g, "").replace(/\s+/g, " ").trim();
   try {
     const url = `https://bible-api.com/${encodeURIComponent(expanded)}?translation=${version}`;
     const res = await fetch(url);

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { BookOpen, Loader2, PenLine, Search } from "lucide-react";
 import { ArtifactShell, ArtifactAction } from "./ArtifactShell";
 import { FOCUS_PALETTE as P } from "./types";
+import { sanitizeBibleRef } from "@/lib/bibleRefDetection";
 import ListenButton from "./ListenButton";
 
 interface Props {
@@ -18,7 +19,7 @@ export default function VerseArtifact({ data, sendAsUser }: Props) {
   useEffect(() => {
     if (data.text) return;
     let alive = true;
-    const ref = encodeURIComponent(data.reference);
+    const ref = encodeURIComponent(sanitizeBibleRef(data.reference));
     fetch(`https://bible-api.com/${ref}?translation=almeida`)
       .then((r) => r.json())
       .then((j) => {

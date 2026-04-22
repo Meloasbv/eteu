@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { BookOpen, Microscope } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { sanitizeBibleRef } from "@/lib/bibleRefDetection";
 import { ArtifactShell, ArtifactAction } from "./ArtifactShell";
 import { FOCUS_PALETTE as P } from "./types";
 import ListenButton from "./ListenButton";
@@ -21,7 +22,7 @@ interface Props {
 async function fetchVerseText(ref: string): Promise<string> {
   // Try bible-api.com (Portuguese ARA)
   try {
-    const r = await fetch(`https://bible-api.com/${encodeURIComponent(ref)}?translation=almeida`);
+    const r = await fetch(`https://bible-api.com/${encodeURIComponent(sanitizeBibleRef(ref))}?translation=almeida`);
     if (r.ok) {
       const d = await r.json();
       if (d.text) return d.text.trim();

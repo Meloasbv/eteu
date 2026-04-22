@@ -5,6 +5,7 @@ import { FOCUS_PALETTE as P } from "./types";
 import { haptic } from "@/hooks/useHaptic";
 import { useFocusTTS, focusTTS } from "@/hooks/useFocusTTS";
 import { computeReadingForDate } from "@/lib/readingPlan";
+import { sanitizeBibleRef } from "@/lib/bibleRefDetection";
 
 const READING_KEY = "bible-plan-progress";
 
@@ -45,7 +46,7 @@ function readingKey(weekIdx: number, dayIdx: number, ridx: number) {
 
 async function fetchVerseText(ref: string): Promise<string> {
   try {
-    const r = await fetch(`https://bible-api.com/${encodeURIComponent(ref)}?translation=almeida`);
+    const r = await fetch(`https://bible-api.com/${encodeURIComponent(sanitizeBibleRef(ref))}?translation=almeida`);
     if (r.ok) {
       const d = await r.json();
       if (d?.text) return String(d.text).trim();

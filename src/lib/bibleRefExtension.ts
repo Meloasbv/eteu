@@ -1,7 +1,7 @@
 import { Extension } from "@tiptap/react";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
-import { detectBibleReferences, getCachedVerse, setCachedVerse } from "@/lib/bibleRefDetection";
+import { detectBibleReferences, getCachedVerse, setCachedVerse, sanitizeBibleRef } from "@/lib/bibleRefDetection";
 
 const ABBREV_MAP: Record<string, string> = {
   "gênesis": "Genesis", "êxodo": "Exodus", "levítico": "Leviticus", "números": "Numbers",
@@ -45,7 +45,7 @@ async function fetchVerseText(normalized: string): Promise<string | null> {
     return pendingFetches.get(normalized)!;
   }
 
-  const apiRef = toApiRef(normalized);
+  const apiRef = sanitizeBibleRef(toApiRef(normalized));
   const promise = (async () => {
     // 1. Try bible-api.com with Portuguese translations
     try {

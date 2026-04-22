@@ -29,8 +29,12 @@ export default function VersePopover({
       setText(null);
       try {
         // Normalize reference for bible-api.com
+        // Strip semicolons (the API treats `;` as a chapter separator and pulls extra verses)
         const normalized = reference
-          .replace(/[:.]/g, ":")
+          .replace(/[.]/g, ":")
+          .replace(/;/g, " ")
+          .replace(/[.,;:\s]+$/g, "")
+          .replace(/\s+/g, " ")
           .trim();
         const res = await fetch(
           `https://bible-api.com/${encodeURIComponent(normalized)}?translation=almeida`
