@@ -46,7 +46,7 @@ function readingKey(weekIdx: number, dayIdx: number, ridx: number) {
 
 async function fetchVerseText(ref: string): Promise<string> {
   try {
-    const r = await fetch(`https://bible-api.com/${encodeURIComponent(ref)}?translation=almeida`);
+    const r = await fetch(`https://bible-api.com/${encodeURIComponent(sanitizeBibleRef(ref))}?translation=almeida`);
     if (r.ok) {
       const d = await r.json();
       if (d?.text) return String(d.text).trim();
