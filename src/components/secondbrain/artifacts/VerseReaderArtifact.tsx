@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { createPortal } from "react-dom";
 import {
   BookOpen,
   ChevronLeft,
@@ -8,6 +9,8 @@ import {
   Play,
   PenLine,
   Search,
+  Maximize2,
+  X,
 } from "lucide-react";
 import { ArtifactShell, ArtifactAction } from "./ArtifactShell";
 import { FOCUS_PALETTE as P } from "./types";
@@ -30,7 +33,6 @@ function parseBibleText(raw: string): ParsedVerse[] {
   for (const line of lines) {
     const trimmed = line.trim();
     if (!trimmed || trimmed === "---") continue;
-    // Skip headers like "**Gênesis 1**" or "## Gênesis 1"
     const headerMatch = trimmed.match(/^(?:\*\*|#{1,3}\s*)(.+?)(?:\*\*|)$/);
     if (headerMatch && !/^\d/.test(headerMatch[1].trim())) continue;
     const verseMatch = trimmed.match(/^(?:\*\*)?(\d+(?::\d+)?)\s*(?:\*\*)?\s*[-–—.]?\s*(.+)/);
@@ -46,17 +48,12 @@ function parseBibleText(raw: string): ParsedVerse[] {
   return verses;
 }
 
-/**
- * Verse-by-verse reader inside the Focus chat.
- * Loads the chapter (or passage) from bible-api.com and lets the user
- * read sequentially with arrows, swipe and per-verse TTS — same pattern
- * as the old ReadingFocusView, but compact.
- */
 export default function VerseReaderArtifact({ data, sendAsUser }: Props) {
   const [verses, setVerses] = useState<ParsedVerse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [idx, setIdx] = useState(0);
+  const [fullscreen, setFullscreen] = useState(false);
   const tts = useFocusTTS();
 
   const ttsId = useMemo(
@@ -71,8 +68,6 @@ export default function VerseReaderArtifact({ data, sendAsUser }: Props) {
   const touchStartY = useRef(0);
   const wasPlayingRef = useRef(false);
 
-  // Fetch chapter text using the SAME backend as ReadingFocusView (fetch-reading-text)
-  // with bible-api.com as fallback.
   useEffect(() => {
     let alive = true;
     setLoading(true);
@@ -149,17 +144,14 @@ export default function VerseReaderArtifact({ data, sendAsUser }: Props) {
       haptic("light");
       const wasPlaying =
         focusTTS.getState().playingId?.startsWith(`versereader-${data.reference}`) ?? false;
-      // Always stop current utterance before switching
       if (wasPlaying) {
-        wasPlayingRef.current = false; // prevent auto-advance handler from firing
+        wasPlayingRef.current = false;
         focusTTS.stop();
       }
       setIdx(i);
-      // If user was listening, continue reading the new verse automatically
       if (wasPlaying) {
         const v = verses[i];
         if (v) {
-          // Defer to next tick so state.playingId reset propagates
           setTimeout(() => {
             focusTTS.speak(
               `versereader-${data.reference}-${i}`,
@@ -186,20 +178,11 @@ export default function VerseReaderArtifact({ data, sendAsUser }: Props) {
     });
   };
 
-  // Auto-advance when TTS finishes the current verse
-  useEffect(() => {
-    if (!isThis) return;
-    // when totalSentences becomes 0 and progress hits 1, hook resets playingId.
-    // The effect below catches the moment: if playingId became null AND we were just playing this verse, advance.
-  }, [isThis]);
-
-  // Listen for end-of-utterance: when our id stops being active, advance to next
   useEffect(() => {
     if (isPlaying) {
       wasPlayingRef.current = true;
       return;
     }
-    // Just finished
     if (wasPlayingRef.current && tts.playingId === null && idx < verses.length - 1) {
       wasPlayingRef.current = false;
       const next = idx + 1;
@@ -218,6 +201,32 @@ export default function VerseReaderArtifact({ data, sendAsUser }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPlaying, tts.playingId]);
 
+  // Keyboard nav in fullscreen
+  useEffect(() => {
+    if (!fullscreen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setFullscreen(false);
+      else if (e.key === "ArrowRight" || e.key === " ") {
+        e.preventDefault();
+        goTo(idx + 1);
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        goTo(idx - 1);
+      } else if (e.key.toLowerCase() === "p") {
+        togglePlay();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    // Lock body scroll
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fullscreen, idx, verses]);
+
   const onTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
     touchStartY.current = e.touches[0].clientY;
@@ -230,163 +239,388 @@ export default function VerseReaderArtifact({ data, sendAsUser }: Props) {
     else goTo(idx - 1);
   };
 
+  // ============== FULLSCREEN OVERLAY ==============
+  const fullscreenView =
+    fullscreen && current
+      ? createPortal(
+          <div
+            className="fixed inset-0 z-[200] flex flex-col animate-fade-in"
+            style={{
+              background: `radial-gradient(ellipse at center, ${P.surface} 0%, ${P.bg} 70%)`,
+            }}
+            onTouchStart={onTouchStart}
+            onTouchEnd={onTouchEnd}
+          >
+            {/* Top bar */}
+            <div
+              className="flex items-center justify-between px-6 py-5 shrink-0"
+              style={{ borderBottom: `1px solid ${P.borderSoft}` }}
+            >
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-8 h-8 rounded-lg flex items-center justify-center"
+                  style={{
+                    background: `${P.primary}14`,
+                    color: P.primary,
+                    border: `1px solid ${P.primary}33`,
+                  }}
+                >
+                  <BookOpen size={15} />
+                </div>
+                <div>
+                  <p
+                    className="text-[11px] font-bold uppercase tracking-[2px] leading-none mb-1"
+                    style={{ color: P.primary }}
+                  >
+                    {data.reference}
+                  </p>
+                  <p
+                    className="text-[10.5px] uppercase tracking-[1.6px] font-semibold"
+                    style={{ color: P.textFaint }}
+                  >
+                    Versículo {idx + 1} de {total}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => {
+                  haptic("light");
+                  setFullscreen(false);
+                }}
+                aria-label="Fechar leitura"
+                className="w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-110 active:scale-95"
+                style={{
+                  background: P.surfaceLight,
+                  border: `1px solid ${P.border}`,
+                  color: P.text,
+                }}
+              >
+                <X size={17} />
+              </button>
+            </div>
+
+            {/* Progress bar */}
+            <div
+              className="h-[2px] overflow-hidden shrink-0"
+              style={{ background: `${P.primary}1a` }}
+            >
+              <div
+                className="h-full transition-all duration-500"
+                style={{ width: `${progress}%`, background: P.primary }}
+              />
+            </div>
+
+            {/* Reading area */}
+            <div className="flex-1 flex flex-col items-center justify-center px-6 sm:px-12 overflow-y-auto py-10">
+              <div className="w-full max-w-3xl">
+                <span
+                  className="inline-block text-[11px] font-bold uppercase tracking-[2.4px] px-3 py-1.5 rounded-md mb-8"
+                  style={{ background: `${P.primary}1f`, color: P.primary }}
+                >
+                  Versículo {current.number}
+                </span>
+
+                <p
+                  key={idx}
+                  className="animate-fade-in"
+                  style={{
+                    color: P.text,
+                    fontFamily: "'Crimson Text', Georgia, serif",
+                    fontSize: "clamp(22px, 3.4vw, 36px)",
+                    lineHeight: 1.7,
+                    letterSpacing: "0.005em",
+                    fontWeight: 400,
+                  }}
+                >
+                  {current.text}
+                </p>
+              </div>
+            </div>
+
+            {/* Bottom controls */}
+            <div
+              className="shrink-0 px-6 py-6 flex flex-col items-center gap-5"
+              style={{ borderTop: `1px solid ${P.borderSoft}` }}
+            >
+              {/* dots */}
+              {total > 1 && total <= 60 && (
+                <div className="flex justify-center gap-1.5 flex-wrap max-w-2xl">
+                  {verses.map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => goTo(i)}
+                      aria-label={`Ir para versículo ${i + 1}`}
+                      className="rounded-full transition-all"
+                      style={{
+                        width: i === idx ? 18 : 6,
+                        height: 6,
+                        background:
+                          i === idx
+                            ? P.primary
+                            : i < idx
+                            ? `${P.primary}55`
+                            : P.border,
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
+
+              <div className="flex items-center gap-5">
+                <button
+                  onClick={() => goTo(idx - 1)}
+                  disabled={idx === 0}
+                  aria-label="Versículo anterior"
+                  className="w-12 h-12 rounded-full flex items-center justify-center transition-all hover:scale-110 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed"
+                  style={{
+                    background: P.surfaceLight,
+                    border: `1px solid ${P.border}`,
+                    color: P.text,
+                  }}
+                >
+                  <ChevronLeft size={20} />
+                </button>
+
+                <button
+                  onClick={togglePlay}
+                  aria-label={isPlaying ? "Pausar" : "Ouvir versículo"}
+                  className="w-16 h-16 rounded-full flex items-center justify-center transition-all hover:scale-110 active:scale-95"
+                  style={{
+                    background: P.primary,
+                    color: P.bg,
+                    boxShadow: `0 0 32px ${P.primary}66, 0 0 64px ${P.primary}22`,
+                  }}
+                >
+                  {isPlaying ? (
+                    <Pause size={22} strokeWidth={2.6} />
+                  ) : (
+                    <Play size={22} strokeWidth={2.6} className="ml-0.5" />
+                  )}
+                </button>
+
+                <button
+                  onClick={() => goTo(idx + 1)}
+                  disabled={idx >= total - 1}
+                  aria-label="Próximo versículo"
+                  className="w-12 h-12 rounded-full flex items-center justify-center transition-all hover:scale-110 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed"
+                  style={{
+                    background: P.surfaceLight,
+                    border: `1px solid ${P.border}`,
+                    color: P.text,
+                  }}
+                >
+                  <ChevronRight size={20} />
+                </button>
+              </div>
+
+              <div className="flex flex-wrap gap-2 justify-center">
+                <ArtifactAction
+                  onClick={() =>
+                    sendAsUser(`exegese de ${data.reference}:${current.number}`)
+                  }
+                  variant="primary"
+                >
+                  <Search size={11} /> Exegese
+                </ArtifactAction>
+                <ArtifactAction
+                  onClick={() =>
+                    sendAsUser(
+                      `anotar: "${current.text}" — ${data.reference}:${current.number}`,
+                    )
+                  }
+                >
+                  <PenLine size={11} /> Anotar
+                </ArtifactAction>
+              </div>
+
+              <p
+                className="text-[10px] uppercase tracking-[1.6px] hidden sm:block"
+                style={{ color: P.textFaint }}
+              >
+                ← → navegar · espaço próximo · P ouvir · Esc sair
+              </p>
+            </div>
+          </div>,
+          document.body,
+        )
+      : null;
+
   return (
-    <ArtifactShell
-      icon={<BookOpen size={13} />}
-      label={data.reference}
-      badge={total ? `${idx + 1}/${total}` : "Almeida"}
-    >
-      {/* Progress bar */}
-      <div
-        className="h-[2px] rounded-full mb-4 overflow-hidden"
-        style={{ background: `${P.primary}1a` }}
+    <>
+      <ArtifactShell
+        icon={<BookOpen size={13} />}
+        label={data.reference}
+        badge={total ? `${idx + 1}/${total}` : "Almeida"}
       >
         <div
-          className="h-full transition-all duration-300"
-          style={{ width: `${progress}%`, background: P.primary }}
-        />
-      </div>
-
-      {loading ? (
-        <div
-          className="flex items-center gap-2 py-6 justify-center text-[13px]"
-          style={{ color: P.textDim }}
+          className="h-[2px] rounded-full mb-4 overflow-hidden"
+          style={{ background: `${P.primary}1a` }}
         >
-          <Loader2 size={14} className="animate-spin" /> Carregando texto...
+          <div
+            className="h-full transition-all duration-300"
+            style={{ width: `${progress}%`, background: P.primary }}
+          />
         </div>
-      ) : error ? (
-        <p className="text-[13px] py-3" style={{ color: "#ff7a7a" }}>
-          {error}
-        </p>
-      ) : current ? (
-        <div
-          className="select-none"
-          onTouchStart={onTouchStart}
-          onTouchEnd={onTouchEnd}
-        >
-          <div className="flex items-center justify-between mb-3">
-            <span
-              className="text-[10.5px] font-bold uppercase tracking-[1.6px] px-2 py-1 rounded-md"
-              style={{ background: `${P.primary}1f`, color: P.primary }}
-            >
-              v. {current.number}
-            </span>
-            <span
-              className="text-[10.5px] font-bold uppercase tracking-[1.6px]"
-              style={{ color: P.textFaint }}
-            >
-              {idx + 1} de {total}
-            </span>
-          </div>
 
-          <p
-            key={idx}
-            className="text-[16.5px] leading-[1.85] mb-5 animate-fade-in"
-            style={{
-              color: P.text,
-              fontFamily: "'Crimson Text', Georgia, serif",
-            }}
+        {loading ? (
+          <div
+            className="flex items-center gap-2 py-6 justify-center text-[13px]"
+            style={{ color: P.textDim }}
           >
-            {current.text}
+            <Loader2 size={14} className="animate-spin" /> Carregando texto...
+          </div>
+        ) : error ? (
+          <p className="text-[13px] py-3" style={{ color: "#ff7a7a" }}>
+            {error}
           </p>
-
-          {/* Verse navigation */}
-          <div className="flex items-center justify-center gap-3 mb-3">
-            <button
-              onClick={() => goTo(idx - 1)}
-              disabled={idx === 0}
-              aria-label="Versículo anterior"
-              className="w-9 h-9 rounded-full flex items-center justify-center transition-all hover:scale-110 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed"
-              style={{
-                background: `${P.surfaceLight}`,
-                border: `1px solid ${P.border}`,
-                color: P.text,
-              }}
-            >
-              <ChevronLeft size={16} />
-            </button>
-
-            <button
-              onClick={togglePlay}
-              aria-label={isPlaying ? "Pausar" : "Ouvir versículo"}
-              className="w-11 h-11 rounded-full flex items-center justify-center transition-all hover:scale-110 active:scale-95"
-              style={{
-                background: P.primary,
-                color: P.bg,
-                boxShadow: `0 0 22px ${P.primary}55`,
-              }}
-            >
-              {isPlaying ? (
-                <Pause size={17} strokeWidth={2.6} />
-              ) : (
-                <Play size={17} strokeWidth={2.6} className="ml-0.5" />
-              )}
-            </button>
-
-            <button
-              onClick={() => goTo(idx + 1)}
-              disabled={idx >= total - 1}
-              aria-label="Próximo versículo"
-              className="w-9 h-9 rounded-full flex items-center justify-center transition-all hover:scale-110 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed"
-              style={{
-                background: `${P.surfaceLight}`,
-                border: `1px solid ${P.border}`,
-                color: P.text,
-              }}
-            >
-              <ChevronRight size={16} />
-            </button>
-          </div>
-
-          {/* Verse dots (max 30 for compactness) */}
-          {total > 1 && total <= 30 && (
-            <div className="flex justify-center gap-1 flex-wrap mb-4">
-              {verses.map((_, i) => (
+        ) : current ? (
+          <div
+            className="select-none"
+            onTouchStart={onTouchStart}
+            onTouchEnd={onTouchEnd}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <span
+                className="text-[10.5px] font-bold uppercase tracking-[1.6px] px-2 py-1 rounded-md"
+                style={{ background: `${P.primary}1f`, color: P.primary }}
+              >
+                v. {current.number}
+              </span>
+              <div className="flex items-center gap-2">
+                <span
+                  className="text-[10.5px] font-bold uppercase tracking-[1.6px]"
+                  style={{ color: P.textFaint }}
+                >
+                  {idx + 1} de {total}
+                </span>
                 <button
-                  key={i}
-                  onClick={() => goTo(i)}
-                  aria-label={`Ir para versículo ${i + 1}`}
-                  className="w-1.5 h-1.5 rounded-full transition-all"
-                  style={{
-                    background:
-                      i === idx
-                        ? P.primary
-                        : i < idx
-                        ? `${P.primary}55`
-                        : P.border,
-                    transform: i === idx ? "scale(1.6)" : "scale(1)",
+                  onClick={() => {
+                    haptic("light");
+                    setFullscreen(true);
                   }}
-                />
-              ))}
+                  aria-label="Tela cheia"
+                  title="Tela cheia"
+                  className="w-7 h-7 rounded-md flex items-center justify-center transition-all hover:scale-110 active:scale-95"
+                  style={{
+                    background: `${P.primary}14`,
+                    border: `1px solid ${P.primary}33`,
+                    color: P.primary,
+                  }}
+                >
+                  <Maximize2 size={12} strokeWidth={2.4} />
+                </button>
+              </div>
             </div>
-          )}
 
-          {/* Quick actions */}
-          <div className="flex flex-wrap gap-2">
-            <ArtifactAction
-              onClick={() =>
-                sendAsUser(`exegese de ${data.reference}:${current.number}`)
-              }
-              variant="primary"
+            <p
+              key={idx}
+              className="text-[16.5px] leading-[1.85] mb-5 animate-fade-in"
+              style={{
+                color: P.text,
+                fontFamily: "'Crimson Text', Georgia, serif",
+              }}
             >
-              <Search size={11} /> Exegese
-            </ArtifactAction>
-            <ArtifactAction
-              onClick={() =>
-                sendAsUser(
-                  `anotar: "${current.text}" — ${data.reference}:${current.number}`,
-                )
-              }
-            >
-              <PenLine size={11} /> Anotar
-            </ArtifactAction>
+              {current.text}
+            </p>
+
+            <div className="flex items-center justify-center gap-3 mb-3">
+              <button
+                onClick={() => goTo(idx - 1)}
+                disabled={idx === 0}
+                aria-label="Versículo anterior"
+                className="w-9 h-9 rounded-full flex items-center justify-center transition-all hover:scale-110 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed"
+                style={{
+                  background: `${P.surfaceLight}`,
+                  border: `1px solid ${P.border}`,
+                  color: P.text,
+                }}
+              >
+                <ChevronLeft size={16} />
+              </button>
+
+              <button
+                onClick={togglePlay}
+                aria-label={isPlaying ? "Pausar" : "Ouvir versículo"}
+                className="w-11 h-11 rounded-full flex items-center justify-center transition-all hover:scale-110 active:scale-95"
+                style={{
+                  background: P.primary,
+                  color: P.bg,
+                  boxShadow: `0 0 22px ${P.primary}55`,
+                }}
+              >
+                {isPlaying ? (
+                  <Pause size={17} strokeWidth={2.6} />
+                ) : (
+                  <Play size={17} strokeWidth={2.6} className="ml-0.5" />
+                )}
+              </button>
+
+              <button
+                onClick={() => goTo(idx + 1)}
+                disabled={idx >= total - 1}
+                aria-label="Próximo versículo"
+                className="w-9 h-9 rounded-full flex items-center justify-center transition-all hover:scale-110 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed"
+                style={{
+                  background: `${P.surfaceLight}`,
+                  border: `1px solid ${P.border}`,
+                  color: P.text,
+                }}
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+
+            {total > 1 && total <= 30 && (
+              <div className="flex justify-center gap-1 flex-wrap mb-4">
+                {verses.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => goTo(i)}
+                    aria-label={`Ir para versículo ${i + 1}`}
+                    className="w-1.5 h-1.5 rounded-full transition-all"
+                    style={{
+                      background:
+                        i === idx
+                          ? P.primary
+                          : i < idx
+                          ? `${P.primary}55`
+                          : P.border,
+                      transform: i === idx ? "scale(1.6)" : "scale(1)",
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+
+            <div className="flex flex-wrap gap-2">
+              <ArtifactAction
+                onClick={() =>
+                  sendAsUser(`exegese de ${data.reference}:${current.number}`)
+                }
+                variant="primary"
+              >
+                <Search size={11} /> Exegese
+              </ArtifactAction>
+              <ArtifactAction
+                onClick={() =>
+                  sendAsUser(
+                    `anotar: "${current.text}" — ${data.reference}:${current.number}`,
+                  )
+                }
+              >
+                <PenLine size={11} /> Anotar
+              </ArtifactAction>
+            </div>
           </div>
-        </div>
-      ) : (
-        <p className="text-[13px]" style={{ color: P.textDim }}>
-          Nenhum versículo encontrado.
-        </p>
-      )}
-    </ArtifactShell>
+        ) : (
+          <p className="text-[13px]" style={{ color: P.textDim }}>
+            Nenhum versículo encontrado.
+          </p>
+        )}
+      </ArtifactShell>
+
+      {fullscreenView}
+    </>
   );
 }
