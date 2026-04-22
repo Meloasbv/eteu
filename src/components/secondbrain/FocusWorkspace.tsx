@@ -286,7 +286,7 @@ export default function FocusWorkspace({ open, onClose, tab, setTab, userCodeId,
       <div className="relative z-10 flex h-full w-full">
         {/* ─── SIDEBAR (desktop fixed, mobile drawer) ─── */}
         <aside
-          className={`focus-sidebar h-full flex flex-col border-r shrink-0 transition-transform`}
+          className={`focus-sidebar h-full flex flex-col border-r shrink-0 transition-transform ${zenMode ? "hidden" : ""}`}
           style={{
             width: 220,
             background: PALETTE.surface,
