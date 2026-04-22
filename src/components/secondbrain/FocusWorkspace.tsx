@@ -221,13 +221,19 @@ export default function FocusWorkspace({ open, onClose, tab, setTab, userCodeId,
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
+        if (zenMode) { setZenMode(false); return; }
         if (activeTool) { setActiveTool(null); return; }
         if (!document.fullscreenElement) onClose();
+      }
+      // Z key toggles Zen mode (immersive)
+      if ((e.key === "z" || e.key === "Z") && (e.metaKey || e.ctrlKey) && e.shiftKey) {
+        e.preventDefault();
+        setZenMode((z) => !z);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose, activeTool]);
+  }, [open, onClose, activeTool, zenMode]);
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
