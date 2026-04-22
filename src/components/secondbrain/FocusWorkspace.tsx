@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, ReactNode, lazy, Suspense } from "react";
 import {
   X, SkipForward, Pause, Play, Volume2, Youtube,
   BookOpen, Flame, PenLine, Brain, Timer, Maximize2, Minimize2,
-  Menu,
+  Menu, ChevronUp, ChevronDown, Eye,
 } from "lucide-react";
 import { haptic } from "@/hooks/useHaptic";
 import { toast } from "@/hooks/use-toast";
