@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { BookOpen, Microscope } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { sanitizeBibleRef } from "@/lib/bibleRefDetection";
 import { ArtifactShell, ArtifactAction } from "./ArtifactShell";
 import { FOCUS_PALETTE as P } from "./types";
 import ListenButton from "./ListenButton";
