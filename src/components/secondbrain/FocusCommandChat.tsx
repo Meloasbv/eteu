@@ -255,6 +255,17 @@ export default function FocusCommandChat({ userCodeId, weeks, devotionals }: Pro
             if (!assistantText) assistantText = result.response_text || "Controles do Pomodoro:";
             break;
           }
+          case "transcricao": {
+            finalArtifact = {
+              type: "transcription",
+              data: {
+                autoStart: result.params?.autoStart ?? true,
+                presentMode: result.params?.presentMode ?? false,
+              },
+            };
+            if (!assistantText) assistantText = "Transcrição ao vivo:";
+            break;
+          }
           case "saudacao": {
             finalArtifact = {
               type: "answer",
