@@ -86,17 +86,13 @@ export default function BibleContextPanel({ open, reference, onClose, onInsertVe
 
     setVerseLoading(true);
     try {
-      const apiRef = sanitizeBibleRef(toApiRef(reference));
-      const res = await fetch(`https://bible-api.com/${encodeURIComponent(apiRef)}?translation=almeida`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.text) {
-          const text = data.text.trim();
-          setVerseText(text);
-          setCachedVerse(reference, text);
-        } else {
-          setVerseText(null);
-        }
+      const { fetchBibleVerse } = await import("@/lib/bibleVerseFetcher");
+      const text = await fetchBibleVerse(reference);
+      if (text) {
+        setVerseText(text);
+        setCachedVerse(reference, text);
+      } else {
+        setVerseText(null);
       }
     } catch {
       setVerseText(null);

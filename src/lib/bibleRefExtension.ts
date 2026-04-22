@@ -47,7 +47,32 @@ async function fetchVerseText(normalized: string): Promise<string | null> {
 
   const apiRef = sanitizeBibleRef(toApiRef(normalized));
   const promise = (async () => {
-    // 1. Try bible-api.com with Portuguese translations
+    // 1. Try LOCAL Bible database first (Edge Function `bible-verse`)
+    try {
+      const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL;
+      const supabaseKey = (import.meta as any).env?.VITE_SUPABASE_PUBLISHABLE_KEY;
+      if (supabaseUrl && supabaseKey) {
+        const res = await fetch(`${supabaseUrl}/functions/v1/bible-verse`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${supabaseKey}`,
+            apikey: supabaseKey,
+          },
+          body: JSON.stringify({ reference: normalized }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.found && data?.text) {
+            const text = String(data.text).trim();
+            setCachedVerse(normalized, text);
+            return text;
+          }
+        }
+      }
+    } catch {}
+
+    // 2. Try bible-api.com with Portuguese translations (fallback)
     try {
       for (const translation of ["almeida", "arc", ""]) {
         const url = translation

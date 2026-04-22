@@ -2,15 +2,13 @@ import { useEffect, useState } from "react";
 import { BookOpen, Loader2, PenLine, Search } from "lucide-react";
 import { ArtifactShell, ArtifactAction } from "./ArtifactShell";
 import { FOCUS_PALETTE as P } from "./types";
-import { sanitizeBibleRef } from "@/lib/bibleRefDetection";
+import { fetchBibleVerse } from "@/lib/bibleVerseFetcher";
 import ListenButton from "./ListenButton";
 
 interface Props {
   data: { reference: string; text?: string };
   sendAsUser: (text: string) => void;
 }
-
-const ABD_TOKEN_URL = "https://www.abibliadigital.com.br/api/verses/almeida";
 
 export default function VerseArtifact({ data, sendAsUser }: Props) {
   const [text, setText] = useState<string | null>(data.text ?? null);
@@ -19,12 +17,10 @@ export default function VerseArtifact({ data, sendAsUser }: Props) {
   useEffect(() => {
     if (data.text) return;
     let alive = true;
-    const ref = encodeURIComponent(sanitizeBibleRef(data.reference));
-    fetch(`https://bible-api.com/${ref}?translation=almeida`)
-      .then((r) => r.json())
-      .then((j) => {
+    fetchBibleVerse(data.reference)
+      .then((t) => {
         if (!alive) return;
-        setText(j?.text?.trim() || "Versículo não encontrado.");
+        setText(t || "Versículo não encontrado.");
       })
       .catch(() => alive && setText("Não foi possível carregar o versículo."))
       .finally(() => alive && setLoading(false));

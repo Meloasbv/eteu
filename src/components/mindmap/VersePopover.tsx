@@ -28,23 +28,10 @@ export default function VersePopover({
       setError(false);
       setText(null);
       try {
-        // Normalize reference for bible-api.com
-        // Strip semicolons (the API treats `;` as a chapter separator and pulls extra verses)
-        const normalized = reference
-          .replace(/[.]/g, ":")
-          .replace(/;/g, " ")
-          .replace(/[.,;:\s]+$/g, "")
-          .replace(/\s+/g, " ")
-          .trim();
-        const res = await fetch(
-          `https://bible-api.com/${encodeURIComponent(normalized)}?translation=almeida`
-        );
-        if (res.ok) {
-          const data = await res.json();
-          setText(data.text?.trim() || null);
-        } else {
-          setError(true);
-        }
+        const { fetchBibleVerse } = await import("@/lib/bibleVerseFetcher");
+        const t = await fetchBibleVerse(reference);
+        if (t) setText(t);
+        else setError(true);
       } catch {
         setError(true);
       } finally {

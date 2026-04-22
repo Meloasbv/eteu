@@ -20,15 +20,8 @@ interface Props {
 }
 
 async function fetchVerseText(ref: string): Promise<string> {
-  // Try bible-api.com (Portuguese ARA)
-  try {
-    const r = await fetch(`https://bible-api.com/${encodeURIComponent(sanitizeBibleRef(ref))}?translation=almeida`);
-    if (r.ok) {
-      const d = await r.json();
-      if (d.text) return d.text.trim();
-    }
-  } catch {}
-  return "";
+  const { fetchBibleVerse } = await import("@/lib/bibleVerseFetcher");
+  return (await fetchBibleVerse(ref)) ?? "";
 }
 
 export default function ExegeseArtifact({ data, sendAsUser }: Props) {
