@@ -146,6 +146,13 @@ export interface SlideSummary {
   category?: string;
 }
 
+export interface SourceAudio {
+  url: string;            // public URL in storage bucket
+  label?: string;         // e.g. "Parte 1 (10 min)"
+  duration_seconds?: number;
+  mime_type?: string;
+}
+
 export interface AnalysisResult {
   main_theme: string;
   summary: string;
@@ -161,6 +168,7 @@ export interface AnalysisResult {
     author?: string | null;
   };
   quiz_questions?: QuizQuestion[];   // perguntas extraídas dos slides de quiz (se existir)
+  source_audios?: SourceAudio[];     // áudios originais (gravação ou upload) salvos em storage
 }
 
 // Category palette
