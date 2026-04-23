@@ -401,8 +401,8 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
             <Sparkles size={26} className="text-primary" />
           </div>
           <div>
-            <p className="font-display text-lg font-semibold text-foreground mb-1">Gerar com IA</p>
-            <p className="text-[13px] text-muted-foreground font-body leading-relaxed">Texto ou áudio → mapa visual</p>
+            <p className="font-display text-lg font-semibold text-foreground mb-1">Estudo Guiado IA</p>
+            <p className="text-[13px] text-muted-foreground font-body leading-relaxed">Áudio MP3, gravação ou texto → estudo</p>
           </div>
         </button>
 
