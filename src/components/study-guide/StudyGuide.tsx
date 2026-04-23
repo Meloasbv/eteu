@@ -404,6 +404,28 @@ export default function StudyGuide({
           )}
         </div>
 
+        {/* Source audios (when the study was generated from recordings/MP3) */}
+        {analysis.source_audios && analysis.source_audios.length > 0 && (
+          <div
+            className="rounded-2xl p-4 mb-6"
+            style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}
+          >
+            <p className="text-[10px] tracking-[3px] uppercase text-primary/60 font-ui mb-3">
+              Áudio original
+            </p>
+            <div className="space-y-3">
+              {analysis.source_audios.map((a, i) => (
+                <div key={i}>
+                  {a.label && (
+                    <p className="text-[11px] font-ui text-muted-foreground mb-1.5">{a.label}</p>
+                  )}
+                  <audio controls src={a.url} className="w-full" preload="metadata" />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Summary */}
         <StudySummary
           concepts={groups.map(g => g.members[0])}

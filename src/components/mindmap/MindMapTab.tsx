@@ -168,7 +168,7 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
   }, []);
   const createNewMap = () => { setEditMapId(null); setMode("manual"); };
 
-  const handleGenerate = useCallback(async (text: string) => {
+  const handleGenerate = useCallback(async (text: string, audios?: import("./types").SourceAudio[]) => {
     setLoading(true);
     setError(null);
     try {
@@ -185,8 +185,11 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
       const data = await res.json();
       if (!res.ok || data?.error) { setError(data?.error || `Erro ${res.status}`); return; }
       if (data?.result) {
-        const savedMapId = await saveAiMap(data.result);
-        setAnalysis(data.result);
+        const result: AnalysisResult = audios && audios.length > 0
+          ? { ...data.result, source_audios: audios }
+          : data.result;
+        const savedMapId = await saveAiMap(result);
+        setAnalysis(result);
         setAiMapId(savedMapId);
         await fetchMaps();
         setMode("ai-guide");
@@ -370,7 +373,7 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
             {error}
           </div>
         )}
-        <MindMapInput onGenerate={handleGenerate} loading={loading} />
+        <MindMapInput onGenerate={handleGenerate} loading={loading} userCodeId={userCodeId} />
       </div>
     );
   }
@@ -398,8 +401,8 @@ export default function MindMapTab({ userCodeId }: { userCodeId: string }) {
             <Sparkles size={26} className="text-primary" />
           </div>
           <div>
-            <p className="font-display text-lg font-semibold text-foreground mb-1">Gerar com IA</p>
-            <p className="text-[13px] text-muted-foreground font-body leading-relaxed">Texto ou áudio → mapa visual</p>
+            <p className="font-display text-lg font-semibold text-foreground mb-1">Estudo Guiado IA</p>
+            <p className="text-[13px] text-muted-foreground font-body leading-relaxed">Áudio MP3, gravação ou texto → estudo</p>
           </div>
         </button>
 
