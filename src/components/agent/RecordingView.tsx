@@ -74,7 +74,7 @@ export default function RecordingView({ userCodeId, onCancel, onFinish, initialS
     processingRef.current = true;
     setClassifying(true);
 
-    const startTs = segs[0]?.timestamp || 0;
+    const startTs = (segs[0]?.timestamp || 0) + priorDurationMs;
     const segIds = segs.map((s) => s.id);
 
     try {
