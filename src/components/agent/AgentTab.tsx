@@ -41,6 +41,7 @@ export default function AgentTab({ userCodeId }: Props) {
     personalNotes: PersonalNote[];
     audioBlob: Blob | null;
     sourceType: "live" | "upload";
+    layout?: { positions: Record<string, { x: number; y: number }>; edges: any[] };
   }) => {
     setMode("processing");
     setProgress({ label: "Salvando sessão…", pct: 10 });
@@ -65,7 +66,6 @@ export default function AgentTab({ userCodeId }: Props) {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       generated = data as AnalysisResult;
-      // Anexar áudio fonte ao estudo
       if (audioUrl) {
         generated.source_audios = [{
           url: audioUrl,
@@ -76,6 +76,77 @@ export default function AgentTab({ userCodeId }: Props) {
       }
     } catch (e: any) {
       toast({ title: "Falha ao gerar estudo", description: e?.message, variant: "destructive" });
+    }
+
+    // Cria mapa mental persistido a partir dos tópicos + layout do canvas ao vivo
+    setProgress({ label: "Salvando mapa mental…", pct: 75 });
+    let mindMapId: string | null = null;
+    try {
+      const sessionTitle = payload.title || generated?.main_theme || "Sessão";
+      const positions = payload.layout?.positions || {};
+      const liveEdges = payload.layout?.edges || [];
+
+      // Nó raiz central
+      const rootId = "root";
+      const nodes: any[] = [{
+        id: rootId,
+        type: "manualRoot",
+        position: { x: 0, y: -180 },
+        data: { label: sessionTitle.slice(0, 60) },
+      }];
+
+      // Nós de tópico — preserva posições do canvas ao vivo se existirem
+      payload.topics.forEach((t, i) => {
+        const cols = 3;
+        const colW = 240;
+        const rowH = 130;
+        const col = i % cols;
+        const row = Math.floor(i / cols);
+        const fallback = { x: (col - 1) * colW, y: row * rowH + 60 };
+        nodes.push({
+          id: t.id,
+          type: "simpleNode",
+          position: positions[t.id] || fallback,
+          data: {
+            title: t.title,
+            description: t.keyPoints?.[0] || "",
+            color: "#c4a46a",
+            colorMode: "border",
+            level: "title",
+          },
+        });
+      });
+
+      // Edges raiz → tópico (apenas para os que ainda não foram conectados manualmente)
+      const manualEdges = liveEdges.map((e: any) => ({
+        id: e.id || `e-${e.source}-${e.target}`,
+        source: e.source,
+        target: e.target,
+        type: "smoothstep",
+      }));
+      const connectedFromRoot = new Set(
+        manualEdges.filter((e: any) => e.source === rootId).map((e: any) => e.target)
+      );
+      const rootEdges = payload.topics
+        .filter((t) => !connectedFromRoot.has(t.id))
+        .map((t) => ({ id: `er-${t.id}`, source: rootId, target: t.id, type: "smoothstep" }));
+      const edges = [...rootEdges, ...manualEdges];
+
+      const { data: mm, error: mmErr } = await supabase
+        .from("mind_maps")
+        .insert({
+          user_code_id: userCodeId,
+          title: sessionTitle,
+          source_type: "agent",
+          nodes: nodes as any,
+          edges: edges as any,
+        })
+        .select("id")
+        .single();
+      if (mmErr) throw mmErr;
+      mindMapId = mm.id;
+    } catch (e) {
+      console.warn("[finalize] mind map", e);
     }
 
     setProgress({ label: "Concluindo…", pct: 90 });
@@ -92,6 +163,7 @@ export default function AgentTab({ userCodeId }: Props) {
         topics: payload.topics as any,
         generated_study: generated as any,
         personal_notes: payload.personalNotes as any,
+        mind_map_id: mindMapId,
       })
       .select("*")
       .single();
