@@ -46,8 +46,11 @@ export default function RecordingView({ userCodeId, onCancel, onFinish }: Props)
   const [canvasEdges, setCanvasEdges] = useState<Edge[]>([]);
 
   const startedAtRef = useRef<number>(0);
-  const lastClassifyAtRef = useRef<number>(0);
-  const lastClassifiedSegIdxRef = useRef<number>(0);
+  // Buffer de segmentos finais ainda não consolidados em bloco (entre pausas).
+  const pendingSegsRef = useRef<TranscriptSegment[]>([]);
+  const processingRef = useRef(false);
+  const topicsRef = useRef<DetectedTopic[]>([]);
+  topicsRef.current = topics;
 
   const recorder = useMediaRecorderAudio();
   const transcription = useRealtimeTranscription();
