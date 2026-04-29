@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Pause, Play, Square, X, Plus, BookOpen, Sparkles, Mic } from "lucide-react";
+import { Pause, Play, Square, X, Plus, BookOpen, Sparkles, Mic, List, Network } from "lucide-react";
 import { useRealtimeTranscription } from "@/hooks/useRealtimeTranscription";
 import { useMediaRecorderAudio } from "@/hooks/useMediaRecorderAudio";
 import { useWaveform } from "@/hooks/useWaveform";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { haptic } from "@/hooks/useHaptic";
+import LiveTopicCanvas from "./LiveTopicCanvas";
+import type { Edge } from "@xyflow/react";
 import type { TranscriptSegment, DetectedTopic, PersonalNote } from "./types";
 
 interface Props {
@@ -19,6 +21,7 @@ interface Props {
     personalNotes: PersonalNote[];
     audioBlob: Blob | null;
     sourceType: "live" | "upload";
+    layout?: { positions: Record<string, { x: number; y: number }>; edges: Edge[] };
   }) => Promise<void>;
 }
 
@@ -37,6 +40,9 @@ export default function RecordingView({ userCodeId, onCancel, onFinish }: Props)
   const [classifying, setClassifying] = useState(false);
   const [newNote, setNewNote] = useState("");
   const [pendingTopicHighlight, setPendingTopicHighlight] = useState<string | null>(null);
+  const [sideTab, setSideTab] = useState<"list" | "map">("list");
+  const [positions, setPositions] = useState<Record<string, { x: number; y: number }>>({});
+  const [canvasEdges, setCanvasEdges] = useState<Edge[]>([]);
 
   const startedAtRef = useRef<number>(0);
   const lastClassifyAtRef = useRef<number>(0);
@@ -164,8 +170,9 @@ export default function RecordingView({ userCodeId, onCancel, onFinish }: Props)
       personalNotes: notes,
       audioBlob: blob,
       sourceType: "live",
+      layout: { positions, edges: canvasEdges },
     });
-  }, [recorder, transcription, topics, notes, onFinish]);
+  }, [recorder, transcription, topics, notes, onFinish, positions, canvasEdges]);
 
   const addNote = useCallback(() => {
     if (!newNote.trim()) return;
@@ -217,89 +224,132 @@ export default function RecordingView({ userCodeId, onCancel, onFinish }: Props)
       </header>
 
       {/* Main */}
-      <div className="flex-1 lg:overflow-hidden grid grid-cols-1 lg:grid-cols-[320px_1fr]">
+      <div className="flex-1 lg:overflow-hidden grid grid-cols-1 lg:grid-cols-[360px_1fr]">
         {/* Topics column */}
-        <aside className="lg:border-r border-border/40 lg:overflow-y-auto px-4 py-4 order-2 lg:order-1">
-          <p className="text-[10px] tracking-[2px] uppercase text-muted-foreground/70 font-ui mb-3">
-            Tópicos detectados
-          </p>
-          {topics.length === 0 && !classifying && (
-            <p className="text-xs italic text-muted-foreground/70">
-              A IA detectará tópicos a cada ~60s de fala.
-            </p>
-          )}
-          <ul className="space-y-2">
-            {topics.map((t, i) => {
-              const isLive = i === topics.length - 1 && transcription.listening;
-              const isHighlight = t.id === pendingTopicHighlight;
-              return (
-                <li
-                  key={t.id}
-                  className={`p-3 rounded-lg border transition-all ${
-                    isLive ? "border-primary/60 bg-primary/[0.04]" : "border-border/40 bg-card/30"
-                  } ${isHighlight ? "animate-[pulse_1s_ease-in-out_2]" : ""}`}
-                  style={isLive ? { boxShadow: "inset 3px 0 0 hsl(var(--primary))" } : undefined}
-                >
-                  <div className="flex items-center gap-1 text-[11px] text-muted-foreground mb-1">
-                    <span>#{i + 1}</span>
-                    <span>·</span>
-                    <span>{fmtTime(Math.floor(t.startTimestamp / 1000))}</span>
-                    {isLive && <span className="ml-auto text-primary flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" /> ao vivo
-                    </span>}
-                  </div>
-                  <p className="text-sm font-ui text-foreground leading-snug">{t.title}</p>
-                  {t.verses.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      {t.verses.slice(0, 4).map((v) => (
-                        <span key={v} className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-mono">
-                          📖 {v}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-
-          <div className="mt-6 grid grid-cols-3 gap-2 text-center">
-            <Stat label="Versículos" value={totalVerses} />
-            <Stat label="Frases-chave" value={totalPhrases} />
-            <Stat label="Tópicos" value={topics.length} />
+        <aside className="lg:border-r border-border/40 lg:overflow-hidden flex flex-col order-2 lg:order-1">
+          {/* Sub-tabs Lista / Mapa */}
+          <div className="px-4 pt-3 flex items-center gap-1 border-b border-border/30">
+            <button
+              onClick={() => setSideTab("list")}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-ui transition-all ${
+                sideTab === "list" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <List size={11} /> Lista
+            </button>
+            <button
+              onClick={() => setSideTab("map")}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-ui transition-all ${
+                sideTab === "map" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Network size={11} /> Mapa ao vivo
+            </button>
+            <span className="ml-auto text-[10px] text-muted-foreground/60">{topics.length} tópicos</span>
           </div>
 
-          {/* Notas pessoais */}
-          <div className="mt-6">
-            <p className="text-[10px] tracking-[2px] uppercase text-muted-foreground/70 font-ui mb-2">
-              Minhas notas
-            </p>
-            <div className="flex gap-1 mb-2">
-              <input
-                value={newNote}
-                onChange={(e) => setNewNote(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && addNote()}
-                placeholder="Anotar agora…"
-                className="flex-1 bg-card border border-border/50 rounded-lg px-2.5 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/40"
-              />
-              <button
-                onClick={addNote}
-                className="p-1.5 rounded-lg border border-border/50 text-muted-foreground hover:text-primary hover:border-primary/40"
-                aria-label="Adicionar nota"
-              >
-                <Plus size={14} />
-              </button>
+          {sideTab === "map" ? (
+            <div className="flex-1 min-h-[360px] lg:min-h-0">
+              {topics.length === 0 ? (
+                <div className="h-full flex items-center justify-center text-xs italic text-muted-foreground/70 px-6 text-center">
+                  Os tópicos aparecerão aqui como nós arrastáveis.<br />
+                  Conecte-os arrastando de uma borda à outra.
+                </div>
+              ) : (
+                <LiveTopicCanvas
+                  topics={topics}
+                  liveTopicId={transcription.listening && topics.length ? topics[topics.length - 1].id : null}
+                  positions={positions}
+                  edges={canvasEdges}
+                  onPositionsChange={setPositions}
+                  onEdgesChange={setCanvasEdges}
+                />
+              )}
             </div>
-            <ul className="space-y-1.5">
-              {notes.slice().reverse().map((n) => (
-                <li key={n.id} className="text-[11px] p-2 rounded-md italic"
-                  style={{ background: "hsl(var(--primary) / 0.06)", borderLeft: "2px solid hsl(var(--primary) / 0.6)", color: "hsl(var(--primary))" }}>
-                  <span className="font-mono text-[9px] mr-1.5">{fmtTime(Math.floor(n.timestamp / 1000))}</span>
-                  {n.text}
-                </li>
-              ))}
-            </ul>
-          </div>
+          ) : (
+            <div className="lg:overflow-y-auto px-4 py-4 flex-1">
+              <p className="text-[10px] tracking-[2px] uppercase text-muted-foreground/70 font-ui mb-3">
+                Tópicos detectados
+              </p>
+              {topics.length === 0 && !classifying && (
+                <p className="text-xs italic text-muted-foreground/70">
+                  A IA detectará tópicos a cada ~60s de fala.
+                </p>
+              )}
+              <ul className="space-y-2">
+                {topics.map((t, i) => {
+                  const isLive = i === topics.length - 1 && transcription.listening;
+                  const isHighlight = t.id === pendingTopicHighlight;
+                  return (
+                    <li
+                      key={t.id}
+                      className={`p-3 rounded-lg border transition-all ${
+                        isLive ? "border-primary/60 bg-primary/[0.04]" : "border-border/40 bg-card/30"
+                      } ${isHighlight ? "animate-[pulse_1s_ease-in-out_2]" : ""}`}
+                      style={isLive ? { boxShadow: "inset 3px 0 0 hsl(var(--primary))" } : undefined}
+                    >
+                      <div className="flex items-center gap-1 text-[11px] text-muted-foreground mb-1">
+                        <span>#{i + 1}</span>
+                        <span>·</span>
+                        <span>{fmtTime(Math.floor(t.startTimestamp / 1000))}</span>
+                        {isLive && <span className="ml-auto text-primary flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" /> ao vivo
+                        </span>}
+                      </div>
+                      <p className="text-sm font-ui text-foreground leading-snug">{t.title}</p>
+                      {t.verses.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {t.verses.slice(0, 4).map((v) => (
+                            <span key={v} className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-mono">
+                              📖 {v}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+
+              <div className="mt-6 grid grid-cols-3 gap-2 text-center">
+                <Stat label="Versículos" value={totalVerses} />
+                <Stat label="Frases-chave" value={totalPhrases} />
+                <Stat label="Tópicos" value={topics.length} />
+              </div>
+
+              {/* Notas pessoais */}
+              <div className="mt-6">
+                <p className="text-[10px] tracking-[2px] uppercase text-muted-foreground/70 font-ui mb-2">
+                  Minhas notas
+                </p>
+                <div className="flex gap-1 mb-2">
+                  <input
+                    value={newNote}
+                    onChange={(e) => setNewNote(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && addNote()}
+                    placeholder="Anotar agora…"
+                    className="flex-1 bg-card border border-border/50 rounded-lg px-2.5 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/40"
+                  />
+                  <button
+                    onClick={addNote}
+                    className="p-1.5 rounded-lg border border-border/50 text-muted-foreground hover:text-primary hover:border-primary/40"
+                    aria-label="Adicionar nota"
+                  >
+                    <Plus size={14} />
+                  </button>
+                </div>
+                <ul className="space-y-1.5">
+                  {notes.slice().reverse().map((n) => (
+                    <li key={n.id} className="text-[11px] p-2 rounded-md italic"
+                      style={{ background: "hsl(var(--primary) / 0.06)", borderLeft: "2px solid hsl(var(--primary) / 0.6)", color: "hsl(var(--primary))" }}>
+                      <span className="font-mono text-[9px] mr-1.5">{fmtTime(Math.floor(n.timestamp / 1000))}</span>
+                      {n.text}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
         </aside>
 
         {/* Live transcript */}
