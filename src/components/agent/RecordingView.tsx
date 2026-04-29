@@ -25,7 +25,8 @@ interface Props {
   }) => Promise<void>;
 }
 
-const CLASSIFY_INTERVAL_MS = 60_000;
+const PAUSE_MS = 2500;
+const MIN_BLOCK_CHARS = 60;
 
 function fmtTime(sec: number) {
   const m = Math.floor(sec / 60);
