@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, FileText, ScrollText, Sparkles, Mic } from "lucide-react";
+import { ArrowLeft, FileText, ScrollText, Sparkles, Mic, Share2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import StudyGuide from "@/components/study-guide/StudyGuide";
 import type { StudySessionRow, StudyFlowType } from "./types";
@@ -7,6 +7,7 @@ import TranscriptTab from "./TranscriptTab";
 import FlowSelector from "./FlowSelector";
 import FlowRunner from "./FlowRunner";
 import AgentChat from "./AgentChat";
+import ShareStudyDialog from "./ShareStudyDialog";
 
 interface Props {
   session: StudySessionRow;
@@ -23,6 +24,7 @@ export default function StudyHub({ session, userCodeId, onBack, onUpdate, onResu
   const [activeFlow, setActiveFlow] = useState<StudyFlowType | null>(null);
   const [showFlowSelector, setShowFlowSelector] = useState(!session.study_flow_progress?.last);
   const [showChat, setShowChat] = useState(false);
+  const [showShare, setShowShare] = useState(false);
   const study = session.generated_study;
 
   const persistFlowProgress = async (flow: StudyFlowType, step: number, total: number) => {
@@ -70,6 +72,20 @@ export default function StudyHub({ session, userCodeId, onBack, onUpdate, onResu
             title="Continuar gravando esta sessão"
           >
             <Mic size={12} /> Continuar gravando
+          </button>
+        )}
+        {study && (
+          <button
+            onClick={() => setShowShare(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-ui font-bold transition-all"
+            style={{
+              background: session.is_public ? "linear-gradient(135deg, hsl(var(--primary) / 0.25), hsl(var(--primary) / 0.08))" : "rgba(92,83,71,0.1)",
+              border: `1px solid ${session.is_public ? "hsl(var(--primary) / 0.4)" : "rgba(92,83,71,0.25)"}`,
+              color: session.is_public ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))",
+            }}
+            title={session.is_public ? "Estudo público — gerenciar link" : "Compartilhar estudo"}
+          >
+            <Share2 size={12} /> {session.is_public ? "Público" : "Compartilhar"}
           </button>
         )}
         <button
@@ -128,6 +144,17 @@ export default function StudyHub({ session, userCodeId, onBack, onUpdate, onResu
         <FlowSelector
           onPick={(f) => { setActiveFlow(f); setShowFlowSelector(false); }}
           onClose={() => setShowFlowSelector(false)}
+        />
+      )}
+
+      {showShare && (
+        <ShareStudyDialog
+          sessionId={session.id}
+          title={session.title}
+          isPublic={!!session.is_public}
+          publicSlug={session.public_slug ?? null}
+          onClose={() => setShowShare(false)}
+          onUpdate={(isPublic, slug) => onUpdate({ ...session, is_public: isPublic, public_slug: slug })}
         />
       )}
     </div>

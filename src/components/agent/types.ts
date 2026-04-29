@@ -60,6 +60,9 @@ export interface StudySessionRow {
   study_flow_progress: Record<string, StudyFlowProgress>;
   is_favorite: boolean;
   mind_map_id: string | null;
+  is_public?: boolean;
+  public_slug?: string | null;
+  shared_at?: string | null;
   created_at: string;
   updated_at: string;
 }
