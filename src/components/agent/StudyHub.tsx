@@ -7,6 +7,7 @@ import TranscriptTab from "./TranscriptTab";
 import FlowSelector from "./FlowSelector";
 import FlowRunner from "./FlowRunner";
 import AgentChat from "./AgentChat";
+import AgentMapTab from "./AgentMapTab";
 
 interface Props {
   session: StudySessionRow;
@@ -90,10 +91,7 @@ export default function StudyHub({ session, userCodeId, onBack, onUpdate }: Prop
           <StudyGuide analysis={study} onBack={onBack} />
         )}
         {study && tab === "map" && (
-          <div className="text-center py-16 text-muted-foreground text-sm px-6">
-            <p>Visualização do mapa mental disponível em "Estudo Guiado".</p>
-            <p className="text-xs mt-2">Os tópicos extraídos estão disponíveis na aba <strong>Notas</strong> com toda a estrutura hierárquica.</p>
-          </div>
+          <AgentMapTab session={session} userCodeId={userCodeId} onUpdate={onUpdate} />
         )}
         {study && tab === "flash" && (
           <FlashcardsView analysis={study} />
