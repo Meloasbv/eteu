@@ -230,6 +230,27 @@ export default function RecordingView({ userCodeId, onCancel, onFinish }: Props)
     haptic("light");
   }, [newNote, elapsed]);
 
+  // ─── Edição inline ─────────────────────────────────────────────
+  const updateTopic = useCallback((id: string, patch: Partial<DetectedTopic>) => {
+    setTopics((cur) => cur.map((t) => (t.id === id ? { ...t, ...patch } : t)));
+  }, []);
+
+  const [editingSegId, setEditingSegId] = useState<string | null>(null);
+  const [editingSegDraft, setEditingSegDraft] = useState("");
+
+  const startEditSegment = useCallback((id: string, currentText: string) => {
+    setEditingSegId(id);
+    setEditingSegDraft(currentText);
+  }, []);
+  const commitEditSegment = useCallback(() => {
+    if (editingSegId && editingSegDraft.trim()) {
+      transcription.updateSegment(editingSegId, editingSegDraft.trim());
+    }
+    setEditingSegId(null);
+    setEditingSegDraft("");
+  }, [editingSegId, editingSegDraft, transcription]);
+
+
   const totalVerses = topics.reduce((acc, t) => acc + t.verses.length, 0);
   const totalPhrases = topics.reduce((acc, t) => acc + t.impactPhrases.length, 0);
   const lastSegments = transcription.segments.slice(-6);
@@ -307,6 +328,7 @@ export default function RecordingView({ userCodeId, onCancel, onFinish }: Props)
                   edges={canvasEdges}
                   onPositionsChange={setPositions}
                   onEdgesChange={setCanvasEdges}
+                  onTopicEdit={updateTopic}
                 />
               )}
             </div>
@@ -340,12 +362,20 @@ export default function RecordingView({ userCodeId, onCancel, onFinish }: Props)
                           <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" /> ao vivo
                         </span>}
                       </div>
-                      <p className="text-sm font-ui text-foreground leading-snug">{t.title}</p>
-                      {t.summary && (
-                        <p className="text-[12px] text-muted-foreground italic leading-snug mt-1"
-                          style={{ fontFamily: "'Crimson Text', Georgia, serif" }}>
-                          {t.summary}
-                        </p>
+                      <InlineEditableText
+                        value={t.title}
+                        onCommit={(v) => updateTopic(t.id, { title: v })}
+                        className="text-sm font-ui text-foreground leading-snug"
+                      />
+                      {t.summary !== undefined && (
+                        <InlineEditableText
+                          value={t.summary || ""}
+                          onCommit={(v) => updateTopic(t.id, { summary: v, keyPoints: v ? [v] : [] })}
+                          placeholder="+ resumo"
+                          multiline
+                          className="text-[12px] text-muted-foreground italic leading-snug mt-1 block"
+                          style={{ fontFamily: "'Crimson Text', Georgia, serif" }}
+                        />
                       )}
                       {t.verses.length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-2">
@@ -420,9 +450,30 @@ export default function RecordingView({ userCodeId, onCancel, onFinish }: Props)
               </p>
             )}
             <div>
-              {/* Mostra só os últimos 6 segmentos pra performance/visual */}
+              {/* Mostra só os últimos 6 segmentos pra performance/visual — clicáveis para correção. */}
               {lastSegments.map((s) => (
-                <span key={s.id}> {s.text}</span>
+                editingSegId === s.id ? (
+                  <input
+                    key={s.id}
+                    autoFocus
+                    value={editingSegDraft}
+                    onChange={(e) => setEditingSegDraft(e.target.value)}
+                    onBlur={commitEditSegment}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") commitEditSegment();
+                      if (e.key === "Escape") { setEditingSegId(null); setEditingSegDraft(""); }
+                    }}
+                    className="inline-block bg-primary/10 border-b border-primary outline-none px-1 mx-0.5 rounded-sm"
+                    style={{ font: "inherit", color: "inherit", minWidth: Math.max(60, editingSegDraft.length * 9) }}
+                  />
+                ) : (
+                  <span
+                    key={s.id}
+                    onClick={() => startEditSegment(s.id, s.text)}
+                    className="cursor-text hover:bg-primary/10 hover:text-foreground rounded-sm transition-colors"
+                    title="Clique para corrigir"
+                  > {s.text}</span>
+                )
               ))}
               {transcription.interim && (
                 <span style={{ opacity: 0.55, fontStyle: "italic" }}> {transcription.interim}</span>
@@ -463,5 +514,53 @@ function Stat({ label, value }: { label: string; value: number }) {
       <p className="text-base font-display text-primary">{value}</p>
       <p className="text-[9px] uppercase tracking-wider text-muted-foreground">{label}</p>
     </div>
+  );
+}
+
+/** Texto que vira input/textarea no duplo clique. Commit no blur/Enter. */
+function InlineEditableText({
+  value, onCommit, placeholder, multiline, className, style,
+}: {
+  value: string;
+  onCommit: (v: string) => void;
+  placeholder?: string;
+  multiline?: boolean;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+  useEffect(() => { setDraft(value); }, [value]);
+  const commit = () => {
+    setEditing(false);
+    if (draft.trim() !== value.trim()) onCommit(draft.trim());
+  };
+  if (editing) {
+    const Tag: any = multiline ? "textarea" : "input";
+    return (
+      <Tag
+        autoFocus
+        value={draft}
+        onChange={(e: any) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e: any) => {
+          if (e.key === "Enter" && (!multiline || e.metaKey || e.ctrlKey)) commit();
+          if (e.key === "Escape") { setDraft(value); setEditing(false); }
+        }}
+        className={`${className || ""} bg-card/60 border border-primary/40 rounded px-1 py-0.5 outline-none w-full resize-none`}
+        style={style}
+        rows={multiline ? 2 : undefined}
+      />
+    );
+  }
+  return (
+    <span
+      onDoubleClick={() => setEditing(true)}
+      className={`${className || ""} cursor-text hover:bg-primary/5 rounded`}
+      style={style}
+      title="Duplo clique para editar"
+    >
+      {value || <span className="opacity-50">{placeholder}</span>}
+    </span>
   );
 }
