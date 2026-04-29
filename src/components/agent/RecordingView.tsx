@@ -362,12 +362,20 @@ export default function RecordingView({ userCodeId, onCancel, onFinish }: Props)
                           <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" /> ao vivo
                         </span>}
                       </div>
-                      <p className="text-sm font-ui text-foreground leading-snug">{t.title}</p>
-                      {t.summary && (
-                        <p className="text-[12px] text-muted-foreground italic leading-snug mt-1"
-                          style={{ fontFamily: "'Crimson Text', Georgia, serif" }}>
-                          {t.summary}
-                        </p>
+                      <InlineEditableText
+                        value={t.title}
+                        onCommit={(v) => updateTopic(t.id, { title: v })}
+                        className="text-sm font-ui text-foreground leading-snug"
+                      />
+                      {t.summary !== undefined && (
+                        <InlineEditableText
+                          value={t.summary || ""}
+                          onCommit={(v) => updateTopic(t.id, { summary: v, keyPoints: v ? [v] : [] })}
+                          placeholder="+ resumo"
+                          multiline
+                          className="text-[12px] text-muted-foreground italic leading-snug mt-1 block"
+                          style={{ fontFamily: "'Crimson Text', Georgia, serif" }}
+                        />
                       )}
                       {t.verses.length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-2">
