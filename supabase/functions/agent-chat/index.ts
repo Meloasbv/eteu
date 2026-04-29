@@ -6,8 +6,8 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-const GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
 
 const SYSTEM = `Você é o ASSISTENTE DE ESTUDO de uma aula bíblica que está sendo gravada/transcrita.
 Você tem acesso à transcrição (parcial ou completa) e aos tópicos detectados.
@@ -18,7 +18,7 @@ Se o usuário pede para "resumir até agora", "comparar", "buscar contexto sobre
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   try {
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY ausente");
+    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY ausente");
     const { message, transcript, topics, history } = await req.json();
     if (!message) {
       return new Response(JSON.stringify({ error: "message obrigatório" }),
@@ -34,10 +34,10 @@ serve(async (req) => {
       { role: "user", content: message },
     ];
 
-    const res = await fetch(GATEWAY, {
+    const res = await fetch(OPENAI_URL, {
       method: "POST",
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ model: "google/gemini-2.5-flash", max_tokens: 1200, messages }),
+      headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ model: "gpt-4o-mini", max_tokens: 1200, messages }),
     });
     if (!res.ok) {
       const status = res.status;
