@@ -362,7 +362,7 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
 
   // ── CONTENT (shared between mobile & desktop) ──
   const renderContent = () => (
-    <div className={isMobile ? "main-content" : `flex-1 ${tab === "anotacoes" ? "h-screen" : "overflow-y-auto h-screen"}`}>
+    <div className={isMobile ? "main-content" : "flex-1 overflow-y-auto h-screen"}>
       {/* Desktop header for content area */}
       {!isMobile && (
         <div className="sticky top-0 z-30 px-6 py-4 border-b border-border/30 bg-background/80 backdrop-blur-md">
@@ -372,7 +372,7 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
         </div>
       )}
 
-      <div className={!isMobile ? (tab === "anotacoes" ? "h-[calc(100vh-65px)]" : "px-6 py-4 max-w-3xl mx-auto") : ""}>
+      <div className={!isMobile ? (tab === "anotacoes" || tab === "cerebro" || tab === "agente" ? "" : "px-6 py-4 max-w-3xl mx-auto") : ""}>
         {/* ── LEITURA TAB ── */}
         {tab === "leitura" && (
           <>
