@@ -141,6 +141,7 @@ function CanvasInner({
       startTimestamp: t.startTimestamp,
       isLive: t.id === liveTopicId,
       verses: t.verses,
+      summary: t.summary,
     },
   })), []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -159,6 +160,7 @@ function CanvasInner({
           startTimestamp: t.startTimestamp,
           isLive: t.id === liveTopicId,
           verses: t.verses,
+          summary: t.summary,
         };
         if (existing) {
           return { ...existing, data };
