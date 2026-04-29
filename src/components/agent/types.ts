@@ -17,6 +17,12 @@ export interface DetectedTopic {
   verses: string[];
   impactPhrases: string[];
   keyPoints: string[];
+  /** Resumo curto (1-2 frases) gerado pela IA a partir do bloco bruto. */
+  summary?: string;
+  /** Keywords extraídas para auto-conexão entre blocos. */
+  keywords?: string[];
+  /** Texto bruto original capturado entre as pausas. */
+  rawText?: string;
 }
 
 export interface PersonalNote {

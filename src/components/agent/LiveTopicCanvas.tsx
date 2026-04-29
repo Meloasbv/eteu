@@ -62,8 +62,8 @@ function TopicNode({ data }: NodeProps) {
     <div
       className="rounded-xl px-3 py-2.5 group transition-all"
       style={{
-        minWidth: 170,
-        maxWidth: 220,
+        minWidth: 200,
+        maxWidth: 260,
         background: isLive
           ? "linear-gradient(135deg, hsl(var(--primary) / 0.15), hsl(var(--card)))"
           : "hsl(var(--card))",
@@ -94,6 +94,11 @@ function TopicNode({ data }: NodeProps) {
         )}
       </div>
       <p className="font-display text-[12px] text-foreground leading-snug">{d.title as string}</p>
+      {d.summary && (
+        <p className="text-[10.5px] text-muted-foreground leading-snug mt-1 italic" style={{ fontFamily: "'Crimson Text', Georgia, serif" }}>
+          {String(d.summary)}
+        </p>
+      )}
       {verses.length > 0 && (
         <div className="flex items-center gap-1 mt-1.5 text-[9px] text-primary/80">
           <BookOpen size={9} />
@@ -136,6 +141,7 @@ function CanvasInner({
       startTimestamp: t.startTimestamp,
       isLive: t.id === liveTopicId,
       verses: t.verses,
+      summary: t.summary,
     },
   })), []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -154,6 +160,7 @@ function CanvasInner({
           startTimestamp: t.startTimestamp,
           isLive: t.id === liveTopicId,
           verses: t.verses,
+          summary: t.summary,
         };
         if (existing) {
           return { ...existing, data };
