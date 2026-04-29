@@ -546,6 +546,7 @@ export type Database = {
           generated_study: Json | null
           id: string
           is_favorite: boolean
+          mind_map_id: string | null
           personal_notes: Json
           source_type: string
           study_flow_progress: Json
@@ -562,6 +563,7 @@ export type Database = {
           generated_study?: Json | null
           id?: string
           is_favorite?: boolean
+          mind_map_id?: string | null
           personal_notes?: Json
           source_type?: string
           study_flow_progress?: Json
@@ -578,6 +580,7 @@ export type Database = {
           generated_study?: Json | null
           id?: string
           is_favorite?: boolean
+          mind_map_id?: string | null
           personal_notes?: Json
           source_type?: string
           study_flow_progress?: Json
