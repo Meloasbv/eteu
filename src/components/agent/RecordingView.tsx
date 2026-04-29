@@ -53,7 +53,113 @@ export default function RecordingView({ userCodeId, onCancel, onFinish }: Props)
   topicsRef.current = topics;
 
   const recorder = useMediaRecorderAudio();
-  const transcription = useRealtimeTranscription();
+
+  /**
+   * Processa um bloco de fala (entre pausas):
+   * - Manda à IA para revisar/resumir SEM adicionar conteúdo.
+   * - Cria um novo tópico no canvas com o resumo.
+   * - Auto-conecta ao bloco anterior mais relacionado (overlap de keywords).
+   */
+  const processBlock = useCallback(async () => {
+    if (processingRef.current) return;
+    const segs = pendingSegsRef.current;
+    if (!segs.length) return;
+    const rawText = segs.map((s) => s.text).join(" ").trim();
+    if (rawText.length < MIN_BLOCK_CHARS) return;
+    pendingSegsRef.current = [];
+    processingRef.current = true;
+    setClassifying(true);
+
+    const startTs = segs[0]?.timestamp || 0;
+    const segIds = segs.map((s) => s.id);
+
+    try {
+      const { data, error } = await supabase.functions.invoke("agent-summarize-block", {
+        body: {
+          text: rawText,
+          previous_titles: topicsRef.current.map((t) => t.title),
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      const title: string = data.title || `Bloco ${topicsRef.current.length + 1}`;
+      const summary: string = data.summary || "";
+      const keywords: string[] = (data.keywords || []).map((k: string) => String(k).toLowerCase());
+      const verses: string[] = data.verses || [];
+
+      const newTopic: DetectedTopic = {
+        id: `topic-${Date.now()}`,
+        title,
+        startTimestamp: startTs,
+        segmentIds: segIds,
+        verses,
+        impactPhrases: [],
+        keyPoints: summary ? [summary] : [],
+        summary,
+        keywords,
+        rawText,
+      };
+
+      // Auto-conexão: encontra tópico anterior com mais overlap de keywords.
+      const prev = topicsRef.current;
+      let bestId: string | null = null;
+      let bestScore = 0;
+      for (const t of prev) {
+        const tk = (t.keywords || []).map((k) => k.toLowerCase());
+        if (!tk.length) continue;
+        const overlap = keywords.filter((k) => tk.includes(k)).length;
+        if (overlap > bestScore) {
+          bestScore = overlap;
+          bestId = t.id;
+        }
+      }
+      // Sem overlap mas existe anterior → conecta sequencialmente ao último.
+      if (!bestId && prev.length) bestId = prev[prev.length - 1].id;
+
+      setTopics((cur) => {
+        const updated = cur.map((t, i) =>
+          i === cur.length - 1 && !t.endTimestamp ? { ...t, endTimestamp: startTs } : t,
+        );
+        return [...updated, newTopic];
+      });
+
+      if (bestId) {
+        const edgeId = `e-${bestId}-${newTopic.id}`;
+        setCanvasEdges((cur) => [
+          ...cur,
+          {
+            id: edgeId,
+            source: bestId!,
+            target: newTopic.id,
+            type: "smoothstep",
+            animated: bestScore > 0,
+          } as Edge,
+        ]);
+      }
+
+      setPendingTopicHighlight(newTopic.id);
+      haptic("light");
+      setTimeout(() => setPendingTopicHighlight(null), 2500);
+    } catch (e: any) {
+      console.warn("[summarize-block]", e);
+      // Re-empilha para tentar de novo no próximo bloco.
+      pendingSegsRef.current = [...segs, ...pendingSegsRef.current];
+    } finally {
+      processingRef.current = false;
+      setClassifying(false);
+    }
+  }, []);
+
+  const transcription = useRealtimeTranscription({
+    pauseMs: PAUSE_MS,
+    onFinalSegment: (s) => {
+      pendingSegsRef.current.push(s);
+    },
+    onPause: () => {
+      processBlock();
+    },
+  });
   const canvasRef = useRef<HTMLCanvasElement>(null);
   useWaveform(canvasRef.current, recorder.stream, "#d4a94a");
 
@@ -82,76 +188,6 @@ export default function RecordingView({ userCodeId, onCancel, onFinish }: Props)
     }, 1000);
     return () => clearInterval(t);
   }, []);
-
-  // Detecção periódica de tópicos
-  useEffect(() => {
-    const interval = setInterval(async () => {
-      if (classifying) return;
-      const segs = transcription.segments;
-      const startIdx = lastClassifiedSegIdxRef.current;
-      const newSegs = segs.slice(startIdx);
-      const newText = newSegs.map((s) => s.text).join(" ").trim();
-      if (newText.length < 200) return; // só classifica trecho com substância
-      if (Date.now() - lastClassifyAtRef.current < CLASSIFY_INTERVAL_MS) return;
-
-      setClassifying(true);
-      lastClassifyAtRef.current = Date.now();
-      lastClassifiedSegIdxRef.current = segs.length;
-
-      try {
-        const { data, error } = await supabase.functions.invoke("agent-classify", {
-          body: { new_text: newText, existing_topics: topics.map((t) => t.title) },
-        });
-        if (error) throw error;
-        if (data?.error) throw new Error(data.error);
-
-        const action = data.topic_action || "existing";
-        const verses: string[] = data.detected_verses || [];
-        const phrases: string[] = data.impact_phrases || [];
-        const points: string[] = data.key_points || [];
-        const segIds = newSegs.map((s) => s.id);
-        const startTs = newSegs[0]?.timestamp || elapsed * 1000;
-
-        if (action === "new" || topics.length === 0) {
-          const title = data.new_topic_title || `Tópico ${topics.length + 1}`;
-          const newTopic: DetectedTopic = {
-            id: `topic-${Date.now()}`,
-            title,
-            startTimestamp: startTs,
-            segmentIds: segIds,
-            verses, impactPhrases: phrases, keyPoints: points,
-          };
-          // Encerrar tópico anterior
-          setTopics((cur) => {
-            const updated = cur.map((t, i) => i === cur.length - 1 ? { ...t, endTimestamp: startTs } : t);
-            return [...updated, newTopic];
-          });
-          setPendingTopicHighlight(newTopic.id);
-          haptic("light");
-          setTimeout(() => setPendingTopicHighlight(null), 2500);
-        } else {
-          // Append no último tópico
-          setTopics((cur) => {
-            if (!cur.length) return cur;
-            const last = cur[cur.length - 1];
-            const updated: DetectedTopic = {
-              ...last,
-              segmentIds: [...last.segmentIds, ...segIds],
-              verses: Array.from(new Set([...last.verses, ...verses])),
-              impactPhrases: [...last.impactPhrases, ...phrases],
-              keyPoints: [...last.keyPoints, ...points],
-            };
-            return [...cur.slice(0, -1), updated];
-          });
-        }
-      } catch (e: any) {
-        console.warn("[classify]", e);
-      } finally {
-        setClassifying(false);
-      }
-    }, 8_000); // checa a cada 8s, mas só dispara após CLASSIFY_INTERVAL_MS desde último
-    return () => clearInterval(interval);
-  }, [transcription.segments, topics, classifying, elapsed]);
 
   const togglePause = useCallback(() => {
     if (transcription.listening) {
