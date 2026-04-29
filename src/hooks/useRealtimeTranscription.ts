@@ -10,7 +10,13 @@ interface State {
 }
 
 /** Web Speech API com restart automático quando termina inesperadamente. */
-export function useRealtimeTranscription(opts?: { onFinalSegment?: (s: TranscriptSegment) => void }) {
+export function useRealtimeTranscription(opts?: {
+  onFinalSegment?: (s: TranscriptSegment) => void;
+  /** Disparado quando há silêncio >= pauseMs depois de um segmento final. */
+  onPause?: () => void;
+  /** Threshold de pausa em ms (default 2500). */
+  pauseMs?: number;
+}) {
   const [state, setState] = useState<State>({
     supported: true, listening: false, segments: [], interim: "", error: null,
   });
@@ -18,7 +24,20 @@ export function useRealtimeTranscription(opts?: { onFinalSegment?: (s: Transcrip
   const startedAtRef = useRef<number>(0);
   const shouldRestartRef = useRef(false);
   const onFinalRef = useRef(opts?.onFinalSegment);
+  const onPauseRef = useRef(opts?.onPause);
+  const pauseMsRef = useRef(opts?.pauseMs ?? 2500);
+  const pauseTimerRef = useRef<number | null>(null);
   onFinalRef.current = opts?.onFinalSegment;
+  onPauseRef.current = opts?.onPause;
+  pauseMsRef.current = opts?.pauseMs ?? 2500;
+
+  const armPauseTimer = useCallback(() => {
+    if (pauseTimerRef.current) window.clearTimeout(pauseTimerRef.current);
+    pauseTimerRef.current = window.setTimeout(() => {
+      onPauseRef.current?.();
+    }, pauseMsRef.current);
+  }, []);
+
 
   useEffect(() => {
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
