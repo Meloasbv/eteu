@@ -199,6 +199,10 @@ export default function RecordingView({ userCodeId, onCancel, onFinish }: Props)
 
   const stopAll = useCallback(async () => {
     transcription.stop();
+    // Garante que o último bloco pendente seja resumido antes de fechar.
+    if (pendingSegsRef.current.length) {
+      await processBlock();
+    }
     const blob = await recorder.stop();
     const transcript = transcription.segments.map((s) => s.text).join(" ").trim();
     const duration = Math.floor((Date.now() - startedAtRef.current) / 1000);
@@ -206,13 +210,13 @@ export default function RecordingView({ userCodeId, onCancel, onFinish }: Props)
       title: "",
       duration,
       transcript,
-      topics,
+      topics: topicsRef.current,
       personalNotes: notes,
       audioBlob: blob,
       sourceType: "live",
       layout: { positions, edges: canvasEdges },
     });
-  }, [recorder, transcription, topics, notes, onFinish, positions, canvasEdges]);
+  }, [recorder, transcription, notes, onFinish, positions, canvasEdges, processBlock]);
 
   const addNote = useCallback(() => {
     if (!newNote.trim()) return;
