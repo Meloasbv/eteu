@@ -74,6 +74,20 @@ export default function StudyHub({ session, userCodeId, onBack, onUpdate, onResu
             <Mic size={12} /> Continuar gravando
           </button>
         )}
+        {study && (
+          <button
+            onClick={() => setShowShare(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-ui font-bold transition-all"
+            style={{
+              background: session.is_public ? "linear-gradient(135deg, hsl(var(--primary) / 0.25), hsl(var(--primary) / 0.08))" : "rgba(92,83,71,0.1)",
+              border: `1px solid ${session.is_public ? "hsl(var(--primary) / 0.4)" : "rgba(92,83,71,0.25)"}`,
+              color: session.is_public ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))",
+            }}
+            title={session.is_public ? "Estudo público — gerenciar link" : "Compartilhar estudo"}
+          >
+            <Share2 size={12} /> {session.is_public ? "Público" : "Compartilhar"}
+          </button>
+        )}
         <button
           onClick={() => setShowFlowSelector(true)}
           className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-ui font-bold transition-all"
