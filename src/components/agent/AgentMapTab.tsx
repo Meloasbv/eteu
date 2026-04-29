@@ -1,8 +1,9 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
-import { Loader2, BookOpen, Quote, ListTree, Network, ChevronRight, Sparkles } from "lucide-react";
+import { Loader2, BookOpen, Quote, ListTree, Network, ChevronRight, Sparkles, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import type { StudySessionRow, DetectedTopic } from "./types";
+import AgentTimelineView from "./AgentTimelineView";
 
 const ManualMindMapCanvas = lazy(() => import("@/components/mindmap/ManualMindMapCanvas"));
 
@@ -12,7 +13,7 @@ interface Props {
   onUpdate?: (s: StudySessionRow) => void;
 }
 
-type View = "outline" | "canvas" | "split";
+type View = "timeline" | "outline" | "canvas" | "split";
 
 /**
  * Aba Mapa do StudyHub — combina:
@@ -23,14 +24,14 @@ type View = "outline" | "canvas" | "split";
 export default function AgentMapTab({ session, userCodeId, onUpdate }: Props) {
   const [mapId, setMapId] = useState<string | null>(session.mind_map_id || null);
   const [creating, setCreating] = useState(false);
-  const [view, setView] = useState<View>("outline");
+  const [view, setView] = useState<View>("timeline");
 
   useEffect(() => { setMapId(session.mind_map_id || null); }, [session.mind_map_id]);
 
   // Cria mapa lazy — apenas se aba canvas/split for ativada e não houver mapId.
   useEffect(() => {
     if (mapId || creating) return;
-    if (view === "outline") return;
+    if (view === "outline" || view === "timeline") return;
     let cancelled = false;
     (async () => {
       setCreating(true);
@@ -94,14 +95,23 @@ export default function AgentMapTab({ session, userCodeId, onUpdate }: Props) {
   return (
     <div className="h-[calc(100vh-200px)] lg:h-[calc(100vh-180px)] flex flex-col">
       {/* View toggle */}
-      <div className="px-4 lg:px-6 py-2 border-b border-border/30 flex items-center gap-1 shrink-0">
+      <div className="px-4 lg:px-6 py-2 border-b border-border/30 flex items-center gap-1 shrink-0 overflow-x-auto">
+        <ViewBtn active={view === "timeline"} onClick={() => setView("timeline")} icon={<Clock size={12} />} label="Timeline" />
         <ViewBtn active={view === "outline"} onClick={() => setView("outline")} icon={<ListTree size={12} />} label="Resumo" />
         <ViewBtn active={view === "canvas"} onClick={() => setView("canvas")} icon={<Network size={12} />} label="Mapa" />
         <ViewBtn active={view === "split"} onClick={() => setView("split")} icon={<><ListTree size={11} /><Network size={11} /></>} label="Lado a lado" hideOnMobile />
-        <span className="ml-auto text-[10px] text-muted-foreground/60">{topics.length} blocos · {topics.reduce((a, t) => a + t.verses.length, 0)} versículos</span>
+        <span className="ml-auto text-[10px] text-muted-foreground/60 whitespace-nowrap">{topics.length} blocos · {topics.reduce((a, t) => a + t.verses.length, 0)} versículos</span>
       </div>
 
       <div className={`flex-1 overflow-hidden ${view === "split" ? "grid grid-cols-1 lg:grid-cols-2" : ""}`}>
+        {view === "timeline" && (
+          <AgentTimelineView
+            title={session.title}
+            audioUrl={session.audio_url}
+            topics={topics}
+            durationSeconds={session.duration_seconds}
+          />
+        )}
         {(view === "outline" || view === "split") && (
           <OutlineView topics={topics} title={session.title} />
         )}
