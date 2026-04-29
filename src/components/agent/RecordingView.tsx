@@ -328,6 +328,7 @@ export default function RecordingView({ userCodeId, onCancel, onFinish }: Props)
                   edges={canvasEdges}
                   onPositionsChange={setPositions}
                   onEdgesChange={setCanvasEdges}
+                  onTopicEdit={updateTopic}
                 />
               )}
             </div>
