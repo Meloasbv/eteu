@@ -94,6 +94,11 @@ function TopicNode({ data }: NodeProps) {
         )}
       </div>
       <p className="font-display text-[12px] text-foreground leading-snug">{d.title as string}</p>
+      {d.summary && (
+        <p className="text-[10.5px] text-muted-foreground leading-snug mt-1 italic" style={{ fontFamily: "'Crimson Text', Georgia, serif" }}>
+          {String(d.summary)}
+        </p>
+      )}
       {verses.length > 0 && (
         <div className="flex items-center gap-1 mt-1.5 text-[9px] text-primary/80">
           <BookOpen size={9} />
