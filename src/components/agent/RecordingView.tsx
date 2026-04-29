@@ -450,9 +450,30 @@ export default function RecordingView({ userCodeId, onCancel, onFinish }: Props)
               </p>
             )}
             <div>
-              {/* Mostra só os últimos 6 segmentos pra performance/visual */}
+              {/* Mostra só os últimos 6 segmentos pra performance/visual — clicáveis para correção. */}
               {lastSegments.map((s) => (
-                <span key={s.id}> {s.text}</span>
+                editingSegId === s.id ? (
+                  <input
+                    key={s.id}
+                    autoFocus
+                    value={editingSegDraft}
+                    onChange={(e) => setEditingSegDraft(e.target.value)}
+                    onBlur={commitEditSegment}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") commitEditSegment();
+                      if (e.key === "Escape") { setEditingSegId(null); setEditingSegDraft(""); }
+                    }}
+                    className="inline-block bg-primary/10 border-b border-primary outline-none px-1 mx-0.5 rounded-sm"
+                    style={{ font: "inherit", color: "inherit", minWidth: Math.max(60, editingSegDraft.length * 9) }}
+                  />
+                ) : (
+                  <span
+                    key={s.id}
+                    onClick={() => startEditSegment(s.id, s.text)}
+                    className="cursor-text hover:bg-primary/10 hover:text-foreground rounded-sm transition-colors"
+                    title="Clique para corrigir"
+                  > {s.text}</span>
+                )
               ))}
               {transcription.interim && (
                 <span style={{ opacity: 0.55, fontStyle: "italic" }}> {transcription.interim}</span>
