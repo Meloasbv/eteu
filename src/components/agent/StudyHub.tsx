@@ -146,6 +146,17 @@ export default function StudyHub({ session, userCodeId, onBack, onUpdate, onResu
           onClose={() => setShowFlowSelector(false)}
         />
       )}
+
+      {showShare && (
+        <ShareStudyDialog
+          sessionId={session.id}
+          title={session.title}
+          isPublic={!!session.is_public}
+          publicSlug={session.public_slug ?? null}
+          onClose={() => setShowShare(false)}
+          onUpdate={(isPublic, slug) => onUpdate({ ...session, is_public: isPublic, public_slug: slug })}
+        />
+      )}
     </div>
   );
 }
