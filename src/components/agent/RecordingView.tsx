@@ -209,10 +209,15 @@ export default function RecordingView({ userCodeId, onCancel, onFinish, initialS
       await processBlock();
     }
     const blob = await recorder.stop();
-    const transcript = transcription.segments.map((s) => s.text).join(" ").trim();
-    const duration = Math.floor((Date.now() - startedAtRef.current) / 1000);
+    const newTranscript = transcription.segments.map((s) => s.text).join(" ").trim();
+    const priorTranscript = initialSession?.full_transcript || "";
+    const transcript = priorTranscript
+      ? (priorTranscript + (newTranscript ? "\n\n" + newTranscript : ""))
+      : newTranscript;
+    const liveDuration = Math.floor((Date.now() - startedAtRef.current) / 1000);
+    const duration = Math.floor(priorDurationMs / 1000) + liveDuration;
     await onFinish({
-      title: "",
+      title: initialSession?.title || "",
       duration,
       transcript,
       topics: topicsRef.current,
@@ -220,8 +225,10 @@ export default function RecordingView({ userCodeId, onCancel, onFinish, initialS
       audioBlob: blob,
       sourceType: "live",
       layout: { positions, edges: canvasEdges },
+      resumeOf: initialSession || null,
+      priorTranscript,
     });
-  }, [recorder, transcription, notes, onFinish, positions, canvasEdges, processBlock]);
+  }, [recorder, transcription, notes, onFinish, positions, canvasEdges, processBlock, initialSession, priorDurationMs]);
 
   const addNote = useCallback(() => {
     if (!newNote.trim()) return;
