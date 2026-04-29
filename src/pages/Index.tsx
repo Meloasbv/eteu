@@ -14,7 +14,7 @@ import DesktopRightPanel from "@/components/desktop/DesktopRightPanel";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useScrollDirection } from "@/hooks/useScrollDirection";
 import { haptic } from "@/hooks/useHaptic";
-import { BookOpen, Flame, PenLine, Check, Sun, Moon, LogOut, Sparkles, CheckCheck, Brain, Zap, Mic } from "lucide-react";
+import { BookOpen, Flame, PenLine, Check, Sun, Moon, LogOut, Sparkles, CheckCheck, Brain, Zap, Mic, NotebookPen } from "lucide-react";
 import BrainAreasHub from "@/components/secondbrain/areas/BrainAreasHub";
 import AgentTab from "@/components/agent/AgentTab";
 import { lazy, Suspense } from "react";
@@ -244,7 +244,7 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
       : tab === "devocional" ? "Devocionais"
       : tab === "cerebro" ? "Segundo Cérebro"
       : tab === "agente" ? "Agente de Estudo"
-      : "Estudo";
+      : "Caderno";
     try { localStorage.setItem("fascinacao-active-tab", tab); } catch {}
     if (newTitle !== displayTitle) {
       setTitleFading(true);
@@ -353,16 +353,16 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
   const compactHeader = direction === "down" && !isAtTop;
 
   const TABS: { key: typeof tab; icon: React.ReactNode; label: string }[] = [
+    { key: "anotacoes", icon: <NotebookPen size={22} />, label: "Caderno" },
     { key: "leitura", icon: <BookOpen size={22} />, label: "Leitura" },
     { key: "devocional", icon: <Flame size={22} />, label: "Devocional" },
-    { key: "anotacoes", icon: <PenLine size={22} />, label: "Estudo" },
-    { key: "agente", icon: <Mic size={22} />, label: "Agente" },
     { key: "cerebro", icon: <Brain size={22} />, label: "Cérebro" },
+    { key: "agente", icon: <Mic size={22} />, label: "Agente" },
   ];
 
   // ── CONTENT (shared between mobile & desktop) ──
   const renderContent = () => (
-    <div className={isMobile ? "main-content" : `flex-1 ${tab === "anotacoes" ? "h-screen" : "overflow-y-auto h-screen"}`}>
+    <div className={isMobile ? "main-content" : "flex-1 overflow-y-auto h-screen"}>
       {/* Desktop header for content area */}
       {!isMobile && (
         <div className="sticky top-0 z-30 px-6 py-4 border-b border-border/30 bg-background/80 backdrop-blur-md">
@@ -372,7 +372,7 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
         </div>
       )}
 
-      <div className={!isMobile ? (tab === "anotacoes" ? "h-[calc(100vh-65px)]" : "px-6 py-4 max-w-3xl mx-auto") : ""}>
+      <div className={!isMobile ? (tab === "anotacoes" || tab === "cerebro" || tab === "agente" ? "" : "px-6 py-4 max-w-3xl mx-auto") : ""}>
         {/* ── LEITURA TAB ── */}
         {tab === "leitura" && (
           <>
