@@ -317,7 +317,7 @@ export default function RecordingView({ userCodeId, onCancel, onFinish }: Props)
               </p>
               {topics.length === 0 && !classifying && (
                 <p className="text-xs italic text-muted-foreground/70">
-                  A IA detectará tópicos a cada ~60s de fala.
+                  A cada pausa na fala, a IA cria um bloco resumido e conecta ao tópico relacionado.
                 </p>
               )}
               <ul className="space-y-2">
@@ -341,6 +341,12 @@ export default function RecordingView({ userCodeId, onCancel, onFinish }: Props)
                         </span>}
                       </div>
                       <p className="text-sm font-ui text-foreground leading-snug">{t.title}</p>
+                      {t.summary && (
+                        <p className="text-[12px] text-muted-foreground italic leading-snug mt-1"
+                          style={{ fontFamily: "'Crimson Text', Georgia, serif" }}>
+                          {t.summary}
+                        </p>
+                      )}
                       {t.verses.length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-2">
                           {t.verses.slice(0, 4).map((v) => (
