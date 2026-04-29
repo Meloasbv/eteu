@@ -62,8 +62,8 @@ function TopicNode({ data }: NodeProps) {
     <div
       className="rounded-xl px-3 py-2.5 group transition-all"
       style={{
-        minWidth: 170,
-        maxWidth: 220,
+        minWidth: 200,
+        maxWidth: 260,
         background: isLive
           ? "linear-gradient(135deg, hsl(var(--primary) / 0.15), hsl(var(--card)))"
           : "hsl(var(--card))",
