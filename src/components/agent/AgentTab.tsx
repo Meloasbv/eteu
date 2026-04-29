@@ -33,7 +33,7 @@ export default function AgentTab({ userCodeId }: Props) {
 
   useEffect(() => { refresh(); }, [refresh]);
 
-  /** Persiste a sessão e dispara a geração de estudo. */
+  /** Persiste a sessão e dispara a geração de estudo. Se resumeOf for passado, atualiza linha existente. */
   const finalizeSession = useCallback(async (payload: {
     title: string;
     duration: number;
@@ -43,6 +43,8 @@ export default function AgentTab({ userCodeId }: Props) {
     audioBlob: Blob | null;
     sourceType: "live" | "upload";
     layout?: { positions: Record<string, { x: number; y: number }>; edges: any[] };
+    resumeOf?: StudySessionRow | null;
+    priorTranscript?: string;
   }) => {
     setMode("processing");
     setProgress({ label: "Salvando sessão…", pct: 10 });
