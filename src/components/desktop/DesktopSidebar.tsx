@@ -1,4 +1,4 @@
-import { BookOpen, Flame, PenLine, Brain, Sun, Moon, LogOut, ChevronLeft, ChevronRight, Zap, Mic } from "lucide-react";
+import { BookOpen, Flame, NotebookPen, Brain, Sun, Moon, LogOut, ChevronLeft, ChevronRight, Zap, Mic, Settings } from "lucide-react";
 import { useState } from "react";
 
 type Tab = "leitura" | "devocional" | "anotacoes" | "biblioteca" | "cerebro" | "agente";
@@ -13,12 +13,17 @@ interface Props {
   focusActive?: boolean;
 }
 
-const NAV_ITEMS: { key: Tab; icon: React.ElementType; label: string }[] = [
-  { key: "leitura", icon: BookOpen, label: "Plano de Leitura" },
+type NavItem = { key: Tab; icon: React.ElementType; label: string };
+
+const PRIMARY: NavItem[] = [
+  { key: "anotacoes", icon: NotebookPen, label: "Caderno" },
+  { key: "leitura", icon: BookOpen, label: "Leitura" },
   { key: "devocional", icon: Flame, label: "Devocionais" },
-  { key: "anotacoes", icon: PenLine, label: "Estudo" },
-  { key: "agente", icon: Mic, label: "Agente" },
   { key: "cerebro", icon: Brain, label: "Segundo Cérebro" },
+];
+
+const TOOLS: NavItem[] = [
+  { key: "agente", icon: Mic, label: "Agente IA" },
 ];
 
 export default function DesktopSidebar({ tab, setTab, theme, setTheme, onLogout, onOpenFocus, focusActive }: Props) {
@@ -26,102 +31,134 @@ export default function DesktopSidebar({ tab, setTab, theme, setTheme, onLogout,
 
   return (
     <aside
-      className="hidden lg:flex flex-col h-screen sticky top-0 border-r border-border/40 transition-all duration-300 bg-card/50 backdrop-blur-sm"
-      style={{ width: collapsed ? 64 : 240 }}
+      className="hidden lg:flex flex-col h-screen sticky top-0 transition-all duration-300"
+      style={{
+        width: collapsed ? 60 : 232,
+        background: "hsl(var(--sidebar-background))",
+        color: "hsl(var(--sidebar-foreground))",
+        borderRight: "1px solid hsl(var(--sidebar-border))",
+      }}
     >
       {/* Brand */}
-      <div className="px-4 pt-5 pb-3 flex items-center justify-between">
+      <div className="px-3 pt-4 pb-3 flex items-center justify-between">
         {!collapsed && (
-          <div className="animate-fade-in">
-            <p className="text-[9px] tracking-[3px] uppercase text-muted-foreground font-ui">Fascinação · 2026A</p>
-            <h2 className="text-[15px] font-bold text-foreground font-display tracking-wide mt-0.5">Estudo Tudo Em Um</h2>
+          <div className="px-2 animate-fade-in">
+            <p className="text-[9px] tracking-[2.5px] uppercase font-ui" style={{ color: "hsl(var(--sidebar-foreground) / 0.45)" }}>
+              Caderno · 2026
+            </p>
+            <h2 className="text-[14px] font-semibold font-display tracking-wide mt-0.5" style={{ color: "hsl(var(--sidebar-primary))" }}>
+              Estudo
+            </h2>
           </div>
         )}
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="w-7 h-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all"
+          className="w-7 h-7 rounded-md flex items-center justify-center transition-all hover:bg-white/5"
+          style={{ color: "hsl(var(--sidebar-foreground) / 0.7)" }}
+          aria-label={collapsed ? "Expandir" : "Recolher"}
         >
           {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
         </button>
       </div>
 
-      <div className="h-px bg-border/30 mx-3" />
-
-      {/* FOCUS button — destacado no topo */}
+      {/* Modo Foco */}
       {onOpenFocus && (
-        <div className="px-2 pt-3">
+        <div className="px-2 pt-1 pb-2">
           <button
             onClick={onOpenFocus}
-            className={`group w-full flex items-center gap-3 px-3 py-3 rounded-xl text-[13px] font-ui font-bold transition-all duration-300 relative overflow-hidden
-              ${focusActive ? "ring-1 ring-primary/50" : ""}`}
-            style={{
-              background: "linear-gradient(135deg, hsl(var(--primary) / 0.22), hsl(var(--primary) / 0.06))",
-              border: "1px solid hsl(var(--primary) / 0.45)",
-              color: "hsl(var(--primary))",
-              boxShadow: focusActive
-                ? "0 0 32px -6px hsl(var(--primary) / 0.6), inset 0 0 20px -6px hsl(var(--primary) / 0.3)"
-                : "0 0 24px -10px hsl(var(--primary) / 0.5)",
-            }}
-            title="Entrar em Modo Foco imersivo"
+            className={`group w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-[12px] font-ui transition-all ${
+              focusActive ? "bg-white/10" : "hover:bg-white/5"
+            }`}
+            style={{ color: "hsl(var(--sidebar-foreground))" }}
+            title="Modo Foco"
           >
-            {/* Shimmer */}
-            <span
-              className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out pointer-events-none"
-              style={{ background: "linear-gradient(90deg, transparent, hsl(var(--primary) / 0.25), transparent)" }}
-            />
-            <Zap size={17} className="shrink-0 relative z-10" strokeWidth={2.2} />
-            {!collapsed && (
-              <span className="truncate relative z-10 tracking-wide uppercase text-[11px]">
-                Modo Foco
-              </span>
-            )}
+            <Zap size={15} strokeWidth={1.8} className="shrink-0 opacity-80" />
+            {!collapsed && <span className="truncate">Modo Foco</span>}
           </button>
         </div>
       )}
 
-      {/* Navigation */}
-      <nav className="flex-1 px-2 py-3 space-y-0.5">
-        <p className={`text-[9px] tracking-[2px] uppercase text-muted-foreground/50 font-ui px-2 mb-2 mt-2 ${collapsed ? "hidden" : ""}`}>
-          Navegação
-        </p>
-        {NAV_ITEMS.map(item => {
-          const isActive = tab === item.key;
-          return (
-            <button
-              key={item.key}
-              onClick={() => setTab(item.key)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-ui transition-all duration-200
-                ${isActive
-                  ? "bg-primary/10 text-primary border border-primary/20"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/30 border border-transparent"
-                }`}
-            >
-              <item.icon size={18} strokeWidth={isActive ? 2 : 1.5} className="shrink-0" />
-              {!collapsed && <span className="truncate">{item.label}</span>}
-            </button>
-          );
-        })}
+      <SectionLabel collapsed={collapsed}>Principal</SectionLabel>
+      <nav className="px-2 space-y-px">
+        {PRIMARY.map(item => (
+          <NavBtn key={item.key} item={item} active={tab === item.key} collapsed={collapsed} onClick={() => setTab(item.key)} />
+        ))}
       </nav>
 
-      <div className="h-px bg-border/30 mx-3" />
+      <SectionLabel collapsed={collapsed}>Ferramentas</SectionLabel>
+      <nav className="px-2 space-y-px">
+        {TOOLS.map(item => (
+          <NavBtn key={item.key} item={item} active={tab === item.key} collapsed={collapsed} onClick={() => setTab(item.key)} />
+        ))}
+      </nav>
+
+      <div className="flex-1" />
 
       {/* Bottom actions */}
-      <div className="px-2 py-3 space-y-0.5">
+      <div className="px-2 py-3 space-y-px" style={{ borderTop: "1px solid hsl(var(--sidebar-border))" }}>
         <button
           onClick={() => setTheme(theme === "light" ? "dark" : "light")}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-ui text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-all border border-transparent"
+          className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-[12px] font-ui transition-all hover:bg-white/5"
+          style={{ color: "hsl(var(--sidebar-foreground) / 0.85)" }}
         >
-          {theme === "light" ? <Moon size={18} strokeWidth={1.5} /> : <Sun size={18} strokeWidth={1.5} />}
+          {theme === "light" ? <Moon size={15} strokeWidth={1.6} /> : <Sun size={15} strokeWidth={1.6} />}
           {!collapsed && <span>{theme === "light" ? "Modo escuro" : "Modo claro"}</span>}
         </button>
         <button
           onClick={onLogout}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-ui text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-all border border-transparent"
+          className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-[12px] font-ui transition-all hover:bg-white/5"
+          style={{ color: "hsl(var(--sidebar-foreground) / 0.85)" }}
         >
-          <LogOut size={18} strokeWidth={1.5} />
+          <LogOut size={15} strokeWidth={1.6} />
           {!collapsed && <span>Sair</span>}
         </button>
       </div>
     </aside>
+  );
+}
+
+function SectionLabel({ collapsed, children }: { collapsed: boolean; children: React.ReactNode }) {
+  if (collapsed) return <div className="h-3" />;
+  return (
+    <p
+      className="text-[9px] tracking-[2.2px] uppercase font-ui px-4 mt-3 mb-1"
+      style={{ color: "hsl(var(--sidebar-foreground) / 0.4)" }}
+    >
+      {children}
+    </p>
+  );
+}
+
+function NavBtn({
+  item,
+  active,
+  collapsed,
+  onClick,
+}: {
+  item: { key: string; icon: React.ElementType; label: string };
+  active: boolean;
+  collapsed: boolean;
+  onClick: () => void;
+}) {
+  const Icon = item.icon;
+  return (
+    <button
+      onClick={onClick}
+      className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-[12.5px] font-ui transition-all"
+      style={{
+        background: active ? "hsl(var(--sidebar-primary))" : "transparent",
+        color: active ? "hsl(var(--sidebar-primary-foreground))" : "hsl(var(--sidebar-foreground))",
+      }}
+      onMouseEnter={(e) => {
+        if (!active) e.currentTarget.style.background = "hsl(var(--sidebar-accent))";
+      }}
+      onMouseLeave={(e) => {
+        if (!active) e.currentTarget.style.background = "transparent";
+      }}
+      title={item.label}
+    >
+      <Icon size={15} strokeWidth={active ? 2 : 1.6} className="shrink-0" />
+      {!collapsed && <span className="truncate">{item.label}</span>}
+    </button>
   );
 }
