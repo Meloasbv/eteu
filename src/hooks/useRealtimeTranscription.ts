@@ -75,6 +75,9 @@ export function useRealtimeTranscription(opts?: {
         interim,
       }));
       finals.forEach((f) => onFinalRef.current?.(f));
+      // Re-arma timer de pausa: se houver interim, cancela; se houver final novo, conta a partir de agora.
+      if (pauseTimerRef.current) window.clearTimeout(pauseTimerRef.current);
+      if (finals.length && !interim) armPauseTimer();
     };
     rec.onerror = (e: any) => {
       if (e.error === "no-speech" || e.error === "aborted") return;
