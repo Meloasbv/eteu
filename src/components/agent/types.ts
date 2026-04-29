@@ -53,6 +53,7 @@ export interface StudySessionRow {
   personal_notes: PersonalNote[];
   study_flow_progress: Record<string, StudyFlowProgress>;
   is_favorite: boolean;
+  mind_map_id: string | null;
   created_at: string;
   updated_at: string;
 }
