@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Pause, Play, Square, X, Plus, BookOpen, Sparkles, Mic } from "lucide-react";
+import { Pause, Play, Square, X, Plus, BookOpen, Sparkles, Mic, List, Network } from "lucide-react";
 import { useRealtimeTranscription } from "@/hooks/useRealtimeTranscription";
 import { useMediaRecorderAudio } from "@/hooks/useMediaRecorderAudio";
 import { useWaveform } from "@/hooks/useWaveform";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { haptic } from "@/hooks/useHaptic";
+import LiveTopicCanvas from "./LiveTopicCanvas";
+import type { Edge } from "@xyflow/react";
 import type { TranscriptSegment, DetectedTopic, PersonalNote } from "./types";
 
 interface Props {
@@ -19,6 +21,7 @@ interface Props {
     personalNotes: PersonalNote[];
     audioBlob: Blob | null;
     sourceType: "live" | "upload";
+    layout?: { positions: Record<string, { x: number; y: number }>; edges: Edge[] };
   }) => Promise<void>;
 }
 
@@ -37,6 +40,9 @@ export default function RecordingView({ userCodeId, onCancel, onFinish }: Props)
   const [classifying, setClassifying] = useState(false);
   const [newNote, setNewNote] = useState("");
   const [pendingTopicHighlight, setPendingTopicHighlight] = useState<string | null>(null);
+  const [sideTab, setSideTab] = useState<"list" | "map">("list");
+  const [positions, setPositions] = useState<Record<string, { x: number; y: number }>>({});
+  const [canvasEdges, setCanvasEdges] = useState<Edge[]>([]);
 
   const startedAtRef = useRef<number>(0);
   const lastClassifyAtRef = useRef<number>(0);
@@ -164,8 +170,9 @@ export default function RecordingView({ userCodeId, onCancel, onFinish }: Props)
       personalNotes: notes,
       audioBlob: blob,
       sourceType: "live",
+      layout: { positions, edges: canvasEdges },
     });
-  }, [recorder, transcription, topics, notes, onFinish]);
+  }, [recorder, transcription, topics, notes, onFinish, positions, canvasEdges]);
 
   const addNote = useCallback(() => {
     if (!newNote.trim()) return;
