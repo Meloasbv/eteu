@@ -8,7 +8,7 @@ import { toast } from "@/hooks/use-toast";
 import { haptic } from "@/hooks/useHaptic";
 import LiveTopicCanvas from "./LiveTopicCanvas";
 import type { Edge } from "@xyflow/react";
-import type { TranscriptSegment, DetectedTopic, PersonalNote } from "./types";
+import type { TranscriptSegment, DetectedTopic, PersonalNote, StudySessionRow } from "./types";
 
 interface Props {
   userCodeId: string;
@@ -22,7 +22,10 @@ interface Props {
     audioBlob: Blob | null;
     sourceType: "live" | "upload";
     layout?: { positions: Record<string, { x: number; y: number }>; edges: Edge[] };
+    resumeOf?: StudySessionRow | null;
+    priorTranscript?: string;
   }) => Promise<void>;
+  initialSession?: StudySessionRow | null;
 }
 
 const PAUSE_MS = 2500;
@@ -34,10 +37,11 @@ function fmtTime(sec: number) {
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
-export default function RecordingView({ userCodeId, onCancel, onFinish }: Props) {
-  const [topics, setTopics] = useState<DetectedTopic[]>([]);
-  const [notes, setNotes] = useState<PersonalNote[]>([]);
-  const [elapsed, setElapsed] = useState(0);
+export default function RecordingView({ userCodeId, onCancel, onFinish, initialSession }: Props) {
+  const priorDurationMs = (initialSession?.duration_seconds || 0) * 1000;
+  const [topics, setTopics] = useState<DetectedTopic[]>(initialSession?.topics || []);
+  const [notes, setNotes] = useState<PersonalNote[]>(initialSession?.personal_notes || []);
+  const [elapsed, setElapsed] = useState(Math.floor(priorDurationMs / 1000));
   const [classifying, setClassifying] = useState(false);
   const [newNote, setNewNote] = useState("");
   const [pendingTopicHighlight, setPendingTopicHighlight] = useState<string | null>(null);
@@ -70,7 +74,7 @@ export default function RecordingView({ userCodeId, onCancel, onFinish }: Props)
     processingRef.current = true;
     setClassifying(true);
 
-    const startTs = segs[0]?.timestamp || 0;
+    const startTs = (segs[0]?.timestamp || 0) + priorDurationMs;
     const segIds = segs.map((s) => s.id);
 
     try {
@@ -181,13 +185,14 @@ export default function RecordingView({ userCodeId, onCancel, onFinish }: Props)
     // eslint-disable-next-line
   }, []);
 
-  // Tick timer
+  // Tick timer (continua de onde parou se for resume)
   useEffect(() => {
     const t = setInterval(() => {
-      setElapsed(Math.floor((Date.now() - (startedAtRef.current || Date.now())) / 1000));
+      const liveSec = Math.floor((Date.now() - (startedAtRef.current || Date.now())) / 1000);
+      setElapsed(Math.floor(priorDurationMs / 1000) + liveSec);
     }, 1000);
     return () => clearInterval(t);
-  }, []);
+  }, [priorDurationMs]);
 
   const togglePause = useCallback(() => {
     if (transcription.listening) {
@@ -204,10 +209,15 @@ export default function RecordingView({ userCodeId, onCancel, onFinish }: Props)
       await processBlock();
     }
     const blob = await recorder.stop();
-    const transcript = transcription.segments.map((s) => s.text).join(" ").trim();
-    const duration = Math.floor((Date.now() - startedAtRef.current) / 1000);
+    const newTranscript = transcription.segments.map((s) => s.text).join(" ").trim();
+    const priorTranscript = initialSession?.full_transcript || "";
+    const transcript = priorTranscript
+      ? (priorTranscript + (newTranscript ? "\n\n" + newTranscript : ""))
+      : newTranscript;
+    const liveDuration = Math.floor((Date.now() - startedAtRef.current) / 1000);
+    const duration = Math.floor(priorDurationMs / 1000) + liveDuration;
     await onFinish({
-      title: "",
+      title: initialSession?.title || "",
       duration,
       transcript,
       topics: topicsRef.current,
@@ -215,8 +225,10 @@ export default function RecordingView({ userCodeId, onCancel, onFinish }: Props)
       audioBlob: blob,
       sourceType: "live",
       layout: { positions, edges: canvasEdges },
+      resumeOf: initialSession || null,
+      priorTranscript,
     });
-  }, [recorder, transcription, notes, onFinish, positions, canvasEdges, processBlock]);
+  }, [recorder, transcription, notes, onFinish, positions, canvasEdges, processBlock, initialSession, priorDurationMs]);
 
   const addNote = useCallback(() => {
     if (!newNote.trim()) return;
