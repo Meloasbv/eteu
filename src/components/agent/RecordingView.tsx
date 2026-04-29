@@ -8,7 +8,7 @@ import { toast } from "@/hooks/use-toast";
 import { haptic } from "@/hooks/useHaptic";
 import LiveTopicCanvas from "./LiveTopicCanvas";
 import type { Edge } from "@xyflow/react";
-import type { TranscriptSegment, DetectedTopic, PersonalNote } from "./types";
+import type { TranscriptSegment, DetectedTopic, PersonalNote, StudySessionRow } from "./types";
 
 interface Props {
   userCodeId: string;
@@ -22,7 +22,10 @@ interface Props {
     audioBlob: Blob | null;
     sourceType: "live" | "upload";
     layout?: { positions: Record<string, { x: number; y: number }>; edges: Edge[] };
+    resumeOf?: StudySessionRow | null;
+    priorTranscript?: string;
   }) => Promise<void>;
+  initialSession?: StudySessionRow | null;
 }
 
 const PAUSE_MS = 2500;
@@ -34,10 +37,11 @@ function fmtTime(sec: number) {
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
-export default function RecordingView({ userCodeId, onCancel, onFinish }: Props) {
-  const [topics, setTopics] = useState<DetectedTopic[]>([]);
-  const [notes, setNotes] = useState<PersonalNote[]>([]);
-  const [elapsed, setElapsed] = useState(0);
+export default function RecordingView({ userCodeId, onCancel, onFinish, initialSession }: Props) {
+  const priorDurationMs = (initialSession?.duration_seconds || 0) * 1000;
+  const [topics, setTopics] = useState<DetectedTopic[]>(initialSession?.topics || []);
+  const [notes, setNotes] = useState<PersonalNote[]>(initialSession?.personal_notes || []);
+  const [elapsed, setElapsed] = useState(Math.floor(priorDurationMs / 1000));
   const [classifying, setClassifying] = useState(false);
   const [newNote, setNewNote] = useState("");
   const [pendingTopicHighlight, setPendingTopicHighlight] = useState<string | null>(null);
