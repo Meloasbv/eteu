@@ -6,8 +6,8 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-const GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
 
 function safeParse(s: string): any {
   let t = s.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
@@ -70,7 +70,7 @@ Retorne APENAS JSON válido, sem markdown.`;
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   try {
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY ausente");
+    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY ausente");
     const { transcript, topics } = await req.json();
     if (!transcript || typeof transcript !== "string") {
       return new Response(JSON.stringify({ error: "transcript obrigatório" }),
@@ -80,12 +80,13 @@ serve(async (req) => {
     const t = transcript.length > 30000 ? transcript.slice(0, 30000) + "\n[...truncado]" : transcript;
     const topicsTxt = (topics || []).map((tp: any, i: number) => `${i + 1}. ${tp.title || tp}`).join("\n");
 
-    const res = await fetch(GATEWAY, {
+    const res = await fetch(OPENAI_URL, {
       method: "POST",
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "gpt-4o-mini",
         max_tokens: 16000,
+        response_format: { type: "json_object" },
         messages: [
           { role: "system", content: SYSTEM },
           { role: "user", content: `TÓPICOS DETECTADOS AO VIVO:\n${topicsTxt || "(nenhum)"}\n\nTRANSCRIÇÃO COMPLETA:\n${t}` },
