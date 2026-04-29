@@ -14,7 +14,7 @@ import DesktopRightPanel from "@/components/desktop/DesktopRightPanel";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useScrollDirection } from "@/hooks/useScrollDirection";
 import { haptic } from "@/hooks/useHaptic";
-import { BookOpen, Flame, PenLine, Check, Sun, Moon, LogOut, Sparkles, CheckCheck, Brain, Zap, Mic } from "lucide-react";
+import { BookOpen, Flame, PenLine, Check, Sun, Moon, LogOut, Sparkles, CheckCheck, Brain, Zap, Mic, NotebookPen } from "lucide-react";
 import BrainAreasHub from "@/components/secondbrain/areas/BrainAreasHub";
 import AgentTab from "@/components/agent/AgentTab";
 import { lazy, Suspense } from "react";
@@ -353,11 +353,11 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
   const compactHeader = direction === "down" && !isAtTop;
 
   const TABS: { key: typeof tab; icon: React.ReactNode; label: string }[] = [
+    { key: "anotacoes", icon: <NotebookPen size={22} />, label: "Caderno" },
     { key: "leitura", icon: <BookOpen size={22} />, label: "Leitura" },
     { key: "devocional", icon: <Flame size={22} />, label: "Devocional" },
-    { key: "anotacoes", icon: <PenLine size={22} />, label: "Estudo" },
-    { key: "agente", icon: <Mic size={22} />, label: "Agente" },
     { key: "cerebro", icon: <Brain size={22} />, label: "Cérebro" },
+    { key: "agente", icon: <Mic size={22} />, label: "Agente" },
   ];
 
   // ── CONTENT (shared between mobile & desktop) ──
