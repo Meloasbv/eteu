@@ -7,6 +7,7 @@ import Index from "./pages/Index.tsx";
 import SharedNote from "./pages/SharedNote.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import SharedMindMap from "./pages/SharedMindMap.tsx";
+import SharedStudySession from "./pages/SharedStudySession.tsx";
 
 const queryClient = new QueryClient();
 
@@ -20,6 +21,7 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/nota/:slug" element={<SharedNote />} />
           <Route path="/m/:slug" element={<SharedMindMap />} />
+          <Route path="/estudo/:slug" element={<SharedStudySession />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
