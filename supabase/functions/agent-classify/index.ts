@@ -6,8 +6,8 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-const GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
 
 const SYSTEM = `Você é um agente de detecção de tópicos para AULAS BÍBLICAS / PREGAÇÕES em português.
 Recebe um trecho NOVO de transcrição ao vivo + lista de tópicos já existentes.
@@ -40,7 +40,7 @@ function safeParse(s: string): any {
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   try {
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY ausente");
+    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY ausente");
     const { new_text, existing_topics } = await req.json();
     if (!new_text || typeof new_text !== "string") {
       return new Response(JSON.stringify({ error: "new_text obrigatório" }),
@@ -48,12 +48,13 @@ serve(async (req) => {
     }
     const userMsg = `TÓPICOS EXISTENTES:\n${(existing_topics || []).map((t: string, i: number) => `${i + 1}. ${t}`).join("\n") || "(nenhum)"}\n\nTRECHO NOVO:\n${new_text}`;
 
-    const res = await fetch(GATEWAY, {
+    const res = await fetch(OPENAI_URL, {
       method: "POST",
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "gpt-4o-mini",
         max_tokens: 1500,
+        response_format: { type: "json_object" },
         messages: [
           { role: "system", content: SYSTEM },
           { role: "user", content: userMsg },
