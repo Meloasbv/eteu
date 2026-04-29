@@ -245,6 +245,7 @@ export default function AgentTab({ userCodeId }: Props) {
         userCodeId={userCodeId}
         onBack={() => { setActiveSession(null); setMode("idle"); refresh(); }}
         onUpdate={(s) => setActiveSession(s)}
+        onResume={(s) => { setResumeSession(s); setActiveSession(null); setMode("recording"); }}
       />
     );
   }
@@ -253,7 +254,8 @@ export default function AgentTab({ userCodeId }: Props) {
     return (
       <RecordingView
         userCodeId={userCodeId}
-        onCancel={() => setMode("idle")}
+        initialSession={resumeSession}
+        onCancel={() => { setResumeSession(null); setMode("idle"); }}
         onFinish={finalizeSession}
       />
     );
