@@ -125,5 +125,13 @@ export function useRealtimeTranscription(opts?: {
     try { recRef.current.start(); } catch {}
   }, []);
 
-  return { ...state, start, stop, pause, resume };
+  /** Edita o texto de um segmento já transcrito (correção inline). */
+  const updateSegment = useCallback((id: string, newText: string) => {
+    setState((s) => ({
+      ...s,
+      segments: s.segments.map((seg) => (seg.id === id ? { ...seg, text: newText } : seg)),
+    }));
+  }, []);
+
+  return { ...state, start, stop, pause, resume, updateSegment };
 }
