@@ -438,6 +438,7 @@ export type Database = {
           next_review: string
           note_id: string
           repetitions: number
+          study_session_id: string | null
           type: string
           user_code_id: string
         }
@@ -454,6 +455,7 @@ export type Database = {
           next_review?: string
           note_id: string
           repetitions?: number
+          study_session_id?: string | null
           type?: string
           user_code_id: string
         }
@@ -470,6 +472,7 @@ export type Database = {
           next_review?: string
           note_id?: string
           repetitions?: number
+          study_session_id?: string | null
           type?: string
           user_code_id?: string
         }
@@ -479,6 +482,13 @@ export type Database = {
             columns: ["mind_map_id"]
             isOneToOne: false
             referencedRelation: "mind_maps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "study_flashcards_study_session_id_fkey"
+            columns: ["study_session_id"]
+            isOneToOne: false
+            referencedRelation: "study_sessions"
             referencedColumns: ["id"]
           },
         ]
@@ -526,6 +536,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      study_sessions: {
+        Row: {
+          audio_url: string | null
+          created_at: string
+          duration_seconds: number
+          full_transcript: string
+          generated_study: Json | null
+          id: string
+          is_favorite: boolean
+          personal_notes: Json
+          source_type: string
+          study_flow_progress: Json
+          title: string
+          topics: Json
+          updated_at: string
+          user_code_id: string
+        }
+        Insert: {
+          audio_url?: string | null
+          created_at?: string
+          duration_seconds?: number
+          full_transcript?: string
+          generated_study?: Json | null
+          id?: string
+          is_favorite?: boolean
+          personal_notes?: Json
+          source_type?: string
+          study_flow_progress?: Json
+          title?: string
+          topics?: Json
+          updated_at?: string
+          user_code_id: string
+        }
+        Update: {
+          audio_url?: string | null
+          created_at?: string
+          duration_seconds?: number
+          full_transcript?: string
+          generated_study?: Json | null
+          id?: string
+          is_favorite?: boolean
+          personal_notes?: Json
+          source_type?: string
+          study_flow_progress?: Json
+          title?: string
+          topics?: Json
+          updated_at?: string
+          user_code_id?: string
+        }
+        Relationships: []
       }
       thought_connections: {
         Row: {

@@ -14,8 +14,9 @@ import DesktopRightPanel from "@/components/desktop/DesktopRightPanel";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useScrollDirection } from "@/hooks/useScrollDirection";
 import { haptic } from "@/hooks/useHaptic";
-import { BookOpen, Flame, PenLine, Check, Sun, Moon, LogOut, Sparkles, CheckCheck, Brain, Zap } from "lucide-react";
+import { BookOpen, Flame, PenLine, Check, Sun, Moon, LogOut, Sparkles, CheckCheck, Brain, Zap, Mic } from "lucide-react";
 import BrainAreasHub from "@/components/secondbrain/areas/BrainAreasHub";
+import AgentTab from "@/components/agent/AgentTab";
 import { lazy, Suspense } from "react";
 const FocusWorkspace = lazy(() => import("@/components/secondbrain/FocusWorkspace"));
 
@@ -206,12 +207,11 @@ export default function BiblePlan() {
 }
 
 function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string; accessCode: string | null; onLogout: () => void }) {
-  const [tab, setTab] = useState<"leitura" | "devocional" | "anotacoes" | "biblioteca" | "cerebro">(() => {
+  const [tab, setTab] = useState<"leitura" | "devocional" | "anotacoes" | "biblioteca" | "cerebro" | "agente">(() => {
     try {
       const saved = localStorage.getItem("fascinacao-active-tab");
-      // legacy redirect: agenda → cerebro
       if (saved === "agenda") return "cerebro";
-      if (saved === "leitura" || saved === "devocional" || saved === "anotacoes" || saved === "biblioteca" || saved === "cerebro") return saved;
+      if (saved === "leitura" || saved === "devocional" || saved === "anotacoes" || saved === "biblioteca" || saved === "cerebro" || saved === "agente") return saved as any;
     } catch {}
     return "leitura";
   });
@@ -243,6 +243,7 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
     const newTitle = tab === "leitura" ? "Plano de Leitura"
       : tab === "devocional" ? "Devocionais"
       : tab === "cerebro" ? "Segundo Cérebro"
+      : tab === "agente" ? "Agente de Estudo"
       : "Estudo";
     try { localStorage.setItem("fascinacao-active-tab", tab); } catch {}
     if (newTitle !== displayTitle) {
@@ -355,6 +356,7 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
     { key: "leitura", icon: <BookOpen size={22} />, label: "Leitura" },
     { key: "devocional", icon: <Flame size={22} />, label: "Devocional" },
     { key: "anotacoes", icon: <PenLine size={22} />, label: "Estudo" },
+    { key: "agente", icon: <Mic size={22} />, label: "Agente" },
     { key: "cerebro", icon: <Brain size={22} />, label: "Cérebro" },
   ];
 
@@ -600,6 +602,11 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
         {/* ── SEGUNDO CÉREBRO TAB ── */}
         {tab === "cerebro" && (
           <BrainAreasHub userCodeId={userCodeId} />
+        )}
+
+        {/* ── AGENTE TAB ── */}
+        {tab === "agente" && (
+          <AgentTab userCodeId={userCodeId} />
         )}
 
       </div>
