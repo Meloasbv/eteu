@@ -18,6 +18,7 @@ type Mode = "idle" | "recording" | "processing" | "hub";
 export default function AgentTab({ userCodeId }: Props) {
   const [mode, setMode] = useState<Mode>("idle");
   const [activeSession, setActiveSession] = useState<StudySessionRow | null>(null);
+  const [resumeSession, setResumeSession] = useState<StudySessionRow | null>(null);
   const [sessions, setSessions] = useState<StudySessionRow[]>([]);
   const [progress, setProgress] = useState<{ label: string; pct: number } | null>(null);
 
