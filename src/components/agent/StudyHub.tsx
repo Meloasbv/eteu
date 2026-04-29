@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, FileText, ScrollText, Sparkles, Mic } from "lucide-react";
+import { ArrowLeft, FileText, ScrollText, Sparkles, Mic, Share2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import StudyGuide from "@/components/study-guide/StudyGuide";
 import type { StudySessionRow, StudyFlowType } from "./types";
@@ -7,6 +7,7 @@ import TranscriptTab from "./TranscriptTab";
 import FlowSelector from "./FlowSelector";
 import FlowRunner from "./FlowRunner";
 import AgentChat from "./AgentChat";
+import ShareStudyDialog from "./ShareStudyDialog";
 
 interface Props {
   session: StudySessionRow;
@@ -23,6 +24,7 @@ export default function StudyHub({ session, userCodeId, onBack, onUpdate, onResu
   const [activeFlow, setActiveFlow] = useState<StudyFlowType | null>(null);
   const [showFlowSelector, setShowFlowSelector] = useState(!session.study_flow_progress?.last);
   const [showChat, setShowChat] = useState(false);
+  const [showShare, setShowShare] = useState(false);
   const study = session.generated_study;
 
   const persistFlowProgress = async (flow: StudyFlowType, step: number, total: number) => {
