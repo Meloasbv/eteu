@@ -185,13 +185,14 @@ export default function RecordingView({ userCodeId, onCancel, onFinish, initialS
     // eslint-disable-next-line
   }, []);
 
-  // Tick timer
+  // Tick timer (continua de onde parou se for resume)
   useEffect(() => {
     const t = setInterval(() => {
-      setElapsed(Math.floor((Date.now() - (startedAtRef.current || Date.now())) / 1000));
+      const liveSec = Math.floor((Date.now() - (startedAtRef.current || Date.now())) / 1000);
+      setElapsed(Math.floor(priorDurationMs / 1000) + liveSec);
     }, 1000);
     return () => clearInterval(t);
-  }, []);
+  }, [priorDurationMs]);
 
   const togglePause = useCallback(() => {
     if (transcription.listening) {
