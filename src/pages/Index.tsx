@@ -244,7 +244,7 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
       : tab === "devocional" ? "Devocionais"
       : tab === "cerebro" ? "Segundo Cérebro"
       : tab === "agente" ? "Agente de Estudo"
-      : "Estudo";
+      : "Caderno";
     try { localStorage.setItem("fascinacao-active-tab", tab); } catch {}
     if (newTitle !== displayTitle) {
       setTitleFading(true);
