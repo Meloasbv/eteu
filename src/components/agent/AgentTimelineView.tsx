@@ -183,7 +183,7 @@ export default function AgentTimelineView({ title, audioUrl, topics, durationSec
           return (
             <article
               key={t.id}
-              ref={(el) => { cardsRef.current[t.id] = el; }}
+              ref={(el: HTMLDivElement | null) => { cardsRef.current[t.id] = el; }}
               className="relative group"
             >
               {/* Linha vertical conectora */}
