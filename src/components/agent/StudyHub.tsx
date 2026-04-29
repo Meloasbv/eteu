@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { ArrowLeft, FileText, Network, Layers, Target, ScrollText, Sparkles } from "lucide-react";
+import { ArrowLeft, FileText, ScrollText, Sparkles, Mic } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import StudyGuide from "@/components/study-guide/StudyGuide";
 import type { StudySessionRow, StudyFlowType } from "./types";
@@ -7,18 +7,18 @@ import TranscriptTab from "./TranscriptTab";
 import FlowSelector from "./FlowSelector";
 import FlowRunner from "./FlowRunner";
 import AgentChat from "./AgentChat";
-import AgentMapTab from "./AgentMapTab";
 
 interface Props {
   session: StudySessionRow;
   userCodeId: string;
   onBack: () => void;
   onUpdate: (s: StudySessionRow) => void;
+  onResume?: (s: StudySessionRow) => void;
 }
 
-type Tab = "notes" | "map" | "flash" | "quiz" | "transcript";
+type Tab = "notes" | "transcript";
 
-export default function StudyHub({ session, userCodeId, onBack, onUpdate }: Props) {
+export default function StudyHub({ session, userCodeId, onBack, onUpdate, onResume }: Props) {
   const [tab, setTab] = useState<Tab>("notes");
   const [activeFlow, setActiveFlow] = useState<StudyFlowType | null>(null);
   const [showFlowSelector, setShowFlowSelector] = useState(!session.study_flow_progress?.last);
@@ -58,6 +58,20 @@ export default function StudyHub({ session, userCodeId, onBack, onUpdate }: Prop
             {Math.floor(session.duration_seconds / 60)}min · {(session.topics || []).length} tópicos · {study?.quiz_questions?.length || 0} questões
           </p>
         </div>
+        {onResume && (
+          <button
+            onClick={() => onResume(session)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-ui font-bold transition-all"
+            style={{
+              background: "linear-gradient(135deg, hsl(var(--primary) / 0.2), hsl(var(--primary) / 0.05))",
+              border: "1px solid hsl(var(--primary) / 0.4)",
+              color: "hsl(var(--primary))",
+            }}
+            title="Continuar gravando esta sessão"
+          >
+            <Mic size={12} /> Continuar gravando
+          </button>
+        )}
         <button
           onClick={() => setShowFlowSelector(true)}
           className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-ui font-bold transition-all"
@@ -74,30 +88,18 @@ export default function StudyHub({ session, userCodeId, onBack, onUpdate }: Prop
       {/* Tabs */}
       <nav className="px-2 lg:px-6 py-2 border-b border-border/30 flex gap-1 overflow-x-auto shrink-0">
         <TabBtn active={tab === "notes"} onClick={() => setTab("notes")} icon={<FileText size={13} />} label="Notas" />
-        <TabBtn active={tab === "map"} onClick={() => setTab("map")} icon={<Network size={13} />} label="Mapa" />
-        <TabBtn active={tab === "flash"} onClick={() => setTab("flash")} icon={<Layers size={13} />} label="Flash" />
-        <TabBtn active={tab === "quiz"} onClick={() => setTab("quiz")} icon={<Target size={13} />} label="Quiz" />
         <TabBtn active={tab === "transcript"} onClick={() => setTab("transcript")} icon={<ScrollText size={13} />} label="Transcrição" />
       </nav>
 
       {/* Content */}
       <main className="flex-1 lg:overflow-y-auto">
-        {!study && (
+        {!study && tab === "notes" && (
           <div className="text-center py-16 text-muted-foreground text-sm">
             Esta sessão não tem material gerado.
           </div>
         )}
         {study && tab === "notes" && (
           <StudyGuide analysis={study} onBack={onBack} />
-        )}
-        {study && tab === "map" && (
-          <AgentMapTab session={session} userCodeId={userCodeId} onUpdate={onUpdate} />
-        )}
-        {study && tab === "flash" && (
-          <FlashcardsView analysis={study} />
-        )}
-        {study && tab === "quiz" && (
-          <QuizView analysis={study} />
         )}
         {tab === "transcript" && (
           <TranscriptTab session={session} onUpdate={onUpdate} />
