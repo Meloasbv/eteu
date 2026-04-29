@@ -154,22 +154,38 @@ export default function AgentTab({ userCodeId }: Props) {
 
     setProgress({ label: "Concluindo…", pct: 90 });
 
-    const { data: row, error } = await supabase
-      .from("study_sessions")
-      .insert({
-        user_code_id: userCodeId,
-        title: payload.title || generated?.main_theme || "Sessão sem título",
-        duration_seconds: payload.duration,
-        source_type: payload.sourceType,
-        audio_url: audioUrl,
-        full_transcript: payload.transcript,
-        topics: payload.topics as any,
-        generated_study: generated as any,
-        personal_notes: payload.personalNotes as any,
-        mind_map_id: mindMapId,
-      })
-      .select("*")
-      .single();
+    const baseFields = {
+      title: payload.title || generated?.main_theme || "Sessão sem título",
+      duration_seconds: payload.duration,
+      source_type: payload.sourceType,
+      full_transcript: payload.transcript,
+      topics: payload.topics as any,
+      generated_study: generated as any,
+      personal_notes: payload.personalNotes as any,
+      mind_map_id: mindMapId,
+    };
+
+    let row: any = null;
+    let error: any = null;
+    if (payload.resumeOf?.id) {
+      // Continuação: atualiza a linha existente. Mantém audio_url anterior se nada novo gravado.
+      const updateFields: any = { ...baseFields };
+      if (audioUrl) updateFields.audio_url = audioUrl;
+      const r = await supabase
+        .from("study_sessions")
+        .update(updateFields)
+        .eq("id", payload.resumeOf.id)
+        .select("*")
+        .single();
+      row = r.data; error = r.error;
+    } else {
+      const r = await supabase
+        .from("study_sessions")
+        .insert({ user_code_id: userCodeId, audio_url: audioUrl, ...baseFields })
+        .select("*")
+        .single();
+      row = r.data; error = r.error;
+    }
 
     if (error || !row) {
       toast({ title: "Erro ao salvar", description: error?.message, variant: "destructive" });
@@ -178,6 +194,7 @@ export default function AgentTab({ userCodeId }: Props) {
       return;
     }
     setActiveSession(row as any);
+    setResumeSession(null);
     await refresh();
     setMode("hub");
     setProgress(null);
