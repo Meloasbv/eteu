@@ -516,3 +516,51 @@ function Stat({ label, value }: { label: string; value: number }) {
     </div>
   );
 }
+
+/** Texto que vira input/textarea no duplo clique. Commit no blur/Enter. */
+function InlineEditableText({
+  value, onCommit, placeholder, multiline, className, style,
+}: {
+  value: string;
+  onCommit: (v: string) => void;
+  placeholder?: string;
+  multiline?: boolean;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+  useEffect(() => { setDraft(value); }, [value]);
+  const commit = () => {
+    setEditing(false);
+    if (draft.trim() !== value.trim()) onCommit(draft.trim());
+  };
+  if (editing) {
+    const Tag: any = multiline ? "textarea" : "input";
+    return (
+      <Tag
+        autoFocus
+        value={draft}
+        onChange={(e: any) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e: any) => {
+          if (e.key === "Enter" && (!multiline || e.metaKey || e.ctrlKey)) commit();
+          if (e.key === "Escape") { setDraft(value); setEditing(false); }
+        }}
+        className={`${className || ""} bg-card/60 border border-primary/40 rounded px-1 py-0.5 outline-none w-full resize-none`}
+        style={style}
+        rows={multiline ? 2 : undefined}
+      />
+    );
+  }
+  return (
+    <span
+      onDoubleClick={() => setEditing(true)}
+      className={`${className || ""} cursor-text hover:bg-primary/5 rounded`}
+      style={style}
+      title="Duplo clique para editar"
+    >
+      {value || <span className="opacity-50">{placeholder}</span>}
+    </span>
+  );
+}
