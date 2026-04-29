@@ -102,7 +102,7 @@ export default function StudyHub({ session, userCodeId, onBack, onUpdate }: Prop
           <QuizView analysis={study} />
         )}
         {tab === "transcript" && (
-          <TranscriptTab session={session} />
+          <TranscriptTab session={session} onUpdate={onUpdate} />
         )}
       </main>
 
