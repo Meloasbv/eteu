@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { ArrowLeft, FileText, ScrollText, Sparkles, Mic } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import StudyGuide from "@/components/study-guide/StudyGuide";
