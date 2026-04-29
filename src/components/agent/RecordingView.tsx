@@ -230,6 +230,27 @@ export default function RecordingView({ userCodeId, onCancel, onFinish }: Props)
     haptic("light");
   }, [newNote, elapsed]);
 
+  // ─── Edição inline ─────────────────────────────────────────────
+  const updateTopic = useCallback((id: string, patch: Partial<DetectedTopic>) => {
+    setTopics((cur) => cur.map((t) => (t.id === id ? { ...t, ...patch } : t)));
+  }, []);
+
+  const [editingSegId, setEditingSegId] = useState<string | null>(null);
+  const [editingSegDraft, setEditingSegDraft] = useState("");
+
+  const startEditSegment = useCallback((id: string, currentText: string) => {
+    setEditingSegId(id);
+    setEditingSegDraft(currentText);
+  }, []);
+  const commitEditSegment = useCallback(() => {
+    if (editingSegId && editingSegDraft.trim()) {
+      transcription.updateSegment(editingSegId, editingSegDraft.trim());
+    }
+    setEditingSegId(null);
+    setEditingSegDraft("");
+  }, [editingSegId, editingSegDraft, transcription]);
+
+
   const totalVerses = topics.reduce((acc, t) => acc + t.verses.length, 0);
   const totalPhrases = topics.reduce((acc, t) => acc + t.impactPhrases.length, 0);
   const lastSegments = transcription.segments.slice(-6);
