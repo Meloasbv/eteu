@@ -92,6 +92,20 @@ export default function RecordingView({ userCodeId, onCancel, onFinish, initialS
       const summary: string = data.summary || "";
       const keywords: string[] = (data.keywords || []).map((k: string) => String(k).toLowerCase());
       const verses: string[] = data.verses || [];
+      const correctedText: string = (data.corrected_text && String(data.corrected_text).trim()) || rawText;
+
+      // Aplica a correção da IA no PRIMEIRO segmento do bloco e zera os outros,
+      // para que a transcrição final fique limpa e fiel ao tema.
+      try {
+        if (correctedText !== rawText && segIds.length) {
+          transcription.updateSegment(segIds[0], correctedText);
+          for (let i = 1; i < segIds.length; i++) {
+            transcription.updateSegment(segIds[i], "");
+          }
+        }
+      } catch (e) {
+        console.warn("[summarize-block] aplicar correção falhou", e);
+      }
 
       const newTopic: DetectedTopic = {
         id: `topic-${Date.now()}`,
@@ -103,7 +117,7 @@ export default function RecordingView({ userCodeId, onCancel, onFinish, initialS
         keyPoints: summary ? [summary] : [],
         summary,
         keywords,
-        rawText,
+        rawText: correctedText,
       };
 
       // Auto-conexão: encontra tópico anterior com mais overlap de keywords.
