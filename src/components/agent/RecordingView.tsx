@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { haptic } from "@/hooks/useHaptic";
 import LiveTopicCanvas from "./LiveTopicCanvas";
+import RecordingBottomTools from "./RecordingBottomTools";
 import type { Edge } from "@xyflow/react";
 import type { TranscriptSegment, DetectedTopic, PersonalNote, StudySessionRow } from "./types";
 
@@ -511,6 +512,11 @@ export default function RecordingView({ userCodeId, onCancel, onFinish, initialS
                 </div>
               </div>
             )}
+
+            <RecordingBottomTools
+              transcript={transcription.segments.map((s) => s.text).join(" ")}
+              topics={topics.map((t) => ({ title: t.title }))}
+            />
           </div>
         </main>
       </div>
