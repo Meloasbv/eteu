@@ -4,16 +4,23 @@ import { toast } from "@/hooks/use-toast";
 import RecordingView from "./RecordingView";
 import StudyHub from "./StudyHub";
 import SessionsList from "./SessionsList";
-import { Mic, Upload } from "lucide-react";
+import LiveMirrorView from "./LiveMirrorView";
+import { Mic, Upload, Wifi } from "lucide-react";
 import type { StudySessionRow, DetectedTopic, PersonalNote } from "./types";
 import type { AnalysisResult } from "@/components/mindmap/types";
 import { uploadAudio } from "@/lib/audioStudio";
 import { transcribeAudioBlob } from "@/lib/audioStudio";
 import { haptic } from "@/hooks/useHaptic";
+import {
+  subscribeLiveSession,
+  fetchLiveSession,
+  getDeviceId,
+  type LiveSessionRow,
+} from "@/lib/liveSync";
 
 interface Props { userCodeId: string }
 
-type Mode = "idle" | "recording" | "processing" | "hub";
+type Mode = "idle" | "recording" | "processing" | "hub" | "mirror";
 
 export default function AgentTab({ userCodeId }: Props) {
   const [mode, setMode] = useState<Mode>("idle");
