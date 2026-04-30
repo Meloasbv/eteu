@@ -161,6 +161,57 @@ export type Database = {
         }
         Relationships: []
       }
+      live_sessions: {
+        Row: {
+          command: Json | null
+          device_id: string
+          elapsed_seconds: number
+          id: string
+          layout: Json
+          personal_notes: Json
+          resume_of: string | null
+          started_at: string
+          status: string
+          title: string
+          topics: Json
+          transcript: string
+          updated_at: string
+          user_code_id: string
+        }
+        Insert: {
+          command?: Json | null
+          device_id: string
+          elapsed_seconds?: number
+          id?: string
+          layout?: Json
+          personal_notes?: Json
+          resume_of?: string | null
+          started_at?: string
+          status?: string
+          title?: string
+          topics?: Json
+          transcript?: string
+          updated_at?: string
+          user_code_id: string
+        }
+        Update: {
+          command?: Json | null
+          device_id?: string
+          elapsed_seconds?: number
+          id?: string
+          layout?: Json
+          personal_notes?: Json
+          resume_of?: string | null
+          started_at?: string
+          status?: string
+          title?: string
+          topics?: Json
+          transcript?: string
+          updated_at?: string
+          user_code_id?: string
+        }
+        Relationships: []
+      }
       mind_maps: {
         Row: {
           created_at: string

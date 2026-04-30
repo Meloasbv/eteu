@@ -10,6 +10,15 @@ import LiveTopicCanvas from "./LiveTopicCanvas";
 import RecordingBottomTools from "./RecordingBottomTools";
 import type { Edge } from "@xyflow/react";
 import type { TranscriptSegment, DetectedTopic, PersonalNote, StudySessionRow } from "./types";
+import {
+  pushLiveSession,
+  clearLiveSession,
+  subscribeLiveSession,
+  getDeviceId,
+  makeDebouncer,
+  type LiveSessionRow,
+} from "@/lib/liveSync";
+import { Wifi } from "lucide-react";
 
 interface Props {
   userCodeId: string;
@@ -211,6 +220,63 @@ export default function RecordingView({ userCodeId, onCancel, onFinish, initialS
     return () => clearInterval(t);
   }, [priorDurationMs]);
 
+  // ─── Sincronização ao vivo entre dispositivos ──────────────────
+  const deviceIdRef = useRef<string>(getDeviceId());
+  const debouncerRef = useRef(makeDebouncer(800));
+  const [mirrorCount, setMirrorCount] = useState(0); // quantos espelhos conectados (estimativa via lastSeenCmd)
+  const lastCmdTsRef = useRef<number>(0);
+
+  // Empurra snapshot a cada mudança relevante (debounced)
+  const fullTranscript = transcription.segments.map((s) => s.text).join(" ");
+  useEffect(() => {
+    debouncerRef.current.schedule(() => {
+      pushLiveSession(userCodeId, deviceIdRef.current, {
+        title: initialSession?.title || "Sessão ao vivo",
+        transcript: (initialSession?.full_transcript ? initialSession.full_transcript + "\n\n" : "") + fullTranscript,
+        topics,
+        personal_notes: notes,
+        layout: { positions, edges: canvasEdges },
+        status: transcription.listening ? "recording" : "paused",
+        elapsed_seconds: elapsed,
+        resume_of: initialSession?.id || null,
+      });
+    });
+  }, [fullTranscript, topics, notes, positions, canvasEdges, transcription.listening, elapsed, userCodeId, initialSession]);
+
+  // Inscreve para receber comandos do espelho (PC)
+  useEffect(() => {
+    const unsub = subscribeLiveSession(userCodeId, (row) => {
+      if (!row) return;
+      // Ignora updates do próprio device
+      if (row.device_id !== deviceIdRef.current) {
+        // ainda não suportamos múltiplos gravadores; apenas ignora
+      }
+      const cmd = row.command;
+      if (!cmd || cmd.ts <= lastCmdTsRef.current) return;
+      lastCmdTsRef.current = cmd.ts;
+      if (cmd.type === "pause") transcription.pause();
+      else if (cmd.type === "resume") transcription.resume();
+      else if (cmd.type === "stop") {
+        // Dispara stop assíncrono
+        setTimeout(() => stopAllRef.current?.(), 50);
+      } else if (cmd.type === "add_note" && cmd.payload?.text) {
+        setNotes((n) => [...n, {
+          id: `n-remote-${Date.now()}`,
+          text: String(cmd.payload.text),
+          timestamp: elapsed * 1000,
+          createdAt: new Date().toISOString(),
+        }]);
+        haptic("light");
+      }
+      setMirrorCount(1);
+    });
+    return unsub;
+    // eslint-disable-next-line
+  }, [userCodeId]);
+
+  const stopAllRef = useRef<(() => void) | null>(null);
+
+
   const togglePause = useCallback(() => {
     if (transcription.listening) {
       transcription.pause();
@@ -233,6 +299,9 @@ export default function RecordingView({ userCodeId, onCancel, onFinish, initialS
       : newTranscript;
     const liveDuration = Math.floor((Date.now() - startedAtRef.current) / 1000);
     const duration = Math.floor(priorDurationMs / 1000) + liveDuration;
+    // Limpa sessão ao vivo (espelho vai sumir do PC)
+    debouncerRef.current.flush();
+    await clearLiveSession(userCodeId);
     await onFinish({
       title: initialSession?.title || "",
       duration,
@@ -245,7 +314,16 @@ export default function RecordingView({ userCodeId, onCancel, onFinish, initialS
       resumeOf: initialSession || null,
       priorTranscript,
     });
-  }, [recorder, transcription, notes, onFinish, positions, canvasEdges, processBlock, initialSession, priorDurationMs]);
+  }, [recorder, transcription, notes, onFinish, positions, canvasEdges, processBlock, initialSession, priorDurationMs, userCodeId]);
+  stopAllRef.current = stopAll;
+
+  // Limpa live_sessions ao desmontar (cancel)
+  useEffect(() => {
+    return () => {
+      clearLiveSession(userCodeId).catch(() => {});
+    };
+    // eslint-disable-next-line
+  }, []);
 
   const addNote = useCallback(() => {
     if (!newNote.trim()) return;
@@ -298,6 +376,11 @@ export default function RecordingView({ userCodeId, onCancel, onFinish, initialS
         {classifying && (
           <span className="flex items-center gap-1 text-[11px] text-primary">
             <Sparkles size={10} className="animate-pulse" /> analisando…
+          </span>
+        )}
+        {mirrorCount > 0 && (
+          <span className="flex items-center gap-1 text-[11px] text-emerald-500" title="Outro dispositivo está espelhando">
+            <Wifi size={10} /> espelhado
           </span>
         )}
         <div className="ml-auto flex items-center gap-2">

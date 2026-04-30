@@ -4,16 +4,23 @@ import { toast } from "@/hooks/use-toast";
 import RecordingView from "./RecordingView";
 import StudyHub from "./StudyHub";
 import SessionsList from "./SessionsList";
-import { Mic, Upload } from "lucide-react";
+import LiveMirrorView from "./LiveMirrorView";
+import { Mic, Upload, Wifi } from "lucide-react";
 import type { StudySessionRow, DetectedTopic, PersonalNote } from "./types";
 import type { AnalysisResult } from "@/components/mindmap/types";
 import { uploadAudio } from "@/lib/audioStudio";
 import { transcribeAudioBlob } from "@/lib/audioStudio";
 import { haptic } from "@/hooks/useHaptic";
+import {
+  subscribeLiveSession,
+  fetchLiveSession,
+  getDeviceId,
+  type LiveSessionRow,
+} from "@/lib/liveSync";
 
 interface Props { userCodeId: string }
 
-type Mode = "idle" | "recording" | "processing" | "hub";
+type Mode = "idle" | "recording" | "processing" | "hub" | "mirror";
 
 export default function AgentTab({ userCodeId }: Props) {
   const [mode, setMode] = useState<Mode>("idle");
@@ -21,6 +28,17 @@ export default function AgentTab({ userCodeId }: Props) {
   const [resumeSession, setResumeSession] = useState<StudySessionRow | null>(null);
   const [sessions, setSessions] = useState<StudySessionRow[]>([]);
   const [progress, setProgress] = useState<{ label: string; pct: number } | null>(null);
+  const [liveSession, setLiveSession] = useState<LiveSessionRow | null>(null);
+  const myDeviceId = getDeviceId();
+
+  // Detecta sessão ao vivo de OUTRO dispositivo deste mesmo código
+  useEffect(() => {
+    fetchLiveSession(userCodeId).then(setLiveSession);
+    const unsub = subscribeLiveSession(userCodeId, setLiveSession);
+    return unsub;
+  }, [userCodeId]);
+
+  const remoteLive = liveSession && liveSession.device_id !== myDeviceId ? liveSession : null;
 
   const refresh = useCallback(async () => {
     const { data } = await supabase
@@ -261,6 +279,15 @@ export default function AgentTab({ userCodeId }: Props) {
     );
   }
 
+  if (mode === "mirror") {
+    return (
+      <LiveMirrorView
+        userCodeId={userCodeId}
+        onClose={() => { setMode("idle"); refresh(); }}
+      />
+    );
+  }
+
   if (mode === "processing") {
     return (
       <div className="min-h-[70vh] flex flex-col items-center justify-center gap-6 px-6">
@@ -288,6 +315,29 @@ export default function AgentTab({ userCodeId }: Props) {
   return (
     <div className="px-4 lg:px-0 pb-20">
       <div className="max-w-2xl mx-auto pt-8">
+        {remoteLive && (
+          <button
+            onClick={() => { haptic("medium"); setMode("mirror"); }}
+            className="w-full mb-6 p-4 rounded-2xl border border-emerald-500/40 bg-emerald-500/[0.06] flex items-center gap-3 text-left hover:border-emerald-500/70 transition-all"
+          >
+            <div className="w-10 h-10 rounded-full bg-emerald-500/15 flex items-center justify-center shrink-0">
+              <Wifi size={18} className="text-emerald-500" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-ui text-foreground flex items-center gap-2">
+                Sessão ao vivo em outro dispositivo
+                {remoteLive.status === "recording" && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                )}
+              </p>
+              <p className="text-[12px] text-muted-foreground truncate">
+                {remoteLive.title} · {remoteLive.topics?.length || 0} tópicos
+              </p>
+            </div>
+            <span className="text-[11px] font-ui text-emerald-500">Espelhar →</span>
+          </button>
+        )}
+
         {/* Hero */}
         <div className="flex flex-col items-center text-center gap-4 py-12">
           <div
