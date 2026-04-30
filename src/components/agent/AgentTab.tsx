@@ -315,6 +315,29 @@ export default function AgentTab({ userCodeId }: Props) {
   return (
     <div className="px-4 lg:px-0 pb-20">
       <div className="max-w-2xl mx-auto pt-8">
+        {remoteLive && (
+          <button
+            onClick={() => { haptic("medium"); setMode("mirror"); }}
+            className="w-full mb-6 p-4 rounded-2xl border border-emerald-500/40 bg-emerald-500/[0.06] flex items-center gap-3 text-left hover:border-emerald-500/70 transition-all"
+          >
+            <div className="w-10 h-10 rounded-full bg-emerald-500/15 flex items-center justify-center shrink-0">
+              <Wifi size={18} className="text-emerald-500" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-ui text-foreground flex items-center gap-2">
+                Sessão ao vivo em outro dispositivo
+                {remoteLive.status === "recording" && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                )}
+              </p>
+              <p className="text-[12px] text-muted-foreground truncate">
+                {remoteLive.title} · {remoteLive.topics?.length || 0} tópicos
+              </p>
+            </div>
+            <span className="text-[11px] font-ui text-emerald-500">Espelhar →</span>
+          </button>
+        )}
+
         {/* Hero */}
         <div className="flex flex-col items-center text-center gap-4 py-12">
           <div
