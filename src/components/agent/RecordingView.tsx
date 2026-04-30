@@ -98,10 +98,10 @@ export default function RecordingView({ userCodeId, onCancel, onFinish, initialS
       // Aplica a correção da IA no PRIMEIRO segmento do bloco e zera os outros,
       // para que a transcrição final fique limpa e fiel ao tema.
       try {
-        if (correctedText !== rawText && segIds.length) {
-          transcription.updateSegment(segIds[0], correctedText);
+        if (correctedText !== rawText && segIds.length && updateSegmentRef.current) {
+          updateSegmentRef.current(segIds[0], correctedText);
           for (let i = 1; i < segIds.length; i++) {
-            transcription.updateSegment(segIds[i], "");
+            updateSegmentRef.current(segIds[i], "");
           }
         }
       } catch (e) {
