@@ -288,6 +288,7 @@ export default function AgentTab({ userCodeId }: Props) {
     );
   }
 
+  if (mode === "processing") {
     return (
       <div className="min-h-[70vh] flex flex-col items-center justify-center gap-6 px-6">
         <div
