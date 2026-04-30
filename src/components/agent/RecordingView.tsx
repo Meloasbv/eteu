@@ -180,6 +180,7 @@ export default function RecordingView({ userCodeId, onCancel, onFinish, initialS
       processBlock();
     },
   });
+  updateSegmentRef.current = transcription.updateSegment;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   useWaveform(canvasRef.current, recorder.stream, "#d4a94a");
 
