@@ -378,6 +378,11 @@ export default function RecordingView({ userCodeId, onCancel, onFinish, initialS
             <Sparkles size={10} className="animate-pulse" /> analisando…
           </span>
         )}
+        {mirrorCount > 0 && (
+          <span className="flex items-center gap-1 text-[11px] text-emerald-500" title="Outro dispositivo está espelhando">
+            <Wifi size={10} /> espelhado
+          </span>
+        )}
         <div className="ml-auto flex items-center gap-2">
           <button
             onClick={togglePause}
