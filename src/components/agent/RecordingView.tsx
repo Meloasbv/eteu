@@ -56,6 +56,7 @@ export default function RecordingView({ userCodeId, onCancel, onFinish, initialS
   const processingRef = useRef(false);
   const topicsRef = useRef<DetectedTopic[]>([]);
   topicsRef.current = topics;
+  const updateSegmentRef = useRef<((id: string, text: string) => void) | null>(null);
 
   const recorder = useMediaRecorderAudio();
 
