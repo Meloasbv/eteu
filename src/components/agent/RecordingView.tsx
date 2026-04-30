@@ -10,6 +10,15 @@ import LiveTopicCanvas from "./LiveTopicCanvas";
 import RecordingBottomTools from "./RecordingBottomTools";
 import type { Edge } from "@xyflow/react";
 import type { TranscriptSegment, DetectedTopic, PersonalNote, StudySessionRow } from "./types";
+import {
+  pushLiveSession,
+  clearLiveSession,
+  subscribeLiveSession,
+  getDeviceId,
+  makeDebouncer,
+  type LiveSessionRow,
+} from "@/lib/liveSync";
+import { Wifi } from "lucide-react";
 
 interface Props {
   userCodeId: string;
