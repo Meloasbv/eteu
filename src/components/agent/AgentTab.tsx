@@ -28,6 +28,17 @@ export default function AgentTab({ userCodeId }: Props) {
   const [resumeSession, setResumeSession] = useState<StudySessionRow | null>(null);
   const [sessions, setSessions] = useState<StudySessionRow[]>([]);
   const [progress, setProgress] = useState<{ label: string; pct: number } | null>(null);
+  const [liveSession, setLiveSession] = useState<LiveSessionRow | null>(null);
+  const myDeviceId = getDeviceId();
+
+  // Detecta sessão ao vivo de OUTRO dispositivo deste mesmo código
+  useEffect(() => {
+    fetchLiveSession(userCodeId).then(setLiveSession);
+    const unsub = subscribeLiveSession(userCodeId, setLiveSession);
+    return unsub;
+  }, [userCodeId]);
+
+  const remoteLive = liveSession && liveSession.device_id !== myDeviceId ? liveSession : null;
 
   const refresh = useCallback(async () => {
     const { data } = await supabase
