@@ -299,6 +299,9 @@ export default function RecordingView({ userCodeId, onCancel, onFinish, initialS
       : newTranscript;
     const liveDuration = Math.floor((Date.now() - startedAtRef.current) / 1000);
     const duration = Math.floor(priorDurationMs / 1000) + liveDuration;
+    // Limpa sessão ao vivo (espelho vai sumir do PC)
+    debouncerRef.current.flush();
+    await clearLiveSession(userCodeId);
     await onFinish({
       title: initialSession?.title || "",
       duration,
@@ -311,7 +314,16 @@ export default function RecordingView({ userCodeId, onCancel, onFinish, initialS
       resumeOf: initialSession || null,
       priorTranscript,
     });
-  }, [recorder, transcription, notes, onFinish, positions, canvasEdges, processBlock, initialSession, priorDurationMs]);
+  }, [recorder, transcription, notes, onFinish, positions, canvasEdges, processBlock, initialSession, priorDurationMs, userCodeId]);
+  stopAllRef.current = stopAll;
+
+  // Limpa live_sessions ao desmontar (cancel)
+  useEffect(() => {
+    return () => {
+      clearLiveSession(userCodeId).catch(() => {});
+    };
+    // eslint-disable-next-line
+  }, []);
 
   const addNote = useCallback(() => {
     if (!newNote.trim()) return;
