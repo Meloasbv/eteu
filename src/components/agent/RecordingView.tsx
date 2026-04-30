@@ -512,6 +512,11 @@ export default function RecordingView({ userCodeId, onCancel, onFinish, initialS
                 </div>
               </div>
             )}
+
+            <RecordingBottomTools
+              transcript={transcription.segments.map((s) => s.text).join(" ")}
+              topics={topics.map((t) => ({ title: t.title }))}
+            />
           </div>
         </main>
       </div>
