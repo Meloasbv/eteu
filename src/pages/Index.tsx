@@ -17,6 +17,7 @@ import { haptic } from "@/hooks/useHaptic";
 import { BookOpen, Flame, PenLine, Check, Sun, Moon, LogOut, Sparkles, CheckCheck, Brain, Zap, Mic, NotebookPen } from "lucide-react";
 import BrainAreasHub from "@/components/secondbrain/areas/BrainAreasHub";
 import AgentTab from "@/components/agent/AgentTab";
+import MobileFavorites from "@/components/MobileFavorites";
 import { lazy, Suspense } from "react";
 const FocusWorkspace = lazy(() => import("@/components/secondbrain/FocusWorkspace"));
 
@@ -576,6 +577,10 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
                 );
               })}
             </div>
+
+            {/* Favorite verses — mobile */}
+            {isMobile && <MobileFavorites userCodeId={userCodeId} />}
+            <div className="h-6" />
           </>
         )}
 
