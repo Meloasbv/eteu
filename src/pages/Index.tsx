@@ -576,6 +576,10 @@ function BiblePlanApp({ userCodeId, accessCode, onLogout }: { userCodeId: string
                 );
               })}
             </div>
+
+            {/* Favorite verses — mobile */}
+            {isMobile && <MobileFavorites userCodeId={userCodeId} />}
+            <div className="h-6" />
           </>
         )}
 
