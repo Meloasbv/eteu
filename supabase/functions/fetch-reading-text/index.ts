@@ -160,41 +160,43 @@ serve(async (req) => {
     const missing: string[] = [];
 
     for (const reading of readings) {
-      const parsed = parseReading(String(reading));
-      if (!parsed) {
+      const parsedList = parseReadings(String(reading));
+      if (parsedList.length === 0) {
         missing.push(String(reading));
         continue;
       }
 
-      for (let ch = parsed.chapterStart; ch <= parsed.chapterEnd; ch++) {
-        let q = supabase
-          .from("bible_verses")
-          .select("verse, text")
-          .eq("translation", "arc")
-          .eq("book", parsed.book)
-          .eq("chapter", ch)
-          .order("verse", { ascending: true });
+      for (const parsed of parsedList) {
+        for (let ch = parsed.chapterStart; ch <= parsed.chapterEnd; ch++) {
+          let q = supabase
+            .from("bible_verses")
+            .select("verse, text")
+            .eq("translation", "arc")
+            .eq("book", parsed.book)
+            .eq("chapter", ch)
+            .order("verse", { ascending: true });
 
-        if (ch === parsed.chapterStart && parsed.verseStart !== undefined) {
-          q = q.gte("verse", parsed.verseStart);
-        }
-        if (ch === parsed.chapterEnd && parsed.verseEnd !== undefined) {
-          q = q.lte("verse", parsed.verseEnd);
-        }
+          if (ch === parsed.chapterStart && parsed.verseStart !== undefined) {
+            q = q.gte("verse", parsed.verseStart);
+          }
+          if (ch === parsed.chapterEnd && parsed.verseEnd !== undefined) {
+            q = q.lte("verse", parsed.verseEnd);
+          }
 
-        const { data: rows, error } = await q;
-        if (error) {
-          console.error("DB error:", error);
-          continue;
-        }
-        if (!rows || rows.length === 0) {
-          missing.push(`${parsed.book} ${ch}`);
-          continue;
-        }
+          const { data: rows, error } = await q;
+          if (error) {
+            console.error("DB error:", error);
+            continue;
+          }
+          if (!rows || rows.length === 0) {
+            missing.push(`${parsed.book} ${ch}`);
+            continue;
+          }
 
-        const header = `**${parsed.book} ${ch}**`;
-        const lines = rows.map((r: { verse: number; text: string }) => `${r.verse} ${r.text.trim()}`);
-        blocks.push([header, ...lines].join("\n"));
+          const header = `**${parsed.book} ${ch}**`;
+          const lines = rows.map((r: { verse: number; text: string }) => `${r.verse} ${r.text.trim()}`);
+          blocks.push([header, ...lines].join("\n"));
+        }
       }
     }
 
