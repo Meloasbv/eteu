@@ -85,44 +85,56 @@ interface ParsedRange {
   verseEnd?: number;
 }
 
-function parseReading(input: string): ParsedRange | null {
-  if (!input) return null;
-  const cleaned = input.replace(/;/g, " ").replace(/[.,;:\s]+$/g, "").replace(/\s+/g, " ").trim();
-  // Padrões aceitos:
-  //   "Esdras 1-6"            → cap range
-  //   "Esdras 1"              → único cap
-  //   "Esdras 1:1-10"         → versículos
-  //   "Esdras 1:5"            → único versículo
-  const m = cleaned.match(
+function parseSegment(segment: string, lastBook: string | null): ParsedRange | null {
+  const cleaned = segment.replace(/[.,;:\s]+$/g, "").replace(/\s+/g, " ").trim();
+  if (!cleaned) return null;
+
+  // Caso 1: começa com livro: "Lc. 4-5", "Esdras 1:1-10", "1 Coríntios 13"
+  const withBook = cleaned.match(
     /^([1-3]?\s?[A-Za-zÀ-ÿ\.]+(?:\s+[A-Za-zÀ-ÿ\.]+)?)\s+(\d{1,3})(?:\s*[-–]\s*(\d{1,3}))?(?:[:\.]\s*(\d{1,3})(?:\s*[-–]\s*(\d{1,3}))?)?$/,
   );
-  if (!m) return null;
-
-  const rawBook = m[1].toLowerCase().replace(/\.$/, "").replace(/\s+/g, " ").trim();
-  const canonical = BOOK_ALIASES[rawBook];
-  if (!canonical) return null;
-
-  const first = parseInt(m[2], 10);
-  const second = m[3] ? parseInt(m[3], 10) : undefined;
-  const verseStart = m[4] ? parseInt(m[4], 10) : undefined;
-  const verseEnd = m[5] ? parseInt(m[5], 10) : undefined;
-
-  // Se houver `:`, então m[2] é o capítulo único e m[3] (se houver) também é capítulo seria inválido
-  if (verseStart !== undefined) {
-    return {
-      book: canonical,
-      chapterStart: first,
-      chapterEnd: first,
-      verseStart,
-      verseEnd: verseEnd ?? verseStart,
-    };
+  if (withBook) {
+    const rawBook = withBook[1].toLowerCase().replace(/\.$/, "").replace(/\s+/g, " ").trim();
+    const canonical = BOOK_ALIASES[rawBook];
+    if (!canonical) return null;
+    const first = parseInt(withBook[2], 10);
+    const second = withBook[3] ? parseInt(withBook[3], 10) : undefined;
+    const verseStart = withBook[4] ? parseInt(withBook[4], 10) : undefined;
+    const verseEnd = withBook[5] ? parseInt(withBook[5], 10) : undefined;
+    if (verseStart !== undefined) {
+      return { book: canonical, chapterStart: first, chapterEnd: first, verseStart, verseEnd: verseEnd ?? verseStart };
+    }
+    return { book: canonical, chapterStart: first, chapterEnd: second ?? first };
   }
 
-  return {
-    book: canonical,
-    chapterStart: first,
-    chapterEnd: second ?? first,
-  };
+  // Caso 2: só números (herda livro anterior): "7", "11", "4-5", "1:5"
+  if (!lastBook) return null;
+  const numOnly = cleaned.match(/^(\d{1,3})(?:\s*[-–]\s*(\d{1,3}))?(?:[:\.]\s*(\d{1,3})(?:\s*[-–]\s*(\d{1,3}))?)?$/);
+  if (!numOnly) return null;
+  const first = parseInt(numOnly[1], 10);
+  const second = numOnly[2] ? parseInt(numOnly[2], 10) : undefined;
+  const verseStart = numOnly[3] ? parseInt(numOnly[3], 10) : undefined;
+  const verseEnd = numOnly[4] ? parseInt(numOnly[4], 10) : undefined;
+  if (verseStart !== undefined) {
+    return { book: lastBook, chapterStart: first, chapterEnd: first, verseStart, verseEnd: verseEnd ?? verseStart };
+  }
+  return { book: lastBook, chapterStart: first, chapterEnd: second ?? first };
+}
+
+function parseReadings(input: string): ParsedRange[] {
+  if (!input) return [];
+  // Divide em "Lc. 4-5; Mc. 2" → ["Lc. 4-5", "Mc. 2"] e "Lc. 6, 7, 11" → ["Lc. 6", "7", "11"]
+  const segments = input.split(/[;,]/).map((s) => s.trim()).filter(Boolean);
+  const out: ParsedRange[] = [];
+  let lastBook: string | null = null;
+  for (const seg of segments) {
+    const parsed = parseSegment(seg, lastBook);
+    if (parsed) {
+      out.push(parsed);
+      lastBook = parsed.book;
+    }
+  }
+  return out;
 }
 
 serve(async (req) => {
@@ -148,41 +160,43 @@ serve(async (req) => {
     const missing: string[] = [];
 
     for (const reading of readings) {
-      const parsed = parseReading(String(reading));
-      if (!parsed) {
+      const parsedList = parseReadings(String(reading));
+      if (parsedList.length === 0) {
         missing.push(String(reading));
         continue;
       }
 
-      for (let ch = parsed.chapterStart; ch <= parsed.chapterEnd; ch++) {
-        let q = supabase
-          .from("bible_verses")
-          .select("verse, text")
-          .eq("translation", "arc")
-          .eq("book", parsed.book)
-          .eq("chapter", ch)
-          .order("verse", { ascending: true });
+      for (const parsed of parsedList) {
+        for (let ch = parsed.chapterStart; ch <= parsed.chapterEnd; ch++) {
+          let q = supabase
+            .from("bible_verses")
+            .select("verse, text")
+            .eq("translation", "arc")
+            .eq("book", parsed.book)
+            .eq("chapter", ch)
+            .order("verse", { ascending: true });
 
-        if (ch === parsed.chapterStart && parsed.verseStart !== undefined) {
-          q = q.gte("verse", parsed.verseStart);
-        }
-        if (ch === parsed.chapterEnd && parsed.verseEnd !== undefined) {
-          q = q.lte("verse", parsed.verseEnd);
-        }
+          if (ch === parsed.chapterStart && parsed.verseStart !== undefined) {
+            q = q.gte("verse", parsed.verseStart);
+          }
+          if (ch === parsed.chapterEnd && parsed.verseEnd !== undefined) {
+            q = q.lte("verse", parsed.verseEnd);
+          }
 
-        const { data: rows, error } = await q;
-        if (error) {
-          console.error("DB error:", error);
-          continue;
-        }
-        if (!rows || rows.length === 0) {
-          missing.push(`${parsed.book} ${ch}`);
-          continue;
-        }
+          const { data: rows, error } = await q;
+          if (error) {
+            console.error("DB error:", error);
+            continue;
+          }
+          if (!rows || rows.length === 0) {
+            missing.push(`${parsed.book} ${ch}`);
+            continue;
+          }
 
-        const header = `**${parsed.book} ${ch}**`;
-        const lines = rows.map((r: { verse: number; text: string }) => `${r.verse} ${r.text.trim()}`);
-        blocks.push([header, ...lines].join("\n"));
+          const header = `**${parsed.book} ${ch}**`;
+          const lines = rows.map((r: { verse: number; text: string }) => `${r.verse} ${r.text.trim()}`);
+          blocks.push([header, ...lines].join("\n"));
+        }
       }
     }
 
